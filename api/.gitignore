@@ -1,0 +1,42 @@
+# --------------------
+# Environment variables
+# --------------------
+.env
+.env.*
+!.env.example
+
+# --------------------
+# Node
+# --------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --------------------
+# Build outputs
+# --------------------
+dist/
+build/
+out/
+
+# --------------------
+# OS / Editor junk
+# --------------------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --------------------
+# Logs
+# --------------------
+logs/
+*.log
+
+# --------------------
+# Supabase
+# --------------------
+supabase/.temp/
+supabase/.env
