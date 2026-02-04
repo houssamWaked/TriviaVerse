@@ -1,16 +1,23 @@
-import 'dotenv/config';
-import express from 'express';
-import { supabaseAdmin } from './config/supabase.js';
-const app = express();
-app.use(express.json());
+/**
+ * API entrypoint.
+ *
+ * Responsibilities:
+ * - Loads environment variables (see `src/config/env.js`)
+ * - Imports the Express app from `src/app.js`
+ * - Starts the HTTP listener (except in `NODE_ENV=test`)
+ *
+ * Notes:
+ * - Keep `index.js` "thin" so `src/app.js` can be imported in tests without
+ *   starting a server.
+ */
+import './src/config/env.js';
+import app from './src/app.js';
 
-app.get('/health/db', async (req, res) => {
-  const { data, error } = await supabaseAdmin
-    .from('categories')
-    .select('*')
-    .limit(1);
-  if (error) return res.status(500).json({ ok: false, error: error.message });
-  res.json({ ok: true, data });
-});
+const port = process.env.PORT || 3001;
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(port, () => {
+    console.log(`API listening on port ${port}`);
+  });
+}
 
-app.listen(3000, () => console.log('Server running on port 3000'));
+export default app;
