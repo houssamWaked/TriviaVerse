@@ -54,6 +54,13 @@ export default function createCategoryRouter(categoryController) {
     validateRequest,
     asyncHandler(categoryController.update)
   );
+
+  router.get(
+    '/:id/stats',
+    idParam,
+    validateRequest,
+    asyncHandler(categoryController.stats)
+  );
   router.get(
     '/:id',
     idParam,

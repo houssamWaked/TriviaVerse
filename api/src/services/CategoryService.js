@@ -11,8 +11,9 @@
 import CategoryDTO from '../domain/dto/CategoryDTO.js';
 
 export class CategoryService {
-  constructor(categoryRepository) {
+  constructor(categoryRepository, quizQuestionRepository = null) {
     this.categoryRepository = categoryRepository;
+    this.quizQuestionRepository = quizQuestionRepository;
   }
 
   /**
@@ -67,5 +68,22 @@ export class CategoryService {
     return (await this.categoryRepository.search(query)).map(
       CategoryDTO.fromEntity
     );
+  }
+
+  /**
+   * Category stats used by the Classic Quiz category selection screen.
+   *
+   * NOTE: The provided schema does not include a category foreign key on
+   * `quiz_questions`, so this currently returns the total question count as a
+   * fallback. Once questions are categorizable, filter by `category_id` here.
+   */
+  async getCategoryStats(categoryId) {
+    const exists = await this.categoryRepository.findById(categoryId);
+    if (!exists) return null;
+
+    const total = this.quizQuestionRepository
+      ? await this.quizQuestionRepository.countAll()
+      : 0;
+    return { category_id: categoryId, questions_available: total };
   }
 }

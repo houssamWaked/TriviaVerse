@@ -62,4 +62,12 @@ export class CategoryController {
     const categories = await this.categoryService.searchCategories(req.query.q);
     res.json(categories);
   };
+
+  stats = async (req, res) => {
+    const data = await this.categoryService.getCategoryStats(req.params.id);
+    if (!data) {
+      throw new AppError('Category not found', 404, 'NOT_FOUND');
+    }
+    res.status(200).json(data);
+  };
 }
