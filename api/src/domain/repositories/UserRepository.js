@@ -50,6 +50,19 @@ export class UserRepository {
     return data?.[0] ? new User(data[0]) : null;
   }
 
+  async findByUsername(username) {
+    const u = String(username || '').trim();
+    if (!u) return null;
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, username, email, password_hash, avatar_url, created_at')
+      .eq('username', u)
+      .limit(1);
+
+    if (error) throw toAppError(error);
+    return data?.[0] ? new User(data[0]) : null;
+  }
+
   async create({ username, email, password_hash }) {
     const payload = { username: username?.trim(), email: email?.trim(), password_hash };
     const { data, error } = await supabase

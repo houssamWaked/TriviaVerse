@@ -7,10 +7,51 @@ import QuizQuestionDTO from '../domain/dto/QuizQuestionDTO.js';
 import QuestionOptionDTO from '../domain/dto/QuestionOptionDTO.js';
 
 export class QuizBuilderService {
-  constructor(quizRepository, quizQuestionRepository, questionOptionRepository) {
+  constructor(
+    quizRepository,
+    quizQuestionRepository,
+    questionOptionRepository,
+    userRepository,
+    quizAccessRepository,
+    friendRepository,
+    quizRatingRepository,
+    quizScoreRepository
+  ) {
     this.quizRepository = quizRepository;
     this.quizQuestionRepository = quizQuestionRepository;
     this.questionOptionRepository = questionOptionRepository;
+    this.userRepository = userRepository;
+    this.quizAccessRepository = quizAccessRepository;
+    this.friendRepository = friendRepository;
+    this.quizRatingRepository = quizRatingRepository;
+    this.quizScoreRepository = quizScoreRepository;
+  }
+
+  async assertCanViewQuiz(userId, quiz) {
+    if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
+
+    if (quiz.visibility === 'public') return true;
+    if (quiz.visibility === 'unlisted') return true;
+
+    if (quiz.visibility === 'private') {
+      if (!userId) throw new AppError('Login required', 401, 'UNAUTHORIZED');
+      if (quiz.owner_user_id === userId) return true;
+      try {
+        const isFriend = await this.friendRepository.areFriends(userId, quiz.owner_user_id);
+        if (isFriend) return true;
+      } catch (err) {
+        if (err?.code !== 'NOT_CONFIGURED') throw err;
+      }
+      try {
+        const allowed = await this.quizAccessRepository.listQuizIdsForUser(userId);
+        if (allowed.includes(quiz.id)) return true;
+      } catch (err) {
+        if (err?.code !== 'NOT_CONFIGURED') throw err;
+      }
+      throw new AppError('Forbidden', 403, 'FORBIDDEN');
+    }
+
+    throw new AppError('Forbidden', 403, 'FORBIDDEN');
   }
 
   async createQuiz(userId, payload) {
@@ -24,6 +65,11 @@ export class QuizBuilderService {
     });
     if (!quiz) throw new AppError('Failed to create quiz', 500, 'DB_ERROR');
     return QuizDTO.fromRow(quiz);
+  }
+
+  async listQuizzes(userId) {
+    const rows = await this.quizRepository.listByOwnerUserId(userId);
+    return rows.map((r) => QuizDTO.fromRow(r));
   }
 
   async getQuiz(userId, quizId) {
@@ -188,5 +234,122 @@ export class QuizBuilderService {
     if (!ok) throw new AppError('Option not found', 404, 'NOT_FOUND');
     return true;
   }
-}
 
+  async rateQuiz(userId, quizId, rating) {
+    const quiz = await this.quizRepository.findById(quizId);
+    if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
+
+    if (quiz.status !== 'published' && quiz.owner_user_id !== userId) {
+      throw new AppError('Quiz not found', 404, 'NOT_FOUND');
+    }
+
+    await this.assertCanViewQuiz(userId, quiz);
+
+    await this.quizRatingRepository.upsert({
+      quiz_id: quizId,
+      user_id: userId,
+      rating: Number(rating),
+    });
+
+    const rows = await this.quizRatingRepository.listByQuizId(quizId);
+    const sum = rows.reduce((acc, r) => acc + (Number(r.rating) || 0), 0);
+    const count = rows.length;
+    const ratings_avg = count ? Math.round((sum / count) * 100) / 100 : 0;
+
+    return { ratings_avg, ratings_count: count, my_rating: Number(rating) };
+  }
+
+  async listQuizAccess(userId, quizId) {
+    const quiz = await this.quizRepository.findById(quizId);
+    if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
+    if (quiz.owner_user_id !== userId) throw new AppError('Forbidden', 403, 'FORBIDDEN');
+
+    const rows = await this.quizAccessRepository.listByQuizId(quizId);
+    const ids = rows.map((r) => r.user_id).filter(Boolean);
+    const users = await this.userRepository.findByIds(ids);
+    const map = new Map(users.map((u) => [u.id, u]));
+
+    return rows
+      .map((r) => map.get(r.user_id))
+      .filter(Boolean)
+      .map((u) => ({ user_id: u.id, username: u.username, avatar_url: u.avatar_url }));
+  }
+
+  async addQuizAccess(userId, quizId, { username }) {
+    const quiz = await this.quizRepository.findById(quizId);
+    if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
+    if (quiz.owner_user_id !== userId) throw new AppError('Forbidden', 403, 'FORBIDDEN');
+
+    const target = await this.userRepository.findByUsername(username);
+    if (!target) throw new AppError('User not found', 404, 'NOT_FOUND');
+    if (target.id === userId) throw new AppError('Cannot add yourself', 400, 'INVALID_INPUT');
+
+    await this.quizAccessRepository.add({ quiz_id: quizId, user_id: target.id });
+    return { user_id: target.id, username: target.username, avatar_url: target.avatar_url };
+  }
+
+  async removeQuizAccess(userId, quizId, targetUserId) {
+    const quiz = await this.quizRepository.findById(quizId);
+    if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
+    if (quiz.owner_user_id !== userId) throw new AppError('Forbidden', 403, 'FORBIDDEN');
+
+    const ok = await this.quizAccessRepository.remove({
+      quiz_id: quizId,
+      user_id: targetUserId,
+    });
+    if (!ok) throw new AppError('Access not found', 404, 'NOT_FOUND');
+    return { success: true };
+  }
+
+  async listMyPlayedQuizzes(userId) {
+    let rows = [];
+    try {
+      rows = await this.quizScoreRepository.listByUserId(userId, 200);
+    } catch (err) {
+      if (err?.code === 'NOT_CONFIGURED') return [];
+      throw err;
+    }
+
+    const quizIds = rows.map((r) => r.quiz_id).filter(Boolean);
+    const quizzes = await this.quizRepository.findByIds(quizIds);
+    const quizMap = new Map(quizzes.map((q) => [q.id, q]));
+
+    let allowedPrivate = new Set();
+    try {
+      const ids = await this.quizAccessRepository.listQuizIdsForUser(userId);
+      allowedPrivate = new Set(ids);
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+    }
+
+    let friendIds = new Set();
+    try {
+      const ids = await this.friendRepository.listFriendIdsForUser(userId);
+      friendIds = new Set(ids);
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+    }
+
+    return rows
+      .map((r) => {
+        const quiz = quizMap.get(r.quiz_id);
+        return {
+          quiz_id: r.quiz_id,
+          title: quiz?.title ?? null,
+          visibility: quiz?.visibility ?? null,
+          status: quiz?.status ?? null,
+          owner_user_id: quiz?.owner_user_id ?? null,
+          best_score: r.best_score ?? 0,
+          updated_at: r.updated_at ?? null,
+        };
+      })
+      .filter((x) => {
+        if (!x.title) return false;
+        if (x.visibility !== 'private') return true;
+        if (x.owner_user_id === userId) return true;
+        if (friendIds.has(x.owner_user_id)) return true;
+        return allowedPrivate.has(x.quiz_id);
+      })
+      .map(({ owner_user_id, ...rest }) => rest);
+  }
+}

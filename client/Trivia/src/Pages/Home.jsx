@@ -1,26 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import colors from '../constants/colors';
-import Navbar from '../shared/layout/Navbar';
-import Footer from '../shared/layout/Footer';
 import HomeHero from '../Components/HomeComponents/HomeHero';
 import Modes from '../Components/HomeComponents/Modes';
 import CreateQuizBanner from '../Components/HomeComponents/CreateQuizBanner';
 import FeaturesStrip from '../Components/HomeComponents/FeaturesStrip';
-import AuthModal from '../Components/Auth/AuthModal';
-import {
-  api,
-  clearAuthToken,
-  clearCurrentUser,
-  getCurrentUser,
-  setAuthToken,
-  setCurrentUser,
-} from '../api';
+import { api } from '../api';
 
 const styles = {
-  page: {
-    minHeight: '100vh',
-    background: colors.neutral.white,
-  },
   main: {
     width: '100%',
     background: colors.gradients.main,
@@ -37,21 +23,7 @@ function formatCount(n) {
   return String(num);
 }
 
-function getApiErrorMessage(err) {
-  return (
-    err?.response?.data?.message ||
-    err?.message ||
-    'Something went wrong. Please try again.'
-  );
-}
-
-function Home() {
-  const [authOpen, setAuthOpen] = useState(false);
-  const [authMode, setAuthMode] = useState('signup');
-  const [authBusy, setAuthBusy] = useState(false);
-  const [authError, setAuthError] = useState('');
-  const [user, setUser] = useState(() => getCurrentUser());
-
+function Home({ user, onRequireAuth, onNavigateCreateQuiz }) {
   const [metricsRaw, setMetricsRaw] = useState(null);
 
   useEffect(() => {
@@ -80,100 +52,27 @@ function Home() {
     };
   }, [metricsRaw]);
 
-  const logout = () => {
-    clearAuthToken();
-    clearCurrentUser();
-    setUser(null);
-  };
-
-  const openJoin = (mode = 'signup') => {
-    setAuthError('');
-    setAuthMode(mode);
-    setAuthOpen(true);
-  };
-
-  const handleLogin = async (body) => {
-    setAuthBusy(true);
-    setAuthError('');
-    try {
-      const result = await api.login(body);
-      setAuthToken(result.token);
-      setCurrentUser(result.user);
-      setUser(result.user);
-      setAuthOpen(false);
-    } catch (err) {
-      setAuthError(getApiErrorMessage(err));
-    } finally {
-      setAuthBusy(false);
-    }
-  };
-
-  const handleSignup = async (body) => {
-    setAuthBusy(true);
-    setAuthError('');
-    try {
-      const result = await api.register(body);
-      setAuthToken(result.token);
-      setCurrentUser(result.user);
-      setUser(result.user);
-      setAuthOpen(false);
-    } catch (err) {
-      setAuthError(getApiErrorMessage(err));
-    } finally {
-      setAuthBusy(false);
-    }
-  };
-
   const handleCreateQuiz = async () => {
-    if (!user) return openJoin('signup');
-
-    try {
-      const quiz = await api.createQuiz({
-        title: 'My Trivia Quiz ✨',
-        description: 'A fun quiz made on TriviaVerse!',
-        visibility: 'private',
-      });
-      window.alert(`Quiz created!\n\nID: ${quiz.id}`);
-    } catch (err) {
-      window.alert(getApiErrorMessage(err));
-    }
+    if (!user) return onRequireAuth?.('create-quiz');
+    return onNavigateCreateQuiz?.();
   };
 
   return (
-    <div style={styles.page}>
-      <Navbar
-        user={user}
-        onJoin={() => openJoin('signup')}
-        onLogout={logout}
+    <main style={styles.main}>
+      <HomeHero
+        metrics={metrics}
+        onCreateQuiz={handleCreateQuiz}
+        onStartPlaying={() => {
+          const el = document.getElementById('modes');
+          el?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+        }}
       />
-      <main style={styles.main}>
-        <HomeHero
-          metrics={metrics}
-          onCreateQuiz={handleCreateQuiz}
-          onStartPlaying={() => {
-            const el = document.getElementById('modes');
-            el?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-          }}
-        />
-        <div id="modes">
-          <Modes />
-        </div>
-        <CreateQuizBanner onCreate={handleCreateQuiz} />
-        <FeaturesStrip />
-      </main>
-      <Footer />
-
-      <AuthModal
-        open={authOpen}
-        mode={authMode}
-        onModeChange={setAuthMode}
-        onClose={() => setAuthOpen(false)}
-        onLogin={handleLogin}
-        onSignup={handleSignup}
-        loading={authBusy}
-        error={authError}
-      />
-    </div>
+      <div id="modes">
+        <Modes />
+      </div>
+      <CreateQuizBanner onCreate={handleCreateQuiz} />
+      <FeaturesStrip />
+    </main>
   );
 }
 export default Home;

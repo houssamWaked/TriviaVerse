@@ -21,6 +21,7 @@ export class SessionService {
     sessionLifelineRepository,
     leaderboardRepository,
     userStatsRepository,
+    quizScoreRepository,
   }) {
     this.gameSessionRepository = gameSessionRepository;
     this.sessionQuestionRepository = sessionQuestionRepository;
@@ -29,6 +30,7 @@ export class SessionService {
     this.sessionLifelineRepository = sessionLifelineRepository;
     this.leaderboardRepository = leaderboardRepository;
     this.userStatsRepository = userStatsRepository;
+    this.quizScoreRepository = quizScoreRepository;
   }
 
   async assertSessionOwner(sessionId, userId) {
@@ -99,6 +101,16 @@ export class SessionService {
       else scoreDelta = sessionQuestion.points_snapshot ?? 0;
     }
 
+    let speed_bonus = 0;
+    if (is_correct && session.mode === 'custom') {
+      const timeLimit = Number(sessionQuestion.time_limit_snapshot ?? 30);
+      const answered = Number(body.answered_in_sec);
+      if (Number.isFinite(timeLimit) && Number.isFinite(answered)) {
+        speed_bonus = Math.max(0, Math.floor(timeLimit - answered));
+      }
+      scoreDelta += speed_bonus;
+    }
+
     const updatedSession = await this.gameSessionRepository.addScore(sessionId, scoreDelta);
     const answers = await this.sessionAnswerRepository.listBySessionQuestionIds(
       questions.map((q) => q.id)
@@ -126,6 +138,7 @@ export class SessionService {
       is_correct,
       score_total: updatedSession?.score_total ?? session.score_total,
       next_question_available,
+      ...(session.mode === 'custom' ? { speed_bonus } : {}),
     };
   }
 
@@ -185,6 +198,18 @@ export class SessionService {
     const updated = await this.gameSessionRepository.updateStatus(sessionId, status);
     if (!updated) throw new AppError('Session not found', 404, 'NOT_FOUND');
 
+    if (session.mode === 'custom' && session.quiz_id && status === 'completed') {
+      try {
+        await this.quizScoreRepository.upsertBest({
+          quiz_id: session.quiz_id,
+          user_id: session.user_id,
+          score_value: updated.score_total ?? 0,
+        });
+      } catch (err) {
+        if (err?.code !== 'NOT_CONFIGURED') throw err;
+      }
+    }
+
     await this.leaderboardRepository.insertFromSession({
       user_id: session.user_id,
       mode: session.mode,
@@ -201,4 +226,3 @@ export class SessionService {
     return { status: updated.status };
   }
 }
-

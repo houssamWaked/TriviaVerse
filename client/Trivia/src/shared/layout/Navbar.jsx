@@ -1,6 +1,15 @@
 import colors from '../../constants/colors'; // adjust path if needed
 
-export default function Navbar({ user, onJoin, onLogout }) {
+export default function Navbar({
+  user,
+  onJoin,
+  onLogout,
+  onCreateQuiz,
+  onDiscoverQuizzes,
+  onMyPlays,
+  onFriends,
+  onLeaderboard,
+}) {
   return (
     <nav style={styles.nav}>
       <div style={styles.container}>
@@ -12,8 +21,11 @@ export default function Navbar({ user, onJoin, onLogout }) {
 
         {/* Center: Links */}
         <div style={styles.links}>
-          <NavItem icon="🏆" label="Leaderboard" />
-          <NavItem icon="✨" label="Create Quiz" />
+          <NavItem icon="🔎" label="Quizzes" onClick={onDiscoverQuizzes} />
+          {user && <NavItem icon="🎮" label="My Plays" onClick={onMyPlays} />}
+          {user && <NavItem icon="🤝" label="Friends" onClick={onFriends} />}
+          <NavItem icon="🏆" label="Leaderboard" onClick={onLeaderboard} />
+          <NavItem icon="✨" label="Create Quiz" onClick={onCreateQuiz} />
         </div>
 
         {/* Right: CTA */}
@@ -39,9 +51,9 @@ export default function Navbar({ user, onJoin, onLogout }) {
   );
 }
 
-function NavItem({ icon, label }) {
+function NavItem({ icon, label, onClick }) {
   return (
-    <button type="button" style={styles.link}>
+    <button type="button" style={styles.link} onClick={onClick}>
       <span style={styles.linkIcon}>{icon}</span>
       {label}
     </button>

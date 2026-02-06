@@ -30,6 +30,7 @@ import createMillionaireRouter from './routes/MillionaireRoute.js';
 import createClassicRouter from './routes/ClassicRoute.js';
 import createBlitzRouter from './routes/BlitzRoute.js';
 import createSessionsRouter from './routes/SessionsRoute.js';
+import createFriendsRouter from './routes/FriendsRoute.js';
 
 import { CategoryController } from './controllers/CategoryController.js';
 import { AuthController } from './controllers/AuthController.js';
@@ -41,6 +42,8 @@ import { MillionaireController } from './controllers/MillionaireController.js';
 import { ClassicController } from './controllers/ClassicController.js';
 import { BlitzController } from './controllers/BlitzController.js';
 import { SessionsController } from './controllers/SessionsController.js';
+import { QuizDiscoveryController } from './controllers/QuizDiscoveryController.js';
+import { FriendController } from './controllers/FriendController.js';
 
 import { CategoryService } from './services/CategoryService.js';
 import { AuthService } from './services/AuthService.js';
@@ -50,6 +53,8 @@ import { QuizBuilderService } from './services/QuizBuilderService.js';
 import { StoryService } from './services/StoryService.js';
 import { SessionStartService } from './services/SessionStartService.js';
 import { SessionService } from './services/SessionService.js';
+import { QuizDiscoveryService } from './services/QuizDiscoveryService.js';
+import { FriendService } from './services/FriendService.js';
 
 import { CategoryRepository } from './domain/repositories/CategoryRepository.js';
 import { UserRepository } from './domain/repositories/UserRepository.js';
@@ -67,6 +72,10 @@ import { StoryLevelRepository } from './domain/repositories/StoryLevelRepository
 import { UserStoryProgressRepository } from './domain/repositories/UserStoryProgressRepository.js';
 import { StoryLevelPoolRepository } from './domain/repositories/StoryLevelPoolRepository.js';
 import { MillionaireLadderRepository } from './domain/repositories/MillionaireLadderRepository.js';
+import { QuizAccessRepository } from './domain/repositories/QuizAccessRepository.js';
+import { QuizRatingRepository } from './domain/repositories/QuizRatingRepository.js';
+import { QuizScoreRepository } from './domain/repositories/QuizScoreRepository.js';
+import { FriendRepository } from './domain/repositories/FriendRepository.js';
 
 const app = express();
 
@@ -80,6 +89,10 @@ const userStatsRepository = new UserStatsRepository();
 const quizRepository = new QuizRepository();
 const quizQuestionRepository = new QuizQuestionRepository();
 const questionOptionRepository = new QuestionOptionRepository();
+const quizAccessRepository = new QuizAccessRepository();
+const quizRatingRepository = new QuizRatingRepository();
+const quizScoreRepository = new QuizScoreRepository();
+const friendRepository = new FriendRepository();
 const gameSessionRepository = new GameSessionRepository();
 const leaderboardRepository = new LeaderboardRepository();
 const sessionQuestionRepository = new SessionQuestionRepository();
@@ -107,7 +120,12 @@ const leaderboardService = new LeaderboardService(
 const quizBuilderService = new QuizBuilderService(
   quizRepository,
   quizQuestionRepository,
-  questionOptionRepository
+  questionOptionRepository,
+  userRepository,
+  quizAccessRepository,
+  friendRepository,
+  quizRatingRepository,
+  quizScoreRepository
 );
 const storyService = new StoryService(storyLevelRepository, userStoryProgressRepository);
 const sessionStartService = new SessionStartService({
@@ -116,6 +134,9 @@ const sessionStartService = new SessionStartService({
   sessionOptionRepository,
   quizQuestionRepository,
   questionOptionRepository,
+  quizRepository,
+  quizAccessRepository,
+  friendRepository,
   storyLevelRepository,
   storyLevelPoolRepository,
   storyService,
@@ -129,6 +150,14 @@ const sessionService = new SessionService({
   sessionLifelineRepository,
   leaderboardRepository,
   userStatsRepository,
+  quizScoreRepository,
+});
+const friendService = new FriendService({
+  friendRepository,
+  userRepository,
+  userStatsRepository,
+  quizScoreRepository,
+  quizRepository,
 });
 
 // controllers
@@ -136,7 +165,7 @@ const categoryController = new CategoryController(categoryService);
 const authController = new AuthController(authService);
 const publicController = new PublicController(publicService);
 const leaderboardController = new LeaderboardController(leaderboardService);
-const quizBuilderController = new QuizBuilderController(quizBuilderService);
+const quizBuilderController = new QuizBuilderController(quizBuilderService, sessionStartService);
 const storyController = new StoryController(storyService, sessionStartService);
 const millionaireController = new MillionaireController(
   millionaireLadderRepository,
@@ -145,9 +174,22 @@ const millionaireController = new MillionaireController(
 const classicController = new ClassicController(sessionStartService);
 const blitzController = new BlitzController(sessionStartService);
 const sessionsController = new SessionsController(sessionService);
+const friendController = new FriendController(friendService);
+const quizDiscoveryController = new QuizDiscoveryController(
+  new QuizDiscoveryService({
+    quizRepository,
+    quizQuestionRepository,
+    questionOptionRepository,
+    userRepository,
+    quizAccessRepository,
+    friendRepository,
+    quizRatingRepository,
+    quizScoreRepository,
+  })
+);
 
 app.use('/api/categories', createCategoryRouter(categoryController));
-app.use('/api/public', createPublicRouter(publicController));
+app.use('/api/public', createPublicRouter(publicController, quizDiscoveryController));
 app.use('/api/auth', createAuthRouter(authController));
 app.use('/api/leaderboard', createLeaderboardRouter(leaderboardController));
 
@@ -160,6 +202,7 @@ app.use('/api/millionaire', createMillionaireRouter(millionaireController));
 app.use('/api/classic', createClassicRouter(classicController));
 app.use('/api/blitz', createBlitzRouter(blitzController));
 app.use('/api/sessions', createSessionsRouter(sessionsController));
+app.use('/api/friends', createFriendsRouter(friendController));
 
 // 404 then error handler (order matters)
 app.use(notFound);

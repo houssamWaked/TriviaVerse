@@ -20,7 +20,13 @@ function authHeader(userId = '00000000-0000-0000-0000-000000000000') {
 
 function createTestApp() {
   const controller = {
+    listQuizzes: async (req, res) => res.status(200).json([{ id: 'q1', title: 'My quiz' }]),
     createQuiz: async (req, res) => res.status(201).json({ id: 'q1', title: req.body.title }),
+    startCustomSession: async (req, res) => res.status(201).json({ session_id: 's1' }),
+    rateQuiz: async (req, res) => res.status(200).json({ ratings_avg: 5, ratings_count: 1 }),
+    listQuizAccess: async (req, res) => res.status(200).json([]),
+    addQuizAccess: async (req, res) => res.status(201).json({ user_id: 'u1' }),
+    removeQuizAccess: async (req, res) => res.status(200).json({ success: true }),
     getQuiz: async (req, res) => res.status(200).json({ id: req.params.quiz_id }),
     patchQuiz: async (req, res) => res.status(200).json({ id: req.params.quiz_id }),
     publishQuiz: async (req, res) => res.status(200).json({ id: req.params.quiz_id }),
@@ -51,6 +57,21 @@ test('POST /api/quizzes requires auth', async () => {
   assert.equal(res.body.code, 'UNAUTHORIZED');
 });
 
+test('GET /api/quizzes requires auth', async () => {
+  const app = createTestApp();
+  const res = await request(app).get('/api/quizzes');
+  assert.equal(res.status, 401);
+  assert.equal(res.body.code, 'UNAUTHORIZED');
+});
+
+test('GET /api/quizzes returns list', async () => {
+  const app = createTestApp();
+  const res = await request(app).get('/api/quizzes').set(authHeader());
+  assert.equal(res.status, 200);
+  assert.equal(Array.isArray(res.body), true);
+  assert.equal(res.body[0].id, 'q1');
+});
+
 test('POST /api/quizzes validates body', async () => {
   const app = createTestApp();
   const res = await request(app)
@@ -60,4 +81,3 @@ test('POST /api/quizzes validates body', async () => {
   assert.equal(res.status, 400);
   assert.equal(res.body.code, 'VALIDATION_ERROR');
 });
-

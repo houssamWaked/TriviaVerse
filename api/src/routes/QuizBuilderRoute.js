@@ -22,9 +22,17 @@ import {
   quizIdParam,
   shareQuizValidator,
 } from '../validator/QuizValidator.js';
+import {
+  accessBody,
+  accessUserIdParam,
+  ratingBody,
+} from '../validator/QuizDiscoveryValidator.js';
 
 export default function createQuizBuilderRouter(quizBuilderController) {
   const router = Router();
+
+  router.get('/', requireAuth, asyncHandler(quizBuilderController.listQuizzes));
+  router.get('/played', requireAuth, asyncHandler(quizBuilderController.listPlayedQuizzes));
 
   // quizzes
   router.post(
@@ -33,6 +41,47 @@ export default function createQuizBuilderRouter(quizBuilderController) {
     createQuizValidator,
     validateRequest,
     asyncHandler(quizBuilderController.createQuiz)
+  );
+
+  router.post(
+    '/:quiz_id/sessions/start',
+    requireAuth,
+    quizIdParam,
+    validateRequest,
+    asyncHandler(quizBuilderController.startCustomSession)
+  );
+
+  router.post(
+    '/:quiz_id/ratings',
+    requireAuth,
+    quizIdParam,
+    ratingBody,
+    validateRequest,
+    asyncHandler(quizBuilderController.rateQuiz)
+  );
+
+  router.get(
+    '/:quiz_id/access',
+    requireAuth,
+    quizIdParam,
+    validateRequest,
+    asyncHandler(quizBuilderController.listQuizAccess)
+  );
+  router.post(
+    '/:quiz_id/access',
+    requireAuth,
+    quizIdParam,
+    accessBody,
+    validateRequest,
+    asyncHandler(quizBuilderController.addQuizAccess)
+  );
+  router.delete(
+    '/:quiz_id/access/:user_id',
+    requireAuth,
+    quizIdParam,
+    accessUserIdParam,
+    validateRequest,
+    asyncHandler(quizBuilderController.removeQuizAccess)
   );
   router.get(
     '/:quiz_id',
@@ -136,4 +185,3 @@ export function createOptionsRouter(quizBuilderController) {
 
   return router;
 }
-

@@ -15,6 +15,9 @@ export class SessionStartService {
     sessionOptionRepository,
     quizQuestionRepository,
     questionOptionRepository,
+    quizRepository,
+    quizAccessRepository,
+    friendRepository,
     storyLevelRepository,
     storyLevelPoolRepository,
     storyService,
@@ -25,10 +28,40 @@ export class SessionStartService {
     this.sessionOptionRepository = sessionOptionRepository;
     this.quizQuestionRepository = quizQuestionRepository;
     this.questionOptionRepository = questionOptionRepository;
+    this.quizRepository = quizRepository;
+    this.quizAccessRepository = quizAccessRepository;
+    this.friendRepository = friendRepository;
     this.storyLevelRepository = storyLevelRepository;
     this.storyLevelPoolRepository = storyLevelPoolRepository;
     this.storyService = storyService;
     this.millionaireLadderRepository = millionaireLadderRepository;
+  }
+
+  async assertCanViewQuiz(userId, quiz) {
+    if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
+
+    if (quiz.visibility === 'public') return true;
+    if (quiz.visibility === 'unlisted') return true;
+
+    if (quiz.visibility === 'private') {
+      if (!userId) throw new AppError('Login required', 401, 'UNAUTHORIZED');
+      if (quiz.owner_user_id === userId) return true;
+      try {
+        const isFriend = await this.friendRepository.areFriends(userId, quiz.owner_user_id);
+        if (isFriend) return true;
+      } catch (err) {
+        if (err?.code !== 'NOT_CONFIGURED') throw err;
+      }
+      try {
+        const allowed = await this.quizAccessRepository.listQuizIdsForUser(userId);
+        if (allowed.includes(quiz.id)) return true;
+      } catch (err) {
+        if (err?.code !== 'NOT_CONFIGURED') throw err;
+      }
+      throw new AppError('Forbidden', 403, 'FORBIDDEN');
+    }
+
+    throw new AppError('Forbidden', 403, 'FORBIDDEN');
   }
 
   async snapshotSessionQuestions(sessionId, sourceQuestions) {
@@ -172,5 +205,39 @@ export class SessionStartService {
       status: session.status,
     };
   }
-}
 
+  async startCustomQuizSession(userId, quizId) {
+    const quiz = await this.quizRepository.findById(quizId);
+    if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
+
+    if (quiz.status !== 'published' && quiz.owner_user_id !== userId) {
+      throw new AppError('Quiz not found', 404, 'NOT_FOUND');
+    }
+
+    await this.assertCanViewQuiz(userId, quiz);
+
+    const questions = await this.quizQuestionRepository.listByQuizId(quizId);
+    if (questions.length === 0) {
+      throw new AppError('Quiz has no questions', 400, 'NO_QUESTIONS');
+    }
+
+    const session = await this.gameSessionRepository.create({
+      user_id: userId,
+      mode: 'custom',
+      quiz_id: quizId,
+      total_questions: questions.length,
+      status: 'in_progress',
+    });
+    if (!session) throw new AppError('Failed to create session', 500, 'DB_ERROR');
+
+    await this.snapshotSessionQuestions(session.id, questions);
+
+    return {
+      session_id: session.id,
+      mode: 'custom',
+      quiz_id: quizId,
+      status: session.status,
+      total_questions: session.total_questions,
+    };
+  }
+}
