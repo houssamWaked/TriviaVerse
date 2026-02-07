@@ -6,6 +6,10 @@ import AppError from '../../utils/AppError.js';
 
 function toAppError(error) {
   if (!error) return null;
+  const code = String(error.code || '').trim();
+  if (code === '42P01') {
+    return new AppError('Millionaire ladders table is not configured', 501, 'NOT_CONFIGURED');
+  }
   return new AppError(error.message || 'Database error', 500, 'DB_ERROR');
 }
 
@@ -28,4 +32,3 @@ export class MillionaireLadderRepository {
     return data?.[0] || null;
   }
 }
-

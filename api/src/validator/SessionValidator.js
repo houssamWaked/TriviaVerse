@@ -22,7 +22,7 @@ export const answerValidator = [
 
 export const lifelineValidator = [
   body('lifeline_type')
-    .isIn(['fifty_fifty', 'skip', 'audience'])
+    .isIn(['fifty_fifty', 'skip', 'audience', 'phone'])
     .withMessage('lifeline_type is invalid'),
   body('session_question_id')
     .isUUID()
@@ -34,4 +34,3 @@ export const finishValidator = [
     .isIn(['completed', 'abandoned'])
     .withMessage('status must be completed or abandoned'),
 ];
-

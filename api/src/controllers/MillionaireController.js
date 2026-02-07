@@ -8,16 +8,21 @@ export class MillionaireController {
   }
 
   config = async (req, res) => {
-    const ladders = await this.millionaireLadderRepository.listAll();
+    let ladders = [];
+    try {
+      ladders = await this.millionaireLadderRepository.listAll();
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+      ladders = [];
+    }
     res.status(200).json({ ladders });
   };
 
   start = async (req, res) => {
     const data = await this.sessionStartService.startMillionaireSession(
       req.user.id,
-      req.body.ladder_id
+      req.body.ladder_id || null
     );
     res.status(201).json(data);
   };
 }
-

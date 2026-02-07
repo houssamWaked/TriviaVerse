@@ -10,6 +10,16 @@ function toAppError(error) {
 }
 
 export class SessionLifelineRepository {
+  async listBySessionId(sessionId) {
+    const { data, error } = await supabase
+      .from('session_lifelines')
+      .select('id, session_id, lifeline_type, used_at, payload_json')
+      .eq('session_id', sessionId)
+      .order('used_at', { ascending: true });
+    if (error) throw toAppError(error);
+    return data || [];
+  }
+
   async findBySessionAndType(sessionId, lifelineType) {
     const { data, error } = await supabase
       .from('session_lifelines')
@@ -31,4 +41,3 @@ export class SessionLifelineRepository {
     return data?.[0] || null;
   }
 }
-

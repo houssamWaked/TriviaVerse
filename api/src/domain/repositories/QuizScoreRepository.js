@@ -79,5 +79,10 @@ export class QuizScoreRepository {
     if (error) throw toAppError(error);
     return data || [];
   }
-}
 
+  async deleteByQuizId(quizId) {
+    const { error } = await supabase.from('quiz_scores').delete().eq('quiz_id', quizId);
+    if (error) throw toAppError(error);
+    return true;
+  }
+}

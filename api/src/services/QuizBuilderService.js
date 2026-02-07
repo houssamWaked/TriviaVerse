@@ -15,7 +15,10 @@ export class QuizBuilderService {
     quizAccessRepository,
     friendRepository,
     quizRatingRepository,
-    quizScoreRepository
+    quizScoreRepository,
+    gameSessionRepository,
+    storyLevelPoolRepository,
+    sessionQuestionRepository
   ) {
     this.quizRepository = quizRepository;
     this.quizQuestionRepository = quizQuestionRepository;
@@ -25,6 +28,9 @@ export class QuizBuilderService {
     this.friendRepository = friendRepository;
     this.quizRatingRepository = quizRatingRepository;
     this.quizScoreRepository = quizScoreRepository;
+    this.gameSessionRepository = gameSessionRepository;
+    this.storyLevelPoolRepository = storyLevelPoolRepository;
+    this.sessionQuestionRepository = sessionQuestionRepository;
   }
 
   async assertCanViewQuiz(userId, quiz) {
@@ -98,6 +104,43 @@ export class QuizBuilderService {
     const quiz = await this.quizRepository.findById(quizId);
     if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
     if (quiz.owner_user_id !== userId) throw new AppError('Forbidden', 403, 'FORBIDDEN');
+
+    const questions = await this.quizQuestionRepository.listByQuizId(quizId);
+    if (questions.length === 0) {
+      throw new AppError('Add at least 1 question before publishing', 400, 'INVALID_QUIZ');
+    }
+    const questionIds = questions.map((q) => q.id).filter(Boolean);
+    const options = await this.questionOptionRepository.listByQuestionIds(questionIds);
+
+    const countsByQuestionId = new Map();
+    const correctByQuestionId = new Map();
+    for (const opt of options) {
+      const qid = opt.question_id;
+      if (!qid) continue;
+      countsByQuestionId.set(qid, (countsByQuestionId.get(qid) || 0) + 1);
+      if (opt.is_correct) {
+        correctByQuestionId.set(qid, (correctByQuestionId.get(qid) || 0) + 1);
+      }
+    }
+
+    for (const q of questions) {
+      const count = countsByQuestionId.get(q.id) || 0;
+      const correct = correctByQuestionId.get(q.id) || 0;
+      if (count < 2) {
+        throw new AppError(
+          `Question ${q.order_index ?? ''} must have at least 2 options`,
+          400,
+          'INVALID_QUIZ'
+        );
+      }
+      if (correct !== 1) {
+        throw new AppError(
+          `Question ${q.order_index ?? ''} must have exactly 1 correct option (currently ${correct})`,
+          400,
+          'INVALID_QUIZ'
+        );
+      }
+    }
 
     const updated = await this.quizRepository.update(quizId, {
       status: 'published',
@@ -351,5 +394,60 @@ export class QuizBuilderService {
         return allowedPrivate.has(x.quiz_id);
       })
       .map(({ owner_user_id, ...rest }) => rest);
+  }
+
+  async deleteQuiz(userId, quizId) {
+    const quiz = await this.quizRepository.findById(quizId);
+    if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
+    if (quiz.owner_user_id !== userId) throw new AppError('Forbidden', 403, 'FORBIDDEN');
+
+    // Reduce chance of FK violations if game_sessions references quizzes.
+    try {
+      await this.gameSessionRepository?.clearQuizIdForQuiz(quizId);
+    } catch {
+      // best-effort; continue with deletion attempt
+    }
+
+    // Clean related tables if configured (safe to ignore when missing).
+    try {
+      await this.quizAccessRepository.deleteByQuizId(quizId);
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+    }
+
+    try {
+      await this.quizRatingRepository.deleteByQuizId(quizId);
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+    }
+
+    try {
+      await this.quizScoreRepository.deleteByQuizId(quizId);
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+    }
+
+    const questions = await this.quizQuestionRepository.listByQuizId(quizId);
+    const questionIds = questions.map((q) => q.id).filter(Boolean);
+
+    // If these questions were (incorrectly) included in story pools, remove them.
+    // Also, preserve existing session snapshots by clearing FK reference if present.
+    try {
+      await this.storyLevelPoolRepository?.deleteByQuizQuestionIds(questionIds);
+    } catch {
+      // best-effort
+    }
+    try {
+      await this.sessionQuestionRepository?.clearSourceQuestionIds(questionIds);
+    } catch {
+      // best-effort
+    }
+
+    await this.questionOptionRepository.deleteByQuestionIds(questionIds);
+    await this.quizQuestionRepository.deleteByQuizId(quizId);
+
+    const ok = await this.quizRepository.delete(quizId);
+    if (!ok) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
+    return { success: true };
   }
 }

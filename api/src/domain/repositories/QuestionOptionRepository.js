@@ -54,6 +54,18 @@ export class QuestionOptionRepository {
     return data?.[0] || null;
   }
 
+  async createMany(rows) {
+    const items = Array.isArray(rows) ? rows : [];
+    if (items.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('question_options')
+      .insert(items)
+      .select('id, question_id, option_text, is_correct, order_index');
+    if (error) throw toAppError(error);
+    return data || [];
+  }
+
   async update(id, patch) {
     const { data, error } = await supabase
       .from('question_options')
@@ -79,6 +91,15 @@ export class QuestionOptionRepository {
       .from('question_options')
       .delete()
       .eq('question_id', questionId);
+    if (error) throw toAppError(error);
+    return true;
+  }
+
+  async deleteByQuestionIds(questionIds = []) {
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (ids.length === 0) return true;
+
+    const { error } = await supabase.from('question_options').delete().in('question_id', ids);
     if (error) throw toAppError(error);
     return true;
   }

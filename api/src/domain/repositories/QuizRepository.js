@@ -8,6 +8,9 @@ function toAppError(error) {
   if (!error) return null;
   const code = String(error.code || '').trim();
   if (code === '23505') return new AppError('Quiz already exists', 409, 'DUPLICATE');
+  if (code === '23503') {
+    return new AppError('Quiz cannot be deleted (has related records)', 409, 'CONFLICT');
+  }
   return new AppError(error.message || 'Database error', 500, 'DB_ERROR');
 }
 
@@ -118,5 +121,14 @@ export class QuizRepository {
 
     if (error) throw toAppError(error);
     return data || [];
+  }
+
+  async delete(id) {
+    const { error, count } = await supabase
+      .from('quizzes')
+      .delete({ count: 'exact' })
+      .eq('id', id);
+    if (error) throw toAppError(error);
+    return (count ?? 0) > 0;
   }
 }

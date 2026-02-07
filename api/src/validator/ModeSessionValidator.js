@@ -10,7 +10,7 @@ export const storyStartValidator = [
 ];
 
 export const millionaireStartValidator = [
-  body('ladder_id').isUUID().withMessage('ladder_id must be a valid UUID'),
+  body('ladder_id').optional().isUUID().withMessage('ladder_id must be a valid UUID'),
 ];
 
 export const classicStartValidator = [
@@ -29,4 +29,3 @@ export const blitzStartValidator = [
     .isIn(['easy', 'medium', 'hard'])
     .withMessage('difficulty is invalid'),
 ];
-

@@ -23,7 +23,15 @@ function formatCount(n) {
   return String(num);
 }
 
-function Home({ user, onRequireAuth, onNavigateCreateQuiz }) {
+function Home({
+  user,
+  onRequireAuth,
+  onNavigateCreateQuiz,
+  onNavigateStory,
+  onNavigateMillionaire,
+  onNavigateClassic,
+  onNavigateBlitz,
+}) {
   const [metricsRaw, setMetricsRaw] = useState(null);
 
   useEffect(() => {
@@ -68,7 +76,12 @@ function Home({ user, onRequireAuth, onNavigateCreateQuiz }) {
         }}
       />
       <div id="modes">
-        <Modes />
+        <Modes
+          onStory={onNavigateStory}
+          onMillionaire={onNavigateMillionaire}
+          onClassic={onNavigateClassic}
+          onBlitz={onNavigateBlitz}
+        />
       </div>
       <CreateQuizBanner onCreate={handleCreateQuiz} />
       <FeaturesStrip />

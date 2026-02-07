@@ -83,6 +83,14 @@ export default function createQuizBuilderRouter(quizBuilderController) {
     validateRequest,
     asyncHandler(quizBuilderController.removeQuizAccess)
   );
+
+  router.delete(
+    '/:quiz_id',
+    requireAuth,
+    quizIdParam,
+    validateRequest,
+    asyncHandler(quizBuilderController.deleteQuiz)
+  );
   router.get(
     '/:quiz_id',
     requireAuth,

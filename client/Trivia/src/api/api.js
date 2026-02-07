@@ -139,4 +139,62 @@ export const api = {
     (await http.delete(endpoints.friendRequestCancel(requestId))).data,
   getFriendStats: async (friendUserId) =>
     (await http.get(endpoints.friendStats(friendUserId))).data,
+
+  // quiz delete
+  deleteQuiz: async (quizId) => (await http.delete(endpoints.quizById(quizId))).data,
+
+  // admin
+  adminListStoryLevels: async () => (await http.get(endpoints.adminStoryLevels())).data,
+  adminCreateStoryLevel: async (body) =>
+    (await http.post(endpoints.adminCreateStoryLevel(), body)).data,
+  adminAddStoryLevelPool: async (levelId, body) =>
+    (await http.post(endpoints.adminAddStoryLevelPool(levelId), body)).data,
+  adminSeedStoryLevelPool: async (levelId, body) =>
+    (await http.post(endpoints.adminSeedStoryLevelPool(levelId), body)).data,
+  adminCreateGlobalQuestion: async (body) =>
+    (await http.post(endpoints.adminCreateGlobalQuestion(), body)).data,
+  adminListGlobalQuestions: async (params) =>
+    (await http.get(endpoints.adminListGlobalQuestions(), { params })).data,
+  adminSearchGlobalQuestions: async (q, limit = 20) =>
+    (
+      await http.get(endpoints.adminSearchGlobalQuestions(), {
+        params: { q, limit },
+      })
+    ).data,
+  adminModePoolSummary: async (mode) =>
+    (await http.get(endpoints.adminModePoolSummary(mode))).data,
+  adminSeedModePool: async (mode, body) =>
+    (await http.post(endpoints.adminSeedModePool(mode), body)).data,
+  adminListModePoolQuestions: async (mode, params) =>
+    (await http.get(endpoints.adminModePoolQuestions(mode), { params })).data,
+  adminAddModePool: async (mode, body) =>
+    (await http.post(endpoints.adminModePoolSummary(mode), body)).data,
+  adminRemoveModePool: async (mode, body) =>
+    (await http.delete(endpoints.adminRemoveModePool(mode), { data: body })).data,
+  adminReplaceModePool: async (mode, body) =>
+    (await http.put(endpoints.adminReplaceModePool(mode), body)).data,
+  adminListStoryLevelPoolQuestions: async (levelId, params) =>
+    (await http.get(endpoints.adminStoryLevelPoolQuestions(levelId), { params })).data,
+  adminRemoveStoryLevelPool: async (levelId, body) =>
+    (await http.delete(endpoints.adminRemoveStoryLevelPool(levelId), { data: body })).data,
+  adminReplaceStoryLevelPool: async (levelId, body) =>
+    (await http.put(endpoints.adminReplaceStoryLevelPool(levelId), body)).data,
+
+  // classic categories
+  adminListClassicCategories: async () =>
+    (await http.get(endpoints.adminClassicCategories())).data,
+  adminCreateClassicCategory: async (body) =>
+    (await http.post(endpoints.adminCreateClassicCategory(), body)).data,
+  adminDeleteClassicCategory: async (categoryId) =>
+    (await http.delete(endpoints.adminDeleteClassicCategory(categoryId))).data,
+  adminListClassicCategoryPoolQuestions: async (categoryId, params) =>
+    (await http.get(endpoints.adminClassicCategoryPoolQuestions(categoryId), { params })).data,
+  adminAddClassicCategoryPool: async (categoryId, body) =>
+    (await http.post(endpoints.adminAddClassicCategoryPool(categoryId), body)).data,
+  adminRemoveClassicCategoryPool: async (categoryId, body) =>
+    (await http.delete(endpoints.adminRemoveClassicCategoryPool(categoryId), { data: body })).data,
+  adminReplaceClassicCategoryPool: async (categoryId, body) =>
+    (await http.put(endpoints.adminReplaceClassicCategoryPool(categoryId), body)).data,
+  adminSeedClassicCategoryPool: async (categoryId, body) =>
+    (await http.post(endpoints.adminSeedClassicCategoryPool(categoryId), body)).data,
 };

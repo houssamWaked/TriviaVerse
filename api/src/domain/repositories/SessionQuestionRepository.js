@@ -32,5 +32,16 @@ export class SessionQuestionRepository {
     if (error) throw toAppError(error);
     return data || [];
   }
-}
 
+  async clearSourceQuestionIds(questionIds = []) {
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (ids.length === 0) return true;
+
+    const { error } = await supabase
+      .from('session_questions')
+      .update({ source_question_id: null })
+      .in('source_question_id', ids);
+    if (error) throw toAppError(error);
+    return true;
+  }
+}

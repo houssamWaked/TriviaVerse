@@ -27,6 +27,7 @@ function createTestApp() {
     listQuizAccess: async (req, res) => res.status(200).json([]),
     addQuizAccess: async (req, res) => res.status(201).json({ user_id: 'u1' }),
     removeQuizAccess: async (req, res) => res.status(200).json({ success: true }),
+    deleteQuiz: async (req, res) => res.status(200).json({ success: true }),
     getQuiz: async (req, res) => res.status(200).json({ id: req.params.quiz_id }),
     patchQuiz: async (req, res) => res.status(200).json({ id: req.params.quiz_id }),
     publishQuiz: async (req, res) => res.status(200).json({ id: req.params.quiz_id }),
@@ -70,6 +71,13 @@ test('GET /api/quizzes returns list', async () => {
   assert.equal(res.status, 200);
   assert.equal(Array.isArray(res.body), true);
   assert.equal(res.body[0].id, 'q1');
+});
+
+test('DELETE /api/quizzes/:id requires auth', async () => {
+  const app = createTestApp();
+  const res = await request(app).delete('/api/quizzes/00000000-0000-0000-0000-000000000000');
+  assert.equal(res.status, 401);
+  assert.equal(res.body.code, 'UNAUTHORIZED');
 });
 
 test('POST /api/quizzes validates body', async () => {

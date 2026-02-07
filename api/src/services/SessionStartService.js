@@ -18,10 +18,13 @@ export class SessionStartService {
     quizRepository,
     quizAccessRepository,
     friendRepository,
+    storySessionRepository,
     storyLevelRepository,
     storyLevelPoolRepository,
     storyService,
     millionaireLadderRepository,
+    modeQuestionPoolRepository,
+    classicCategoryPoolRepository,
   }) {
     this.gameSessionRepository = gameSessionRepository;
     this.sessionQuestionRepository = sessionQuestionRepository;
@@ -31,10 +34,115 @@ export class SessionStartService {
     this.quizRepository = quizRepository;
     this.quizAccessRepository = quizAccessRepository;
     this.friendRepository = friendRepository;
+    this.storySessionRepository = storySessionRepository;
     this.storyLevelRepository = storyLevelRepository;
     this.storyLevelPoolRepository = storyLevelPoolRepository;
     this.storyService = storyService;
     this.millionaireLadderRepository = millionaireLadderRepository;
+    this.modeQuestionPoolRepository = modeQuestionPoolRepository;
+    this.classicCategoryPoolRepository = classicCategoryPoolRepository;
+  }
+
+  async listQuestionsForMode(mode, limit) {
+    const count = Math.max(1, Number(limit) || 1);
+
+    if (this.modeQuestionPoolRepository) {
+      try {
+        const ids = await this.modeQuestionPoolRepository.listQuestionIdsByMode(mode);
+        if (ids.length > 0) {
+          const shuffled = ids.slice();
+          for (let i = shuffled.length - 1; i > 0; i -= 1) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          }
+          const pickedIds = shuffled.slice(0, Math.min(count, shuffled.length));
+          const picked = await this.quizQuestionRepository.listByIds(pickedIds);
+          if (picked.length >= Math.min(count, pickedIds.length)) {
+            // If pool isn't large enough yet, we'll still return what we have and
+            // fill below (fallback) rather than breaking the mode.
+            if (picked.length >= count) return picked.slice(0, count);
+
+            try {
+              const filler = await this.quizQuestionRepository.listRandomGlobal(count - picked.length);
+              return [...picked, ...filler].slice(0, count);
+            } catch {
+              const filler = await this.quizQuestionRepository.listRandom(count - picked.length);
+              return [...picked, ...filler].slice(0, count);
+            }
+          }
+        }
+      } catch (err) {
+        if (err?.code !== 'NOT_CONFIGURED') throw err;
+      }
+    }
+
+    // Back-compat fallback: when admin pools aren't configured, keep using the
+    // existing global randomness (which may include custom quiz questions).
+    return this.quizQuestionRepository.listRandom(count);
+  }
+
+  async listQuestionsForClassic({ category_id = null, limit }) {
+    const count = Math.max(1, Number(limit) || 1);
+    const cid = category_id ? String(category_id).trim() : '';
+
+    if (cid && !this.classicCategoryPoolRepository) {
+      // If caller explicitly selected a category, do not silently ignore it.
+      throw new AppError(
+        'Classic categories are not configured on the server',
+        501,
+        'NOT_CONFIGURED'
+      );
+    }
+
+    if (cid && this.classicCategoryPoolRepository) {
+      try {
+        const ids = await this.classicCategoryPoolRepository.listQuestionIdsByCategoryId(cid);
+        if (ids.length === 0) {
+          // Category selected but no configured pool: do not mix other categories in.
+          throw new AppError('No questions configured for this category', 400, 'NO_POOL');
+        }
+        if (ids.length < count) {
+          throw new AppError(
+            `Not enough questions configured for this category (have ${ids.length}, need ${count}).`,
+            400,
+            'NOT_ENOUGH_QUESTIONS'
+          );
+        }
+
+        const shuffled = ids.slice();
+        for (let i = shuffled.length - 1; i > 0; i -= 1) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        const pickedIds = shuffled.slice(0, Math.min(count, shuffled.length));
+        const pickedRows = await this.quizQuestionRepository.listByIds(pickedIds);
+        const map = new Map(pickedRows.map((q) => [q.id, q]));
+        const picked = pickedIds.map((id) => map.get(id)).filter(Boolean);
+
+        if (picked.length < count) {
+          throw new AppError(
+            'Some questions in this category pool no longer exist. Please rebuild the pool.',
+            400,
+            'POOL_CORRUPT'
+          );
+        }
+
+        // IMPORTANT: Only return questions from the selected category pool.
+        return picked;
+      } catch (err) {
+        // When a category is explicitly selected, do not fall back to random questions.
+        if (err?.code === 'NOT_CONFIGURED') {
+          throw new AppError(
+            'Classic categories are not configured on the server',
+            501,
+            'NOT_CONFIGURED'
+          );
+        }
+        throw err;
+      }
+    }
+
+    return this.listQuestionsForMode('classic', count);
   }
 
   async assertCanViewQuiz(userId, quiz) {
@@ -85,6 +193,36 @@ export class SessionStartService {
       sourceQuestions.map((q) => q.id)
     );
 
+    const countsByQuestionId = new Map();
+    const correctByQuestionId = new Map();
+    for (const opt of options) {
+      const qid = opt.question_id;
+      if (!qid) continue;
+      countsByQuestionId.set(qid, (countsByQuestionId.get(qid) || 0) + 1);
+      if (opt.is_correct) {
+        correctByQuestionId.set(qid, (correctByQuestionId.get(qid) || 0) + 1);
+      }
+    }
+
+    for (const q of sourceQuestions) {
+      const count = countsByQuestionId.get(q.id) || 0;
+      const correct = correctByQuestionId.get(q.id) || 0;
+      if (count < 2) {
+        throw new AppError(
+          `Question ${q.id} must have at least 2 options (currently ${count}).`,
+          400,
+          'INVALID_QUIZ'
+        );
+      }
+      if (correct !== 1) {
+        throw new AppError(
+          `Question ${q.id} must have exactly 1 correct option (currently ${correct}).`,
+          400,
+          'INVALID_QUIZ'
+        );
+      }
+    }
+
     const optionRows = [];
     for (const opt of options) {
       const sq = bySourceId.get(opt.question_id);
@@ -122,10 +260,27 @@ export class SessionStartService {
     const session = await this.gameSessionRepository.create({
       user_id: userId,
       mode: 'story',
+      difficulty:
+        level.difficulty_max <= 3
+          ? 'easy'
+          : level.difficulty_max <= 6
+            ? 'medium'
+            : 'hard',
       total_questions: questions.length,
       status: 'in_progress',
     });
     if (!session) throw new AppError('Failed to create session', 500, 'DB_ERROR');
+
+    try {
+      await this.storySessionRepository?.create({
+        session_id: session.id,
+        level_id: level.id,
+        level_number: level.level_number,
+      });
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+      // If story_sessions isn't configured, gameplay still works but progress unlock won't persist.
+    }
 
     await this.snapshotSessionQuestions(session.id, questions);
 
@@ -139,10 +294,15 @@ export class SessionStartService {
   }
 
   async startMillionaireSession(userId, ladder_id) {
-    const ladder = await this.millionaireLadderRepository.findById(ladder_id);
-    if (!ladder) throw new AppError('Ladder not found', 404, 'NOT_FOUND');
+    if (ladder_id) {
+      const ladder = await this.millionaireLadderRepository.findById(ladder_id);
+      if (!ladder) throw new AppError('Ladder not found', 404, 'NOT_FOUND');
+    }
 
-    const questions = await this.quizQuestionRepository.listRandom(15);
+    const questions = await this.listQuestionsForMode('millionaire', 15);
+    if (questions.length === 0) {
+      throw new AppError('No questions available for this mode', 400, 'NO_POOL');
+    }
     const session = await this.gameSessionRepository.create({
       user_id: userId,
       mode: 'millionaire',
@@ -163,7 +323,13 @@ export class SessionStartService {
   }
 
   async startClassicSession(userId, { category_id, difficulty, questions_count }) {
-    const questions = await this.quizQuestionRepository.listRandom(questions_count);
+    const questions = await this.listQuestionsForClassic({
+      category_id,
+      limit: questions_count,
+    });
+    if (questions.length === 0) {
+      throw new AppError('No questions available for this mode', 400, 'NO_POOL');
+    }
     const session = await this.gameSessionRepository.create({
       user_id: userId,
       mode: 'classic',
@@ -185,7 +351,10 @@ export class SessionStartService {
   }
 
   async startBlitzSession(userId, { category_id, difficulty }) {
-    const questions = await this.quizQuestionRepository.listRandom(30);
+    const questions = await this.listQuestionsForMode('blitz', 30);
+    if (questions.length === 0) {
+      throw new AppError('No questions available for this mode', 400, 'NO_POOL');
+    }
     const session = await this.gameSessionRepository.create({
       user_id: userId,
       mode: 'blitz',

@@ -11,9 +11,14 @@
 import CategoryDTO from '../domain/dto/CategoryDTO.js';
 
 export class CategoryService {
-  constructor(categoryRepository, quizQuestionRepository = null) {
+  constructor(
+    categoryRepository,
+    quizQuestionRepository = null,
+    classicCategoryPoolRepository = null
+  ) {
     this.categoryRepository = categoryRepository;
     this.quizQuestionRepository = quizQuestionRepository;
+    this.classicCategoryPoolRepository = classicCategoryPoolRepository;
   }
 
   /**
@@ -81,9 +86,18 @@ export class CategoryService {
     const exists = await this.categoryRepository.findById(categoryId);
     if (!exists) return null;
 
-    const total = this.quizQuestionRepository
-      ? await this.quizQuestionRepository.countAll()
-      : 0;
+    // If classic category pools are configured, show the per-category count.
+    if (this.classicCategoryPoolRepository) {
+      try {
+        const count = await this.classicCategoryPoolRepository.countByCategoryId(categoryId);
+        return { category_id: categoryId, questions_available: count };
+      } catch (err) {
+        if (err?.code !== 'NOT_CONFIGURED') throw err;
+      }
+    }
+
+    // Fallback: schema does not categorize questions.
+    const total = this.quizQuestionRepository ? await this.quizQuestionRepository.countAll() : 0;
     return { category_id: categoryId, questions_available: total };
   }
 }

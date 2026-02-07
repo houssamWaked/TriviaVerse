@@ -5,9 +5,12 @@ export default function Navbar({
   onJoin,
   onLogout,
   onCreateQuiz,
+  onStory,
   onDiscoverQuizzes,
   onMyPlays,
   onFriends,
+  showAdmin = false,
+  onAdmin,
   onLeaderboard,
 }) {
   return (
@@ -21,9 +24,11 @@ export default function Navbar({
 
         {/* Center: Links */}
         <div style={styles.links}>
+          <NavItem icon="📚" label="Story" onClick={onStory} />
           <NavItem icon="🔎" label="Quizzes" onClick={onDiscoverQuizzes} />
           {user && <NavItem icon="🎮" label="My Plays" onClick={onMyPlays} />}
           {user && <NavItem icon="🤝" label="Friends" onClick={onFriends} />}
+          {showAdmin && <NavItem icon="🛠️" label="Admin" onClick={onAdmin} />}
           <NavItem icon="🏆" label="Leaderboard" onClick={onLeaderboard} />
           <NavItem icon="✨" label="Create Quiz" onClick={onCreateQuiz} />
         </div>

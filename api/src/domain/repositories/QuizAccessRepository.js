@@ -63,5 +63,10 @@ export class QuizAccessRepository {
     if (error) throw toAppError(error);
     return (count ?? 0) > 0;
   }
-}
 
+  async deleteByQuizId(quizId) {
+    const { error } = await supabase.from('quiz_access').delete().eq('quiz_id', quizId);
+    if (error) throw toAppError(error);
+    return true;
+  }
+}

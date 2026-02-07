@@ -9,7 +9,7 @@ export default function Modes({ onStory, onMillionaire, onClassic, onBlitz }) {
         <h1 style={ModesStyle.title}>
           Choose Your Game! <span style={ModesStyle.titleIcon}>🎮</span>
         </h1>
-        <p style={ModesStyle.subtitle}>Pick a mode and let’s get started!</p>
+        <p style={ModesStyle.subtitle}>Pick a mode and let's get started!</p>
 
         {/* Cards */}
         <div style={ModesStyle.grid}>
@@ -18,7 +18,7 @@ export default function Modes({ onStory, onMillionaire, onClassic, onBlitz }) {
             title="Story Mode"
             desc="Level up through epic challenges! 🎮"
             gradient={colors.gradients.story}
-            onClick={onStory}
+            onClick={onStory || (() => {})}
           />
 
           <ModeCard
@@ -26,7 +26,7 @@ export default function Modes({ onStory, onMillionaire, onClassic, onBlitz }) {
             title="Millionaire"
             desc="Win big with lifelines! 💰"
             gradient={colors.gradients.millionaire}
-            onClick={onMillionaire}
+            onClick={onMillionaire || (() => {})}
           />
 
           <ModeCard
@@ -34,7 +34,7 @@ export default function Modes({ onStory, onMillionaire, onClassic, onBlitz }) {
             title="Classic Quiz"
             desc="Pick your category! 🎯"
             gradient={colors.gradients.classic}
-            onClick={onClassic}
+            onClick={onClassic || (() => {})}
           />
 
           <ModeCard
@@ -42,7 +42,7 @@ export default function Modes({ onStory, onMillionaire, onClassic, onBlitz }) {
             title="60s Blitz"
             desc="Speed is everything! ⚡"
             gradient={colors.gradients.blitz}
-            onClick={onBlitz}
+            onClick={onBlitz || (() => {})}
           />
         </div>
       </div>

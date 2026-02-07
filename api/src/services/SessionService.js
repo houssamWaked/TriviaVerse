@@ -4,12 +4,64 @@
 import AppError from '../utils/AppError.js';
 
 const LABELS = ['A', 'B', 'C', 'D', 'E', 'F'];
+const MILLIONAIRE_PRIZES = [
+  100, 200, 300, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 125000, 250000,
+  500000, 1000000,
+];
+
+function computeStars({ scoreTotal = 0, maxScore = 0, passScoreMin = null }) {
+  const score = Math.max(0, Number(scoreTotal) || 0);
+  const max = Math.max(0, Number(maxScore) || 0);
+  const pass = passScoreMin == null ? null : Math.max(0, Number(passScoreMin) || 0);
+
+  const passed = pass != null ? score >= pass : max > 0 ? score / max >= 0.5 : score > 0;
+  if (!passed) return { passed: false, stars: 0 };
+
+  const ratio = max > 0 ? score / max : 1;
+  const stars = ratio >= 0.9 ? 3 : ratio >= 0.75 ? 2 : 1;
+  return { passed: true, stars };
+}
 
 function computeTimeRemainingSec(session) {
   if (!session?.started_at) return null;
   const started = new Date(session.started_at).getTime();
   const elapsed = Math.floor((Date.now() - started) / 1000);
   return Math.max(0, 60 - elapsed);
+}
+
+function buildAudiencePoll(options) {
+  const correct = options.find((o) => !!o.is_correct_snapshot);
+  const incorrect = options.filter((o) => !o.is_correct_snapshot);
+  if (!correct) return null;
+
+  const correctPct = 55 + Math.floor(Math.random() * 26); // 55-80%
+  const remaining = 100 - correctPct;
+  const poll = { [correct.id]: correctPct };
+
+  if (incorrect.length === 0) return poll;
+
+  const buckets = incorrect.map((o) => ({ id: o.id, v: 0 }));
+  let left = remaining;
+  for (let i = 0; i < buckets.length; i += 1) {
+    const max = left - (buckets.length - i - 1);
+    const add = i === buckets.length - 1 ? left : 1 + Math.floor(Math.random() * max);
+    buckets[i].v = add;
+    left -= add;
+  }
+
+  for (const b of buckets) poll[b.id] = b.v;
+  return poll;
+}
+
+function pickPhoneSuggestion(options) {
+  const correct = options.find((o) => !!o.is_correct_snapshot);
+  const incorrect = options.filter((o) => !o.is_correct_snapshot);
+  if (!correct) return null;
+
+  const roll = Math.random();
+  if (roll < 0.75) return correct.id; // mostly correct
+  if (incorrect.length === 0) return correct.id;
+  return incorrect[Math.floor(Math.random() * incorrect.length)].id;
 }
 
 export class SessionService {
@@ -22,6 +74,9 @@ export class SessionService {
     leaderboardRepository,
     userStatsRepository,
     quizScoreRepository,
+    storyLevelRepository,
+    userStoryProgressRepository,
+    storySessionRepository,
   }) {
     this.gameSessionRepository = gameSessionRepository;
     this.sessionQuestionRepository = sessionQuestionRepository;
@@ -31,6 +86,9 @@ export class SessionService {
     this.leaderboardRepository = leaderboardRepository;
     this.userStatsRepository = userStatsRepository;
     this.quizScoreRepository = quizScoreRepository;
+    this.storyLevelRepository = storyLevelRepository;
+    this.userStoryProgressRepository = userStoryProgressRepository;
+    this.storySessionRepository = storySessionRepository;
   }
 
   async assertSessionOwner(sessionId, userId) {
@@ -55,6 +113,7 @@ export class SessionService {
     const options = await this.sessionOptionRepository.listBySessionQuestionId(current.id);
     const payload = {
       session_question_id: current.id,
+      mode: session.mode,
       question_number: current.order_index,
       total_questions: session.total_questions,
       question_text: current.question_text_snapshot,
@@ -63,6 +122,7 @@ export class SessionService {
         label: LABELS[o.order_index - 1] || String(o.order_index),
         text: o.option_text_snapshot,
       })),
+      score_total: session.score_total ?? 0,
     };
 
     if (session.mode === 'blitz') {
@@ -71,11 +131,53 @@ export class SessionService {
       payload.time_limit_sec = current.time_limit_snapshot;
     }
 
+    if (session.mode === 'millionaire') {
+      const lifelines = await this.sessionLifelineRepository.listBySessionId(sessionId);
+      payload.lifelines_used = lifelines.map((l) => l.lifeline_type);
+
+      const fifty = lifelines.find(
+        (l) =>
+          l.lifeline_type === 'fifty_fifty' &&
+          l.payload_json?.session_question_id === current.id
+      );
+      if (fifty?.payload_json?.disabled_option_ids) {
+        payload.disabled_option_ids = fifty.payload_json.disabled_option_ids;
+      }
+
+      const audience = lifelines.find(
+        (l) =>
+          l.lifeline_type === 'audience' && l.payload_json?.session_question_id === current.id
+      );
+      if (audience?.payload_json?.audience_poll) {
+        payload.audience_poll = audience.payload_json.audience_poll;
+      }
+
+      const phone = lifelines.find(
+        (l) => l.lifeline_type === 'phone' && l.payload_json?.session_question_id === current.id
+      );
+      if (phone?.payload_json?.suggestion_option_id) {
+        payload.phone_suggestion_option_id = phone.payload_json.suggestion_option_id;
+      }
+      if (phone?.payload_json?.message) {
+        payload.phone_message = phone.payload_json.message;
+      }
+
+      payload.prizes = MILLIONAIRE_PRIZES.slice(0, Math.max(1, session.total_questions || 15));
+    }
+
     return payload;
   }
 
   async submitAnswer(sessionId, userId, body) {
     const session = await this.assertSessionOwner(sessionId, userId);
+
+    if (session.mode === 'blitz') {
+      const remaining = computeTimeRemainingSec(session);
+      if (remaining != null && remaining <= 0) {
+        throw new AppError('Time is up', 409, 'TIME_UP');
+      }
+    }
+
     const questions = await this.sessionQuestionRepository.listBySessionId(sessionId);
     const sessionQuestion = questions.find((q) => q.id === body.session_question_id);
     if (!sessionQuestion) throw new AppError('Invalid session_question_id', 400, 'INVALID_INPUT');
@@ -94,6 +196,32 @@ export class SessionService {
       is_correct,
       answered_in_sec: body.answered_in_sec ?? null,
     });
+
+    if (session.mode === 'millionaire') {
+      if (!is_correct) {
+        await this.gameSessionRepository.updateStatus(sessionId, 'completed');
+        return {
+          is_correct: false,
+          current_prize: session.score_total ?? 0,
+          next_question_available: false,
+          finished: true,
+        };
+      }
+
+      const qIdx = Math.max(1, Number(sessionQuestion.order_index) || 1);
+      const prize = MILLIONAIRE_PRIZES[qIdx - 1] ?? (session.score_total ?? 0);
+      const updatedSession = await this.gameSessionRepository.setScore(sessionId, prize);
+
+      const answers = await this.sessionAnswerRepository.listBySessionQuestionIds(
+        questions.map((q) => q.id)
+      );
+      const next_question_available = answers.length < questions.length;
+      return {
+        is_correct: true,
+        current_prize: updatedSession?.score_total ?? prize,
+        next_question_available,
+      };
+    }
 
     let scoreDelta = 0;
     if (is_correct) {
@@ -116,14 +244,6 @@ export class SessionService {
       questions.map((q) => q.id)
     );
     const next_question_available = answers.length < questions.length;
-
-    if (session.mode === 'millionaire') {
-      return {
-        is_correct,
-        current_prize: updatedSession?.score_total ?? session.score_total,
-        next_question_available,
-      };
-    }
 
     if (session.mode === 'blitz') {
       return {
@@ -172,7 +292,18 @@ export class SessionService {
         disabled_option_ids: disabled,
       };
     } else if (body.lifeline_type === 'audience') {
-      payload = { session_question_id: body.session_question_id, hint: 'audience_poll' };
+      payload = {
+        session_question_id: body.session_question_id,
+        audience_poll: buildAudiencePoll(options),
+      };
+    } else if (body.lifeline_type === 'phone') {
+      const suggestion = pickPhoneSuggestion(options);
+      const suggested = options.find((o) => o.id === suggestion);
+      payload = {
+        session_question_id: body.session_question_id,
+        suggestion_option_id: suggestion,
+        message: suggested ? `I think it's option ${LABELS[suggested.order_index - 1] || ''}.` : `I'm not sure...`,
+      };
     } else if (body.lifeline_type === 'skip') {
       payload = { session_question_id: body.session_question_id };
     }
@@ -190,6 +321,37 @@ export class SessionService {
       };
     }
 
+    if (body.lifeline_type === 'phone') {
+      return {
+        lifeline_type: 'phone',
+        suggestion_option_id: payload.suggestion_option_id,
+        message: payload.message,
+      };
+    }
+
+    if (body.lifeline_type === 'skip') {
+      const existingAnswer = await this.sessionAnswerRepository.findBySessionQuestionId(
+        body.session_question_id
+      );
+      if (!existingAnswer) {
+        const firstOption = options[0];
+        await this.sessionAnswerRepository.create({
+          session_question_id: body.session_question_id,
+          chosen_option_id: firstOption.id,
+          is_correct: false,
+          answered_in_sec: 0,
+        });
+      }
+
+      const questions = await this.sessionQuestionRepository.listBySessionId(sessionId);
+      const answers = await this.sessionAnswerRepository.listBySessionQuestionIds(
+        questions.map((q) => q.id)
+      );
+      const next_question_available = answers.length < questions.length;
+
+      return { lifeline_type: 'skip', skipped: true, next_question_available };
+    }
+
     return { lifeline_type: body.lifeline_type, ...payload };
   }
 
@@ -197,6 +359,52 @@ export class SessionService {
     const session = await this.assertSessionOwner(sessionId, userId);
     const updated = await this.gameSessionRepository.updateStatus(sessionId, status);
     if (!updated) throw new AppError('Session not found', 404, 'NOT_FOUND');
+
+    if (session.mode === 'story' && status === 'completed') {
+      if (
+        this.storySessionRepository &&
+        this.storyLevelRepository &&
+        this.userStoryProgressRepository
+      ) {
+        try {
+          const meta = await this.storySessionRepository.findBySessionId(sessionId);
+          if (meta?.level_id) {
+            const level = await this.storyLevelRepository.findById(meta.level_id);
+            if (level?.id) {
+              const questions = await this.sessionQuestionRepository.listBySessionId(sessionId);
+              const maxScore = questions.reduce(
+                (acc, q) => acc + (Number(q.points_snapshot) || 0),
+                0
+              );
+              const scoreTotal = Number(updated.score_total) || 0;
+              const { passed, stars } = computeStars({
+                scoreTotal,
+                maxScore,
+                passScoreMin: level.pass_score_min ?? null,
+              });
+
+              await this.userStoryProgressRepository.upsertResult(session.user_id, level.id, {
+                score_total: scoreTotal,
+                stars_earned: stars,
+                is_completed: passed,
+              });
+
+              if (passed && meta.level_number) {
+                const next = await this.storyLevelRepository.findByLevelNumber(
+                  Number(meta.level_number) + 1
+                );
+                if (next?.id) {
+                  await this.userStoryProgressRepository.ensureUnlocked(session.user_id, next.id);
+                }
+              }
+            }
+          }
+        } catch (err) {
+          if (err?.code !== 'NOT_CONFIGURED') throw err;
+          // If story_sessions isn't configured, gameplay still works but progress unlock won't persist.
+        }
+      }
+    }
 
     if (session.mode === 'custom' && session.quiz_id && status === 'completed') {
       try {

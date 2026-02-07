@@ -19,6 +19,25 @@ function sortByOrderIndex(a, b) {
   return (a?.order_index ?? 0) - (b?.order_index ?? 0);
 }
 
+function validateQuestionsForPublish(questions = []) {
+  const issues = [];
+  for (const q of questions || []) {
+    const opts = Array.isArray(q?.options) ? q.options : [];
+    const optionCount = opts.length;
+    const correctCount = opts.filter((o) => !!o.is_correct).length;
+
+    if (optionCount < 2) {
+      issues.push(`Question ${q?.order_index ?? '?'} needs at least 2 options.`);
+    }
+    if (correctCount !== 1) {
+      issues.push(
+        `Question ${q?.order_index ?? '?'} must have exactly 1 correct option (currently ${correctCount}).`
+      );
+    }
+  }
+  return issues;
+}
+
 export default function CreateQuiz({
   user,
   onRequireAuth,
@@ -91,6 +110,36 @@ export default function CreateQuiz({
     [onRequireAuth]
   );
 
+  const deleteQuiz = useCallback(
+    async (quizId) => {
+      const id = String(quizId || '').trim();
+      if (!id) return;
+
+      const ok = window.confirm('Delete this quiz forever? This cannot be undone.');
+      if (!ok) return;
+
+      setBusy(true);
+      setError('');
+      try {
+        await api.deleteQuiz(id);
+        if (quiz?.id === id) {
+          setQuiz(null);
+          setQuizEdit(null);
+          setQuestions([]);
+          setAccessList([]);
+          setQuizIdInput('');
+        }
+        await refreshMyQuizzes();
+      } catch (err) {
+        if (isUnauthorized(err)) return onRequireAuth?.();
+        setError(getApiErrorMessage(err));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [onRequireAuth, quiz?.id, refreshMyQuizzes]
+  );
+
   const refreshAccess = useCallback(async () => {
     if (!quiz?.id) return;
     setAccessBusy(true);
@@ -107,6 +156,9 @@ export default function CreateQuiz({
 
   const quizHeader = useMemo(() => {
     if (!quiz) return null;
+
+    const publishIssues = validateQuestionsForPublish(questions);
+    const canPublish = quiz.status !== 'published' && publishIssues.length === 0;
     const pillStyle = {
       ...CreateQuizPageStyle.pill,
       ...(quiz.status === 'published' ? CreateQuizPageStyle.pillOk : {}),
@@ -148,11 +200,32 @@ export default function CreateQuiz({
             className="tv-card tv-card--hover"
             style={{
               ...CreateQuizPageStyle.actionBtn,
+              background: colors.neutral.white,
+              border: `1px solid ${colors.secondary[100]}`,
+              color: colors.secondary[700],
+            }}
+            disabled={busy}
+            onClick={() => deleteQuiz(quiz.id)}
+            title="Delete this quiz"
+          >
+            Delete 🗑
+          </button>
+
+          <button
+            type="button"
+            className="tv-card tv-card--hover"
+            style={{
+              ...CreateQuizPageStyle.actionBtn,
               background: colors.gradients.main,
               color: colors.neutral.white,
             }}
-            disabled={busy || quiz.status === 'published'}
+            disabled={busy || !canPublish}
             onClick={async () => {
+              const issues = validateQuestionsForPublish(questions);
+              if (issues.length > 0) {
+                setError(`Fix your quiz before publishing:\n- ${issues.join('\n- ')}`);
+                return;
+              }
               setError('');
               setBusy(true);
               try {
@@ -166,17 +239,44 @@ export default function CreateQuiz({
                 setBusy(false);
               }
             }}
+            title={
+              canPublish
+                ? 'Publish'
+                : publishIssues.length
+                  ? 'Add 2+ options and set exactly 1 correct per question'
+                  : 'Publish'
+            }
           >
             Publish 🚀
           </button>
         </div>
       </div>
     );
-  }, [busy, onNavigateHome, onRequireAuth, quiz, refreshMyQuizzes]);
+  }, [busy, deleteQuiz, onNavigateHome, onRequireAuth, quiz, questions, refreshMyQuizzes]);
 
   const refreshQuestions = async (quizId) => {
     const list = await api.listQuizQuestions(quizId);
     setQuestions(Array.isArray(list) ? list.sort(sortByOrderIndex) : []);
+  };
+
+  const setCorrectOption = async (question, optionId) => {
+    if (!question?.id || !optionId || busy) return;
+    const opts = (question.options || []).slice().sort(sortByOrderIndex);
+    if (opts.length === 0) return;
+
+    setBusy(true);
+    setError('');
+    try {
+      for (const o of opts) {
+        await api.patchOption(o.id, { is_correct: o.id === optionId });
+      }
+      await refreshQuestions(quiz.id);
+    } catch (err) {
+      if (isUnauthorized(err)) return onRequireAuth?.();
+      setError(getApiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
   useEffect(() => {
@@ -394,28 +494,43 @@ export default function CreateQuiz({
                     })
                     .slice(0, 30)
                     .map((q) => (
-                      <button
-                        key={q.id}
-                        type="button"
-                        className="tv-card tv-card--hover"
-                        style={CreateQuizPageStyle.myQuizItem}
-                        disabled={busy}
-                        onClick={() => loadQuiz(q.id)}
-                      >
-                        <div style={CreateQuizPageStyle.myQuizTitleRow}>
-                          <span style={CreateQuizPageStyle.myQuizTitle}>
-                            {q.title || 'Untitled quiz'}
-                          </span>
-                          <span style={CreateQuizPageStyle.myQuizStatus}>
-                            {q.status || 'draft'}
-                          </span>
-                        </div>
-                        <div style={CreateQuizPageStyle.myQuizMeta}>
-                          <span style={CreateQuizPageStyle.myQuizMetaItem}>
-                            🔒 {q.visibility || 'private'}
-                          </span>
-                        </div>
-                      </button>
+                      <div key={q.id} style={CreateQuizPageStyle.myQuizRow}>
+                        <button
+                          type="button"
+                          className="tv-card tv-card--hover"
+                          style={{
+                            ...CreateQuizPageStyle.myQuizItem,
+                            ...CreateQuizPageStyle.myQuizOpenBtn,
+                          }}
+                          disabled={busy}
+                          onClick={() => loadQuiz(q.id)}
+                        >
+                          <div style={CreateQuizPageStyle.myQuizTitleRow}>
+                            <span style={CreateQuizPageStyle.myQuizTitle}>
+                              {q.title || 'Untitled quiz'}
+                            </span>
+                            <span style={CreateQuizPageStyle.myQuizStatus}>
+                              {q.status || 'draft'}
+                            </span>
+                          </div>
+                          <div style={CreateQuizPageStyle.myQuizMeta}>
+                            <span style={CreateQuizPageStyle.myQuizMetaItem}>
+                              🔒 {q.visibility || 'private'}
+                            </span>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="tv-card tv-card--hover"
+                          style={CreateQuizPageStyle.myQuizDeleteBtn}
+                          disabled={busy}
+                          onClick={() => deleteQuiz(q.id)}
+                          title="Delete quiz"
+                        >
+                          🗑
+                        </button>
+                      </div>
                     ))}
 
                   {(!myQuizzes || myQuizzes.length === 0) && !myQuizzesBusy && (
@@ -807,6 +922,8 @@ export default function CreateQuiz({
                       is_correct: false,
                       order_index: (q.options?.length || 0) + 1,
                     };
+                    const opts = (q.options || []).slice().sort(sortByOrderIndex);
+                    const correctCount = opts.filter((o) => !!o.is_correct).length;
 
                     return (
                       <div
@@ -833,8 +950,25 @@ export default function CreateQuiz({
                         </div>
 
                         <div style={CreateQuizPageStyle.options}>
-                          {(q.options || []).slice().sort(sortByOrderIndex).map((o) => (
+                          {opts.map((o) => (
                             <div key={o.id} style={CreateQuizPageStyle.optionRow}>
+                              <label
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 8,
+                                  marginRight: 8,
+                                }}
+                                title="Mark as correct"
+                              >
+                                <input
+                                  type="radio"
+                                  name={`correct-${q.id}`}
+                                  checked={!!o.is_correct}
+                                  disabled={busy}
+                                  onChange={() => setCorrectOption(q, o.id)}
+                                />
+                              </label>
                               <div style={CreateQuizPageStyle.optionLabel}>
                                 {o.order_index}.
                               </div>
@@ -851,6 +985,11 @@ export default function CreateQuiz({
                           {(q.options || []).length === 0 && (
                             <div style={CreateQuizPageStyle.emptyOptions}>
                               Add at least 2 options and mark 1 as correct.
+                            </div>
+                          )}
+                          {(q.options || []).length > 0 && correctCount !== 1 && (
+                            <div style={CreateQuizPageStyle.emptyOptions}>
+                              This question needs exactly 1 correct option (currently {correctCount}).
                             </div>
                           )}
                         </div>

@@ -8,6 +8,12 @@ import PlaySession from './Pages/PlaySession';
 import MyPlays from './Pages/MyPlays';
 import Friends from './Pages/Friends';
 import FriendProfile from './Pages/FriendProfile';
+import Story from './Pages/Story';
+import Classic from './Pages/Classic';
+import Blitz from './Pages/Blitz';
+import Millionaire from './Pages/Millionaire';
+import Leaderboard from './Pages/Leaderboard';
+import Admin from './Pages/Admin';
 import Navbar from './shared/layout/Navbar';
 import Footer from './shared/layout/Footer';
 import AuthModal from './Components/Auth/AuthModal';
@@ -31,17 +37,28 @@ function getApiErrorMessage(err) {
 
 function getRoute() {
   const hash = String(window.location.hash || '').replace(/^#/, '') || '/';
-  const [rawPath] = hash.split('?');
+  const [rawPath, rawQuery] = hash.split('?');
   const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
   const parts = path.split('/').filter(Boolean);
+  const query = new URLSearchParams(rawQuery || '');
 
   if (parts[0] === 'create-quiz') return { name: 'create-quiz' };
-  if (parts[0] === 'play' && parts[1]) return { name: 'play', sessionId: parts[1] };
+  if (parts[0] === 'admin') return { name: 'admin' };
+  if (parts[0] === 'classic') return { name: 'classic' };
+  if (parts[0] === 'blitz') return { name: 'blitz' };
+  if (parts[0] === 'millionaire') return { name: 'millionaire' };
+  if (parts[0] === 'leaderboard') return { name: 'leaderboard' };
+  if (parts[0] === 'play' && parts[1]) {
+    return { name: 'play', sessionId: parts[1], from: query.get('from') || '' };
+  }
   if (parts[0] === 'quizzes' && parts[1]) return { name: 'quiz', quizId: parts[1] };
   if (parts[0] === 'quizzes') return { name: 'quizzes' };
   if (parts[0] === 'my-plays') return { name: 'my-plays' };
   if (parts[0] === 'friends' && parts[1]) return { name: 'friend', friendUserId: parts[1] };
   if (parts[0] === 'friends') return { name: 'friends' };
+  if (parts[0] === 'story') {
+    return { name: 'story' };
+  }
   return { name: 'home' };
 }
 
@@ -49,6 +66,26 @@ function navigate(route, params = {}) {
   if (route === 'create-quiz') {
     const q = params.quizId ? `?quizId=${encodeURIComponent(params.quizId)}` : '';
     window.location.hash = `#/create-quiz${q}`;
+    return;
+  }
+  if (route === 'admin') {
+    window.location.hash = '#/admin';
+    return;
+  }
+  if (route === 'classic') {
+    window.location.hash = '#/classic';
+    return;
+  }
+  if (route === 'blitz') {
+    window.location.hash = '#/blitz';
+    return;
+  }
+  if (route === 'millionaire') {
+    window.location.hash = '#/millionaire';
+    return;
+  }
+  if (route === 'leaderboard') {
+    window.location.hash = '#/leaderboard';
     return;
   }
   if (route === 'quizzes') {
@@ -60,7 +97,8 @@ function navigate(route, params = {}) {
     return;
   }
   if (route === 'play') {
-    window.location.hash = `#/play/${encodeURIComponent(params.sessionId)}`;
+    const q = params.from ? `?from=${encodeURIComponent(params.from)}` : '';
+    window.location.hash = `#/play/${encodeURIComponent(params.sessionId)}${q}`;
     return;
   }
   if (route === 'my-plays') {
@@ -75,7 +113,22 @@ function navigate(route, params = {}) {
     window.location.hash = `#/friends/${encodeURIComponent(params.friendUserId)}`;
     return;
   }
+  if (route === 'story') {
+    window.location.hash = '#/story';
+    return;
+  }
   window.location.hash = '#/';
+}
+
+function getAdminEmailSet() {
+  const raw =
+    import.meta.env.VITE_ADMIN_EMAILS || import.meta.env.VITE_ADMIN_EMAIL || '';
+  return new Set(
+    String(raw)
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean)
+  );
 }
 
 function App() {
@@ -149,6 +202,13 @@ function App() {
     }
   };
 
+  const isAdmin = React.useMemo(() => {
+    const set = getAdminEmailSet();
+    if (!user?.email) return false;
+    if (set.size === 0) return false;
+    return set.has(String(user.email).trim().toLowerCase());
+  }, [user?.email]);
+
   return (
     <div style={{ minHeight: '100vh', background: colors.neutral.white }}>
       <Navbar
@@ -160,7 +220,7 @@ function App() {
           if (route.name === 'play') {
             return openAuth('signup', {
               name: 'play',
-              params: { sessionId: route.sessionId },
+              params: { sessionId: route.sessionId, from: route.from || '' },
             });
           }
           if (route.name === 'friend') {
@@ -176,10 +236,13 @@ function App() {
           if (!user) return openAuth('signup', 'create-quiz');
           return navigate('create-quiz');
         }}
+        onStory={() => navigate('story')}
         onDiscoverQuizzes={() => navigate('quizzes')}
         onMyPlays={() => navigate('my-plays')}
         onFriends={() => navigate('friends')}
-        onLeaderboard={() => window.alert('Leaderboard page coming soon!')}
+        showAdmin={isAdmin}
+        onAdmin={() => navigate('admin')}
+        onLeaderboard={() => navigate('leaderboard')}
       />
 
       {route.name === 'create-quiz' ? (
@@ -209,10 +272,15 @@ function App() {
         <PlaySession
           sessionId={route.sessionId}
           user={user}
+          variant={route.from === 'story' ? 'story' : 'default'}
+          backLabel={route.from === 'story' ? 'Back to story' : 'Back to quizzes'}
           onRequireAuth={() =>
-            openAuth('login', { name: 'play', params: { sessionId: route.sessionId } })
+            openAuth('login', {
+              name: 'play',
+              params: { sessionId: route.sessionId, from: route.from || '' },
+            })
           }
-          onBack={() => navigate('quizzes')}
+          onBack={() => (route.from === 'story' ? navigate('story') : navigate('quizzes'))}
         />
       ) : route.name === 'my-plays' ? (
         <MyPlays
@@ -239,11 +307,52 @@ function App() {
           onOpenQuiz={(quizId) => navigate('quiz', { quizId })}
           onNavigateHome={() => navigate('home')}
         />
+      ) : route.name === 'story' ? (
+        <Story
+          user={user}
+          onRequireAuth={() => openAuth('login', 'story')}
+          onNavigateHome={() => navigate('home')}
+          onPlaySession={(sessionId) => navigate('play', { sessionId, from: 'story' })}
+        />
+      ) : route.name === 'classic' ? (
+        <Classic
+          user={user}
+          onRequireAuth={() => openAuth('login', 'classic')}
+          onNavigateHome={() => navigate('home')}
+          onPlaySession={(sessionId) => navigate('play', { sessionId })}
+        />
+      ) : route.name === 'blitz' ? (
+        <Blitz
+          user={user}
+          onRequireAuth={() => openAuth('login', 'blitz')}
+          onNavigateHome={() => navigate('home')}
+          onPlaySession={(sessionId) => navigate('play', { sessionId })}
+        />
+      ) : route.name === 'millionaire' ? (
+        <Millionaire
+          user={user}
+          onRequireAuth={() => openAuth('login', 'millionaire')}
+          onNavigateHome={() => navigate('home')}
+          onPlaySession={(sessionId) => navigate('play', { sessionId })}
+        />
+      ) : route.name === 'leaderboard' ? (
+        <Leaderboard onNavigateHome={() => navigate('home')} />
+      ) : route.name === 'admin' ? (
+        <Admin
+          user={user}
+          onRequireAuth={() => openAuth('login', 'admin')}
+          onNavigateHome={() => navigate('home')}
+          onNavigateCreateQuiz={() => navigate('create-quiz')}
+        />
       ) : (
         <Home
           user={user}
           onRequireAuth={(next) => openAuth('login', next)}
           onNavigateCreateQuiz={() => navigate('create-quiz')}
+          onNavigateStory={() => navigate('story')}
+          onNavigateClassic={() => navigate('classic')}
+          onNavigateBlitz={() => navigate('blitz')}
+          onNavigateMillionaire={() => navigate('millionaire')}
         />
       )}
 

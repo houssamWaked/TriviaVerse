@@ -70,4 +70,36 @@ export const endpoints = {
   friendRequestDecline: (requestId) => `/api/friends/requests/${requestId}/decline`,
   friendRequestCancel: (requestId) => `/api/friends/requests/${requestId}`,
   friendStats: (friendUserId) => `/api/friends/${friendUserId}/stats`,
+
+  // admin
+  adminStoryLevels: () => '/api/admin/story/levels',
+  adminCreateStoryLevel: () => '/api/admin/story/levels',
+  adminAddStoryLevelPool: (levelId) => `/api/admin/story/levels/${levelId}/pool`,
+  adminSeedStoryLevelPool: (levelId) => `/api/admin/story/levels/${levelId}/pool/seed`,
+  adminCreateGlobalQuestion: () => '/api/admin/questions',
+  adminListGlobalQuestions: () => '/api/admin/questions',
+  adminSearchGlobalQuestions: () => '/api/admin/questions/search',
+  adminModePoolSummary: (mode) => `/api/admin/modes/${mode}/pool`,
+  adminSeedModePool: (mode) => `/api/admin/modes/${mode}/pool/seed`,
+  adminModePoolQuestions: (mode) => `/api/admin/modes/${mode}/pool/questions`,
+  adminRemoveModePool: (mode) => `/api/admin/modes/${mode}/pool`,
+  adminReplaceModePool: (mode) => `/api/admin/modes/${mode}/pool`,
+  adminStoryLevelPoolQuestions: (levelId) => `/api/admin/story/levels/${levelId}/pool/questions`,
+  adminRemoveStoryLevelPool: (levelId) => `/api/admin/story/levels/${levelId}/pool`,
+  adminReplaceStoryLevelPool: (levelId) => `/api/admin/story/levels/${levelId}/pool`,
+
+  // classic category pools (classic mode only)
+  adminClassicCategories: () => '/api/admin/classic/categories',
+  adminCreateClassicCategory: () => '/api/admin/classic/categories',
+  adminDeleteClassicCategory: (categoryId) => `/api/admin/classic/categories/${categoryId}`,
+  adminClassicCategoryPoolQuestions: (categoryId) =>
+    `/api/admin/classic/categories/${categoryId}/pool/questions`,
+  adminAddClassicCategoryPool: (categoryId) =>
+    `/api/admin/classic/categories/${categoryId}/pool`,
+  adminRemoveClassicCategoryPool: (categoryId) =>
+    `/api/admin/classic/categories/${categoryId}/pool`,
+  adminReplaceClassicCategoryPool: (categoryId) =>
+    `/api/admin/classic/categories/${categoryId}/pool`,
+  adminSeedClassicCategoryPool: (categoryId) =>
+    `/api/admin/classic/categories/${categoryId}/pool/seed`,
 };

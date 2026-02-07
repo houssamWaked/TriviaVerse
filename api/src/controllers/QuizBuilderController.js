@@ -139,4 +139,9 @@ export class QuizBuilderController {
     const data = await this.quizBuilderService.listMyPlayedQuizzes(req.user.id);
     res.status(200).json({ entries: data });
   };
+
+  deleteQuiz = async (req, res) => {
+    const data = await this.quizBuilderService.deleteQuiz(req.user.id, req.params.quiz_id);
+    res.status(200).json(data);
+  };
 }

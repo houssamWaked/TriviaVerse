@@ -77,5 +77,27 @@ export class GameSessionRepository {
     if (error) throw toAppError(error);
     return data?.[0] || null;
   }
-}
 
+  async setScore(id, scoreTotal) {
+    const nextScore = Math.max(0, Number(scoreTotal) || 0);
+    const { data, error } = await supabase
+      .from('game_sessions')
+      .update({ score_total: nextScore })
+      .eq('id', id)
+      .select(
+        'id, user_id, mode, quiz_id, category_id, difficulty, total_questions, started_at, ended_at, score_total, status'
+      )
+      .limit(1);
+    if (error) throw toAppError(error);
+    return data?.[0] || null;
+  }
+
+  async clearQuizIdForQuiz(quizId) {
+    const { error } = await supabase
+      .from('game_sessions')
+      .update({ quiz_id: null })
+      .eq('quiz_id', quizId);
+    if (error) throw toAppError(error);
+    return true;
+  }
+}
