@@ -26,6 +26,13 @@ const statCardStyle = {
     lineHeight: 1,
     marginBottom: 8,
   },
+  cardValueColor: (color) => ({
+    fontSize: 34,
+    fontWeight: 900,
+    lineHeight: 1,
+    marginBottom: 8,
+    color,
+  }),
   cardLabel: {
     fontSize: 13,
     fontWeight: 800,

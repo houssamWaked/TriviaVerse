@@ -1,26 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import colors from '../constants/colors';
-import { api } from '../api';
-import FriendProfileStyle from '../Styles/ComponentStyles/FriendProfileStyle';
-
-function getApiErrorMessage(err) {
-  return (
-    err?.response?.data?.message ||
-    err?.message ||
-    'Something went wrong. Please try again.'
-  );
-}
+import { ICONS } from '@/constants/icons';
+import { STRINGS } from '@/constants/strings';
+import { api } from '@/api';
+import FriendProfileStyle from '@/Styles/ComponentStyles/FriendProfileStyle';
+import { getApiErrorMessage } from '@/utils/apiError';
 
 function formatDate(d) {
-  if (!d) return '—';
+  if (!d) return STRINGS.COMMON.separators.emDash;
   const t = new Date(d);
-  if (Number.isNaN(t.getTime())) return '—';
+  if (Number.isNaN(t.getTime())) return STRINGS.COMMON.separators.emDash;
   return t.toLocaleDateString();
 }
 
 function initials(username) {
   const u = String(username || '').trim();
-  if (!u) return 'P';
+  if (!u) return STRINGS.FRIEND_PROFILE.initialsFallback;
   return u.slice(0, 1).toUpperCase();
 }
 
@@ -36,7 +30,10 @@ export default function FriendProfile({
   const [error, setError] = useState('');
   const [data, setData] = useState(null);
 
-  const name = useMemo(() => data?.user?.username || 'Friend', [data?.user?.username]);
+  const name = useMemo(
+    () => data?.user?.username || STRINGS.FRIEND_PROFILE.nameFallback,
+    [data?.user?.username]
+  );
   const avatarUrl = data?.user?.avatar_url || '';
 
   const load = async () => {
@@ -65,25 +62,27 @@ export default function FriendProfile({
       <div style={FriendProfileStyle.page}>
         <div style={FriendProfileStyle.container}>
           <div className="tv-card" style={FriendProfileStyle.lockCard}>
-            <h2 style={FriendProfileStyle.lockTitle}>Login to view profiles</h2>
+            <h2 style={FriendProfileStyle.lockTitle}>
+              {STRINGS.FRIEND_PROFILE.locked.title}
+            </h2>
             <p style={FriendProfileStyle.lockText}>
-              Compare stats, see best scores, and share private quizzes with your friends.
+              {STRINGS.FRIEND_PROFILE.locked.subtitle}
             </p>
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{ ...FriendProfileStyle.primaryBtn, background: colors.gradients.main }}
+              style={FriendProfileStyle.primaryBtnMain}
               onClick={() => onRequireAuth?.('friend')}
             >
-              Join / Login 🚀
+              {STRINGS.COMMON.joinLogin} {ICONS.common.rocket}
             </button>
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{ ...FriendProfileStyle.secondaryBtn, background: colors.neutral.white }}
+              style={FriendProfileStyle.secondaryBtnWhite}
               onClick={onNavigateHome}
             >
-              Home
+              {STRINGS.COMMON.buttons.home}
             </button>
           </div>
         </div>
@@ -98,35 +97,30 @@ export default function FriendProfile({
           <button
             type="button"
             className="tv-card tv-card--hover"
-            style={{ ...FriendProfileStyle.btn, background: colors.neutral.white }}
+            style={FriendProfileStyle.btnWhite}
             onClick={onBack}
             disabled={busy}
           >
-            ← Friends
+            {STRINGS.COMMON.symbols.leftArrow} {STRINGS.FRIEND_PROFILE.buttons.backToFriends}
           </button>
 
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div style={FriendProfileStyle.topActions}>
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{ ...FriendProfileStyle.btn, background: colors.neutral.white }}
+              style={FriendProfileStyle.btnWhite}
               onClick={load}
               disabled={busy}
             >
-              Refresh ↻
+              {STRINGS.COMMON.buttons.refresh} {ICONS.common.refresh}
             </button>
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{
-                ...FriendProfileStyle.btn,
-                background: colors.gradients.main,
-                color: colors.neutral.white,
-                border: 'none',
-              }}
+              style={FriendProfileStyle.btnPrimary}
               onClick={onNavigateHome}
             >
-              Home
+              {STRINGS.COMMON.buttons.home}
             </button>
           </div>
         </div>
@@ -135,36 +129,46 @@ export default function FriendProfile({
 
         <div className="tv-card" style={FriendProfileStyle.headerCard}>
           <div style={FriendProfileStyle.headerTop}>
-            <div style={FriendProfileStyle.avatar} aria-label="Avatar">
+            <div style={FriendProfileStyle.avatar} aria-label={STRINGS.FRIEND_PROFILE.aria.avatar}>
               {avatarUrl ? (
                 <img alt={name} src={avatarUrl} style={FriendProfileStyle.avatarImg} />
               ) : (
                 initials(name)
               )}
             </div>
-            <div style={{ flex: 1, minWidth: 220 }}>
+            <div style={FriendProfileStyle.nameWrap}>
               <h1 style={FriendProfileStyle.name}>
-                {name} <span style={{ fontSize: 18 }}>🤝</span>
+                {name} <span style={FriendProfileStyle.handshakeIcon}>{ICONS.common.handshake}</span>
               </h1>
               <div style={FriendProfileStyle.sub}>
-                {busy ? 'Loading…' : 'Friend profile'}
+                {busy ? STRINGS.FRIEND_PROFILE.header.loading : STRINGS.FRIEND_PROFILE.header.title}
               </div>
             </div>
           </div>
 
           <div style={FriendProfileStyle.pills}>
-            <div style={FriendProfileStyle.pill}>⭐ Level {data?.user_stats?.level ?? 1}</div>
-            <div style={FriendProfileStyle.pill}>🧠 XP {data?.user_stats?.xp_total ?? 0}</div>
             <div style={FriendProfileStyle.pill}>
-              🔥 Streak {data?.user_stats?.streak_days ?? 0}d
+              {ICONS.common.star} {STRINGS.FRIEND_PROFILE.pills.level}{' '}
+              {data?.user_stats?.level ?? 1}
+            </div>
+            <div style={FriendProfileStyle.pill}>
+              {ICONS.common.brain} {STRINGS.FRIEND_PROFILE.pills.xp}{' '}
+              {data?.user_stats?.xp_total ?? 0}
+            </div>
+            <div style={FriendProfileStyle.pill}>
+              {ICONS.common.fire} {STRINGS.FRIEND_PROFILE.pills.streak}{' '}
+              {data?.user_stats?.streak_days ?? 0}
+              {STRINGS.FRIEND_PROFILE.pills.streakSuffix}
             </div>
           </div>
         </div>
 
         <div className="tv-card" style={FriendProfileStyle.sectionCard}>
-          <h2 style={FriendProfileStyle.sectionTitle}>Best custom quiz scores</h2>
+          <h2 style={FriendProfileStyle.sectionTitle}>
+            {STRINGS.FRIEND_PROFILE.section.bestScoresTitle}
+          </h2>
           <div style={FriendProfileStyle.sectionSub}>
-            Tap a quiz to open it (if you have access).
+            {STRINGS.FRIEND_PROFILE.section.bestScoresSubtitle}
           </div>
 
           <div style={FriendProfileStyle.list}>
@@ -179,14 +183,18 @@ export default function FriendProfile({
               >
                 <div style={FriendProfileStyle.itemTop}>
                   <div style={FriendProfileStyle.itemTitle}>{e.title}</div>
-                  <div style={FriendProfileStyle.scorePill}>🏆 {e.best_score}</div>
+                  <div style={FriendProfileStyle.scorePill}>
+                    {ICONS.common.trophy} {e.best_score}
+                  </div>
                 </div>
-                <div style={FriendProfileStyle.meta}>Updated {formatDate(e.updated_at)}</div>
+                <div style={FriendProfileStyle.meta}>
+                  {STRINGS.FRIEND_PROFILE.section.updatedPrefix} {formatDate(e.updated_at)}
+                </div>
               </button>
             ))}
 
             {!busy && (data?.custom_quiz_best || []).length === 0 && (
-              <div style={FriendProfileStyle.meta}>No custom quiz scores yet.</div>
+              <div style={FriendProfileStyle.meta}>{STRINGS.FRIEND_PROFILE.section.noneScores}</div>
             )}
           </div>
         </div>
@@ -194,4 +202,3 @@ export default function FriendProfile({
     </div>
   );
 }
-

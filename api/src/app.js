@@ -32,6 +32,7 @@ import createBlitzRouter from './routes/BlitzRoute.js';
 import createSessionsRouter from './routes/SessionsRoute.js';
 import createFriendsRouter from './routes/FriendsRoute.js';
 import createAdminRouter from './routes/AdminRoute.js';
+import createMeRouter from './routes/MeRoute.js';
 
 import { CategoryController } from './controllers/CategoryController.js';
 import { AuthController } from './controllers/AuthController.js';
@@ -46,6 +47,7 @@ import { SessionsController } from './controllers/SessionsController.js';
 import { QuizDiscoveryController } from './controllers/QuizDiscoveryController.js';
 import { FriendController } from './controllers/FriendController.js';
 import { AdminController } from './controllers/AdminController.js';
+import { MeController } from './controllers/MeController.js';
 
 import { CategoryService } from './services/CategoryService.js';
 import { AuthService } from './services/AuthService.js';
@@ -58,6 +60,7 @@ import { SessionService } from './services/SessionService.js';
 import { QuizDiscoveryService } from './services/QuizDiscoveryService.js';
 import { FriendService } from './services/FriendService.js';
 import { AdminService } from './services/AdminService.js';
+import { MeService } from './services/MeService.js';
 
 import { CategoryRepository } from './domain/repositories/CategoryRepository.js';
 import { UserRepository } from './domain/repositories/UserRepository.js';
@@ -208,6 +211,16 @@ const blitzController = new BlitzController(sessionStartService);
 const sessionsController = new SessionsController(sessionService);
 const friendController = new FriendController(friendService);
 const adminController = new AdminController(adminService);
+const meController = new MeController(
+  new MeService({
+    userRepository,
+    userStatsRepository,
+    gameSessionRepository,
+    storyService,
+    quizScoreRepository,
+    quizRepository,
+  })
+);
 const quizDiscoveryController = new QuizDiscoveryController(
   new QuizDiscoveryService({
     quizRepository,
@@ -237,6 +250,7 @@ app.use('/api/blitz', createBlitzRouter(blitzController));
 app.use('/api/sessions', createSessionsRouter(sessionsController));
 app.use('/api/friends', createFriendsRouter(friendController));
 app.use('/api/admin', createAdminRouter(adminController));
+app.use('/api/me', createMeRouter(meController));
 
 // 404 then error handler (order matters)
 app.use(notFound);

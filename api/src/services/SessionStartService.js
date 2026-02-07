@@ -7,6 +7,7 @@
  * still stored on the created `game_sessions` row for future filtering.
  */
 import AppError from '../utils/AppError.js';
+import { sessionCache } from '../utils/sessionCache.js';
 
 function difficultyToRatingRange(difficulty) {
   const d = String(difficulty || '').trim().toLowerCase();
@@ -472,6 +473,61 @@ export class SessionStartService {
     if (!session) throw new AppError('Failed to create session', 500, 'DB_ERROR');
 
     await this.snapshotSessionQuestions(session.id, questions);
+
+    // Prime in-memory cache so gameplay can run "flash fast" without DB reads per answer.
+    try {
+      const sessionQuestions = await this.sessionQuestionRepository.listBySessionId(session.id);
+      const options = await this.sessionOptionRepository.listBySessionQuestionIds(
+        sessionQuestions.map((q) => q.id)
+      );
+
+      const bySqId = new Map();
+      for (const o of options) {
+        const sid = o.session_question_id;
+        if (!sid) continue;
+        if (!bySqId.has(sid)) bySqId.set(sid, []);
+        bySqId.get(sid).push(o);
+      }
+
+      const LABELS = ['A', 'B', 'C', 'D', 'E', 'F'];
+      const cachedQuestions = [];
+      const correctBySqId = {};
+      for (const sq of sessionQuestions) {
+        const opts = (bySqId.get(sq.id) || []).slice().sort((a, b) => {
+          const x = Number(a.order_index) || 0;
+          const y = Number(b.order_index) || 0;
+          return x - y;
+        });
+        const correct = opts.find((o) => !!o.is_correct_snapshot);
+        if (correct?.id) correctBySqId[sq.id] = correct.id;
+
+        cachedQuestions.push({
+          session_question_id: sq.id,
+          mode: 'blitz',
+          question_number: sq.order_index,
+          total_questions: session.total_questions,
+          question_text: sq.question_text_snapshot,
+          options: opts.map((o) => ({
+            id: o.id,
+            label: LABELS[(Number(o.order_index) || 1) - 1] || String(o.order_index),
+            text: o.option_text_snapshot,
+          })),
+        });
+      }
+
+      sessionCache.set(session.id, {
+        mode: 'blitz',
+        user_id: userId,
+        started_at: session.started_at,
+        score_total: session.score_total ?? 0,
+        status: session.status,
+        current_index: 0,
+        questions: cachedQuestions,
+        correct_option_id_by_session_question_id: correctBySqId,
+      });
+    } catch {
+      // Cache is an optimization. If it fails, gameplay still works via DB.
+    }
 
     return {
       session_id: session.id,

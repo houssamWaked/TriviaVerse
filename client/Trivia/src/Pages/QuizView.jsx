@@ -1,26 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import colors from '../constants/colors';
-import { api } from '../api';
-import QuizViewStyle from '../Styles/ComponentStyles/QuizViewStyle';
-
-function getApiErrorMessage(err) {
-  return (
-    err?.response?.data?.message ||
-    err?.message ||
-    'Something went wrong. Please try again.'
-  );
-}
-
-function isUnauthorized(err) {
-  return Number(err?.response?.status) === 401;
-}
+import { ICONS } from '@/constants/icons';
+import { STRINGS } from '@/constants/strings';
+import { api } from '@/api';
+import QuizViewStyle from '@/Styles/ComponentStyles/QuizViewStyle';
+import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
 
 function ratingLabel(avg, count) {
   const a = Number(avg);
   const c = Number(count);
   const avgText = Number.isFinite(a) ? a.toFixed(a % 1 === 0 ? 0 : 1) : '0';
   const countText = Number.isFinite(c) ? c : 0;
-  return `⭐ ${avgText} · ${countText} ratings`;
+  return STRINGS.QUIZ_VIEW.rating.label(avgText, countText);
 }
 
 export default function QuizView({
@@ -69,7 +59,7 @@ export default function QuizView({
   const canEdit = !!data?.can_edit;
 
   const ratingText = useMemo(() => {
-    if (!ratings) return '⭐ 0 · 0 ratings';
+    if (!ratings) return STRINGS.QUIZ_VIEW.rating.zero;
     return ratingLabel(ratings.ratings_avg, ratings.ratings_count);
   }, [ratings]);
 
@@ -96,21 +86,17 @@ export default function QuizView({
           <button
             type="button"
             className="tv-card tv-card--hover"
-            style={{ ...QuizViewStyle.btn, background: colors.neutral.white }}
+            style={QuizViewStyle.btnWhite}
             onClick={onBack}
             disabled={busy}
           >
-            ← Back
+            {STRINGS.COMMON.symbols.leftArrow} {STRINGS.QUIZ_VIEW.buttons.back}
           </button>
 
           <button
             type="button"
             className="tv-card tv-card--hover"
-            style={{
-              ...QuizViewStyle.btn,
-              background: colors.gradients.main,
-              color: colors.neutral.white,
-            }}
+            style={QuizViewStyle.btnPrimary}
             disabled={busy}
             onClick={async () => {
               if (!user) return onRequireAuth?.('quiz');
@@ -127,22 +113,18 @@ export default function QuizView({
               }
             }}
           >
-            Play ▶
+            {STRINGS.QUIZ_VIEW.buttons.play} {ICONS.common.play}
           </button>
 
           {canEdit && (
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{
-                ...QuizViewStyle.btn,
-                background: colors.gradients.main,
-                color: colors.neutral.white,
-              }}
+              style={QuizViewStyle.btnPrimary}
               onClick={() => onEditQuiz?.(quizId)}
               disabled={busy}
             >
-              Edit ✍️
+              {STRINGS.QUIZ_VIEW.buttons.edit} {ICONS.common.edit}
             </button>
           )}
         </div>
@@ -154,36 +136,44 @@ export default function QuizView({
               <button
                 type="button"
                 className="tv-card tv-card--hover"
-                style={{ ...QuizViewStyle.btn, marginTop: 12, background: colors.neutral.white }}
+                style={QuizViewStyle.btnWhiteMt12}
                 onClick={() => onRequireAuth?.('quiz')}
               >
-                Login to view
+                {STRINGS.QUIZ_VIEW.buttons.loginToView}
               </button>
             )}
           </div>
         )}
 
         {!quiz ? (
-          <div style={QuizViewStyle.loading}>{busy ? 'Loading…' : 'Not found'}</div>
+          <div style={QuizViewStyle.loading}>
+            {busy ? STRINGS.QUIZ_VIEW.states.loading : STRINGS.QUIZ_VIEW.states.notFound}
+          </div>
         ) : (
           <>
             <div className="tv-card" style={QuizViewStyle.headerCard}>
               <div style={QuizViewStyle.headerTop}>
                 <div>
                   <div style={QuizViewStyle.ownerRow}>
-                    <span style={QuizViewStyle.ownerIcon}>👤</span>
+                    <span style={QuizViewStyle.ownerIcon}>{ICONS.common.user}</span>
                     <span style={QuizViewStyle.ownerName}>
-                      {quiz.owner?.username || 'Unknown'}
+                      {quiz.owner?.username || STRINGS.QUIZ_VIEW.ownerUnknown}
                     </span>
-                    <span style={QuizViewStyle.dot}>·</span>
+                    <span style={QuizViewStyle.dot}>{STRINGS.COMMON.separators.middot}</span>
                     <span style={QuizViewStyle.visibility}>
-                      {quiz.visibility === 'private' ? '🔒 private' : '🌍 public'}
+                      {quiz.visibility === STRINGS.QUIZ_VIEW.visibility.private ? (
+                        <>
+                          {ICONS.common.lock} {STRINGS.QUIZ_VIEW.visibility.private}
+                        </>
+                      ) : (
+                        <>
+                          {ICONS.common.globe} {STRINGS.QUIZ_VIEW.visibility.public}
+                        </>
+                      )}
                     </span>
                   </div>
                   <h1 style={QuizViewStyle.title}>{quiz.title}</h1>
-                  {!!quiz.description && (
-                    <p style={QuizViewStyle.desc}>{quiz.description}</p>
-                  )}
+                  {!!quiz.description && <p style={QuizViewStyle.desc}>{quiz.description}</p>}
                 </div>
 
                 <div style={QuizViewStyle.ratingBox}>
@@ -195,22 +185,17 @@ export default function QuizView({
                         <button
                           key={n}
                           type="button"
-                          style={{
-                            ...QuizViewStyle.starBtn,
-                            ...(active ? QuizViewStyle.starActive : {}),
-                          }}
+                          style={QuizViewStyle.starBtnState(active)}
                           onClick={() => onRate(n)}
                           disabled={busy}
-                          title={`Rate ${n}`}
+                          title={STRINGS.QUIZ_VIEW.rating.rateTitle(n)}
                         >
-                          ★
+                          {ICONS.common.starFilled}
                         </button>
                       );
                     })}
                   </div>
-                  {!user && (
-                    <div style={QuizViewStyle.rateHint}>Login to rate</div>
-                  )}
+                  {!user && <div style={QuizViewStyle.rateHint}>{STRINGS.QUIZ_VIEW.rating.loginToRate}</div>}
                 </div>
               </div>
             </div>
@@ -218,37 +203,43 @@ export default function QuizView({
             <div className="tv-card" style={QuizViewStyle.headerCard}>
               <div style={QuizViewStyle.lbHeader}>
                 <div>
-                  <h2 style={QuizViewStyle.lbTitle}>Leaderboard</h2>
+                  <h2 style={QuizViewStyle.lbTitle}>{STRINGS.QUIZ_VIEW.leaderboard.title}</h2>
                   {Number.isFinite(Number(leaderboard?.my_best_score)) && (
                     <div style={QuizViewStyle.lbMine}>
-                      Your best: 🏅 {leaderboard.my_best_score}
+                      {STRINGS.QUIZ_VIEW.leaderboard.myBestPrefix} {ICONS.common.medal}{' '}
+                      {leaderboard.my_best_score}
                     </div>
                   )}
                 </div>
                 <button
                   type="button"
                   className="tv-card tv-card--hover"
-                  style={{ ...QuizViewStyle.btn, background: colors.neutral.white }}
+                  style={QuizViewStyle.btnWhite}
                   disabled={busy}
                   onClick={load}
                 >
-                  Refresh ↻
+                  {STRINGS.COMMON.buttons.refresh} {ICONS.common.refresh}
                 </button>
               </div>
 
               <div style={QuizViewStyle.lbList}>
                 {(leaderboard?.entries || []).slice(0, 10).map((e) => (
                   <div key={e.user_id} style={QuizViewStyle.lbRow}>
-                    <span style={QuizViewStyle.lbRank}>#{e.rank_position}</span>
-                    <span style={QuizViewStyle.lbName}>{e.username || 'Player'}</span>
-                    <span style={QuizViewStyle.lbScore}>🏅 {e.best_score}</span>
+                    <span style={QuizViewStyle.lbRank}>
+                      {STRINGS.COMMON.symbols.hash}
+                      {e.rank_position}
+                    </span>
+                    <span style={QuizViewStyle.lbName}>
+                      {e.username || STRINGS.COMMON.playerFallback}
+                    </span>
+                    <span style={QuizViewStyle.lbScore}>
+                      {ICONS.common.medal} {e.best_score}
+                    </span>
                   </div>
                 ))}
 
                 {(!leaderboard?.entries || leaderboard.entries.length === 0) && (
-                  <div style={QuizViewStyle.lbEmpty}>
-                    No scores yet — be the first to play!
-                  </div>
+                  <div style={QuizViewStyle.lbEmpty}>{STRINGS.QUIZ_VIEW.leaderboard.empty}</div>
                 )}
               </div>
             </div>
@@ -261,9 +252,14 @@ export default function QuizView({
                   style={QuizViewStyle.questionCard}
                 >
                   <div style={QuizViewStyle.qTop}>
-                    <span style={QuizViewStyle.qNum}>Q{q.order_index}</span>
+                    <span style={QuizViewStyle.qNum}>
+                      {STRINGS.QUIZ_VIEW.questions.qPrefix}
+                      {q.order_index}
+                    </span>
                     <span style={QuizViewStyle.qMeta}>
-                      ⏱ {q.time_limit_sec}s · ⭐ {q.points}
+                      {ICONS.common.timer} {q.time_limit_sec}
+                      {STRINGS.COMMON.units.secondsShort} {STRINGS.COMMON.separators.middot}{' '}
+                      {ICONS.common.star} {q.points}
                     </span>
                   </div>
                   <div style={QuizViewStyle.qText}>{q.question_text}</div>
@@ -279,7 +275,7 @@ export default function QuizView({
               ))}
 
               {questions.length === 0 && (
-                <div style={QuizViewStyle.loading}>No questions yet.</div>
+                <div style={QuizViewStyle.loading}>{STRINGS.QUIZ_VIEW.questions.none}</div>
               )}
             </div>
           </>

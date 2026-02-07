@@ -1,6 +1,8 @@
 import React from 'react';
 import AdminStyle from '../../Styles/ComponentStyles/AdminStyle';
+import AdminModePoolsTabStyle from '../../Styles/ComponentStyles/AdminModePoolsTabStyle';
 import { SearchResults } from './AdminUi';
+import { STRINGS } from '@/constants/strings';
 
 export default function AdminModePoolsTab({
   busy,
@@ -23,30 +25,32 @@ export default function AdminModePoolsTab({
   return (
     <div style={AdminStyle.grid}>
       <div style={AdminStyle.section}>
-        <h3 style={AdminStyle.sectionTitle}>Add existing questions to a mode</h3>
+        <h3 style={AdminStyle.sectionTitle}>{STRINGS.ADMIN.sections.addExistingToMode}</h3>
         <div style={AdminStyle.sectionSub}>
-          Search global questions, select, then add to Classic / Blitz / Millionaire.
+          {STRINGS.ADMIN.text.modePoolsSubtitle}
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 10 }}>
+        <div style={AdminModePoolsTabStyle.rowMt10}>
           <select
-            style={{ ...AdminStyle.select, flex: 1 }}
+            style={AdminModePoolsTabStyle.selectFlex1}
             value={poolPick.mode}
             onChange={(e) => onChangeMode?.(e.target.value)}
             disabled={busy}
           >
-            <option value="classic">classic</option>
-            <option value="blitz">blitz</option>
-            <option value="millionaire">millionaire</option>
+            <option value={STRINGS.ADMIN.modeOptions.classic}>{STRINGS.ADMIN.modeOptions.classic}</option>
+            <option value={STRINGS.ADMIN.modeOptions.blitz}>{STRINGS.ADMIN.modeOptions.blitz}</option>
+            <option value={STRINGS.ADMIN.modeOptions.millionaire}>
+              {STRINGS.ADMIN.modeOptions.millionaire}
+            </option>
           </select>
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 10 }}>
+        <div style={AdminModePoolsTabStyle.rowMt10}>
           <input
-            style={{ ...AdminStyle.input, flex: 1 }}
+            style={AdminModePoolsTabStyle.inputFlex1}
             value={poolPick.q}
             onChange={(e) => setPoolPick((v) => ({ ...v, q: e.target.value }))}
-            placeholder="Search questions (blank = browse all)..."
+            placeholder={STRINGS.ADMIN.text.searchQuestionsPlaceholder}
             disabled={busy}
             onKeyDown={(e) => {
               if (e.key === 'Enter') onSearch();
@@ -59,11 +63,11 @@ export default function AdminModePoolsTab({
             onClick={onSearch}
             disabled={busy}
           >
-            Search
+            {STRINGS.ADMIN.actions.search}
           </button>
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 10 }}>
+        <div style={AdminModePoolsTabStyle.rowMt10}>
           <button
             type="button"
             className="tv-card tv-card--hover"
@@ -71,7 +75,7 @@ export default function AdminModePoolsTab({
             onClick={onSelectAll}
             disabled={busy || poolPick.results.length === 0}
           >
-            Select all
+            {STRINGS.ADMIN.actions.selectAll}
           </button>
           <button
             type="button"
@@ -80,7 +84,7 @@ export default function AdminModePoolsTab({
             onClick={onClearSelected}
             disabled={busy || poolPick.selected.length === 0}
           >
-            Clear
+            {STRINGS.ADMIN.actions.clear}
           </button>
           <button
             type="button"
@@ -93,7 +97,7 @@ export default function AdminModePoolsTab({
             }
             disabled={busy || (poolPick.offset || 0) <= 0}
           >
-            Prev
+            {STRINGS.ADMIN.actions.prev}
           </button>
           <button
             type="button"
@@ -102,11 +106,17 @@ export default function AdminModePoolsTab({
             onClick={() => onSearch?.((poolPick.offset || 0) + (poolPick.limit || 20))}
             disabled={busy || poolPick.results.length < (poolPick.limit || 20)}
           >
-            Next
+            {STRINGS.ADMIN.actions.next}
           </button>
-          <span style={AdminStyle.pill}>Selected: {poolPick.selected.length}</span>
-          <span style={AdminStyle.pill}>Max: {poolPick.maxSelect || 6}</span>
-          <span style={AdminStyle.pill}>Offset: {poolPick.offset || 0}</span>
+          <span style={AdminStyle.pill}>
+            {STRINGS.ADMIN.pills.selected} {poolPick.selected.length}
+          </span>
+          <span style={AdminStyle.pill}>
+            {STRINGS.ADMIN.pills.max} {poolPick.maxSelect || 6}
+          </span>
+          <span style={AdminStyle.pill}>
+            {STRINGS.ADMIN.pills.offset} {poolPick.offset || 0}
+          </span>
         </div>
 
         <SearchResults
@@ -116,15 +126,15 @@ export default function AdminModePoolsTab({
           busy={busy}
         />
 
-        <div style={{ ...AdminStyle.row, marginTop: 12 }}>
+        <div style={AdminModePoolsTabStyle.rowMt12}>
           <button
             type="button"
             className="tv-card tv-card--hover"
-            style={{ ...AdminStyle.btn, ...AdminStyle.btnPrimary }}
+            style={AdminStyle.btnPrimaryFull}
             onClick={onAddSelected}
             disabled={busy || poolPick.selected.length === 0}
           >
-            Add selected to mode
+            {STRINGS.ADMIN.actions.addSelectedToMode}
           </button>
           <button
             type="button"
@@ -132,34 +142,34 @@ export default function AdminModePoolsTab({
             style={AdminStyle.btn}
             onClick={onReplaceSelected}
             disabled={busy || poolPick.selected.length === 0}
-            title="Replace the entire pool with your selected questions"
+            title={STRINGS.ADMIN.hints.replacePoolTitle}
           >
-            Replace pool
+            {STRINGS.ADMIN.actions.replacePool}
           </button>
         </div>
       </div>
 
       <div style={AdminStyle.section}>
-        <h3 style={AdminStyle.sectionTitle}>Pool sizes</h3>
+        <h3 style={AdminStyle.sectionTitle}>{STRINGS.ADMIN.sections.poolSizes}</h3>
         <div style={AdminStyle.sectionSub}>
-          These counts are used when starting sessions.
+          {STRINGS.ADMIN.text.poolSizesHint}
         </div>
 
-        <div style={{ ...AdminStyle.list, marginTop: 12 }}>
+        <div style={AdminModePoolsTabStyle.listMt12}>
           <div style={AdminStyle.listItem}>
-            <div style={AdminStyle.listItemTitle}>Classic</div>
+            <div style={AdminStyle.listItemTitle}>{STRINGS.ADMIN.poolSizeLabels.classic}</div>
             <div style={AdminStyle.listItemMeta}>
               <span style={AdminStyle.pill}>{modeCounts.classic ?? '-'}</span>
             </div>
           </div>
           <div style={AdminStyle.listItem}>
-            <div style={AdminStyle.listItemTitle}>Blitz</div>
+            <div style={AdminStyle.listItemTitle}>{STRINGS.ADMIN.poolSizeLabels.blitz}</div>
             <div style={AdminStyle.listItemMeta}>
               <span style={AdminStyle.pill}>{modeCounts.blitz ?? '-'}</span>
             </div>
           </div>
           <div style={AdminStyle.listItem}>
-            <div style={AdminStyle.listItemTitle}>Millionaire</div>
+            <div style={AdminStyle.listItemTitle}>{STRINGS.ADMIN.poolSizeLabels.millionaire}</div>
             <div style={AdminStyle.listItemMeta}>
               <span style={AdminStyle.pill}>{modeCounts.millionaire ?? '-'}</span>
             </div>
@@ -168,12 +178,12 @@ export default function AdminModePoolsTab({
       </div>
 
       <div style={AdminStyle.section}>
-        <h3 style={AdminStyle.sectionTitle}>Current pool</h3>
+        <h3 style={AdminStyle.sectionTitle}>{STRINGS.ADMIN.sections.currentPool}</h3>
         <div style={AdminStyle.sectionSub}>
-          View / remove questions currently assigned to this mode.
+          {STRINGS.ADMIN.text.currentModePoolSubtitle}
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 10 }}>
+        <div style={AdminModePoolsTabStyle.rowMt10}>
           <button
             type="button"
             className="tv-card tv-card--hover"
@@ -181,7 +191,7 @@ export default function AdminModePoolsTab({
             onClick={onLoadPool}
             disabled={busy}
           >
-            Refresh pool
+            {STRINGS.ADMIN.actions.refreshPool}
           </button>
           <button
             type="button"
@@ -189,16 +199,16 @@ export default function AdminModePoolsTab({
             style={AdminStyle.btn}
             onClick={onClearPool}
             disabled={busy}
-            title="Remove all questions from this mode pool"
+            title={STRINGS.ADMIN.hints.clearModePoolTitle}
           >
-            Clear pool
+            {STRINGS.ADMIN.actions.clearPool}
           </button>
           <span style={AdminStyle.pill}>
-            Showing {poolPick.poolQuestions?.length || 0}
+            {STRINGS.ADMIN.pills.showingBare} {poolPick.poolQuestions?.length || 0}
           </span>
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 10 }}>
+        <div style={AdminModePoolsTabStyle.rowMt10}>
           <button
             type="button"
             className="tv-card tv-card--hover"
@@ -206,7 +216,7 @@ export default function AdminModePoolsTab({
             onClick={onPrevPoolPage}
             disabled={busy || (poolPick.poolOffset ?? 0) <= 0}
           >
-            Prev
+            {STRINGS.ADMIN.actions.prev}
           </button>
           <button
             type="button"
@@ -215,9 +225,11 @@ export default function AdminModePoolsTab({
             onClick={onNextPoolPage}
             disabled={busy || (poolPick.poolQuestions?.length || 0) < (poolPick.poolLimit || 50)}
           >
-            Next
+            {STRINGS.ADMIN.actions.next}
           </button>
-          <span style={AdminStyle.pill}>Offset: {poolPick.poolOffset ?? 0}</span>
+          <span style={AdminStyle.pill}>
+            {STRINGS.ADMIN.pills.offset} {poolPick.poolOffset ?? 0}
+          </span>
         </div>
 
         <div style={AdminStyle.list}>
@@ -233,14 +245,14 @@ export default function AdminModePoolsTab({
                   onClick={() => onRemoveFromPool?.(q.id)}
                   disabled={busy}
                 >
-                  Remove
+                  {STRINGS.ADMIN.actions.remove}
                 </button>
               </div>
             </div>
           ))}
           {(poolPick.poolQuestions || []).length === 0 && (
-            <div style={{ fontWeight: 850, color: '#444' }}>
-              Click “Refresh pool” to load questions.
+            <div style={AdminModePoolsTabStyle.emptyText}>
+              {STRINGS.ADMIN.text.refreshPoolToLoad}
             </div>
           )}
         </div>

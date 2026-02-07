@@ -1,21 +1,25 @@
-import colors from '../../constants/colors'; // adjust path if needed
+import colors from '@/constants/colors';
+import { ICONS } from '@/constants/icons';
+import { STRINGS } from '@/constants/strings';
 
 export default function Footer() {
   return (
     <footer style={styles.footer}>
       <div style={styles.container}>
         <p style={styles.text}>
-          Made with <span style={styles.heart}>💜</span> by{' '}
-          <span style={styles.brand}>TriviaVerse</span> · © 2026
+          {STRINGS.FOOTER.madeWith} <span style={styles.heart}>{ICONS.common.heart}</span>{' '}
+          {STRINGS.FOOTER.by} <span style={styles.brand}>{STRINGS.COMMON.appName}</span>{' '}
+          {STRINGS.COMMON.separators.middot} {STRINGS.COMMON.separators.copyright}{' '}
+          {STRINGS.FOOTER.year}
         </p>
 
-        <p style={styles.tagline}>Keep learning, keep playing! 🎉</p>
+        <p style={styles.tagline}>
+          {STRINGS.FOOTER.tagline} {ICONS.common.party}
+        </p>
       </div>
     </footer>
   );
 }
-
-/* ================= STYLES ================= */
 
 const styles = {
   footer: {
@@ -57,3 +61,4 @@ const styles = {
     color: colors.primary[500],
   },
 };
+

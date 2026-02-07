@@ -1,52 +1,53 @@
-import HomeHeroStyle from '../../Styles/ComponentStyles/HomeHeroStyle';
-import colors from '../../constants/colors';
-import StatCard from '../../Cards/HomeCards/StatCard';
+import colors from '@/constants/colors';
+import { ICONS } from '@/constants/icons';
+import { STRINGS } from '@/constants/strings';
+import StatCard from '@/Cards/HomeCards/StatCard';
+import HomeHeroStyle from '@/Styles/ComponentStyles/HomeHeroStyle';
+
 export default function HomeHero({
-  metrics = {
-    active_players: '1M+',
-    questions: '50K+',
-    quizzes_created: '25K+',
-    fun_level: '100%',
-  },
+  metrics = STRINGS.HOME.statsDefaults,
   onStartPlaying,
   onCreateQuiz,
 }) {
   return (
     <section style={HomeHeroStyle.section}>
       <div style={HomeHeroStyle.container}>
-        {/* Top badge */}
         <div style={HomeHeroStyle.badge}>
-          <span style={HomeHeroStyle.badgeIcon}>🚀</span>
-          <span style={HomeHeroStyle.badgeText}>1M+ Players Worldwide!</span>
-          <span style={HomeHeroStyle.badgeDot}>🌍</span>
+          <span style={HomeHeroStyle.badgeIcon}>{ICONS.common.rocket}</span>
+          <span style={HomeHeroStyle.badgeText}>{STRINGS.HOME.badge.text}</span>
+          <span style={HomeHeroStyle.badgeDot}>{ICONS.common.globe}</span>
         </div>
 
-        {/* Headline */}
         <h1 style={HomeHeroStyle.title}>
-          <span style={HomeHeroStyle.titleTop}>Let's Play</span>
+          <span style={HomeHeroStyle.titleTop}>{STRINGS.HOME.hero.titleTop}</span>
           <span style={HomeHeroStyle.titleBottom}>
-            <span style={HomeHeroStyle.triviaWord}>Trivia</span>
-            <span style={HomeHeroStyle.exclamation}>!</span>
-            <span style={HomeHeroStyle.party}>🎉</span>
+            <span style={HomeHeroStyle.triviaWord}>
+              {STRINGS.HOME.hero.titleTrivia}
+            </span>
+            <span style={HomeHeroStyle.exclamation}>
+              {STRINGS.COMMON.symbols.exclamation}
+            </span>
+            <span style={HomeHeroStyle.party}>{ICONS.common.party}</span>
           </span>
         </h1>
 
-        {/* Subtitle */}
         <p style={HomeHeroStyle.subtitle}>
-          Test your brain, challenge friends, and become a quiz
+          {STRINGS.HOME.hero.subtitleLine1}
           <br />
-          champion! <span style={HomeHeroStyle.subtitleEmoji}>🧠 ✨</span>
+          {STRINGS.HOME.hero.subtitleLine2}{' '}
+          <span style={HomeHeroStyle.subtitleEmoji}>
+            {ICONS.common.brain} {ICONS.brand.sparkles}
+          </span>
         </p>
 
-        {/* CTAs */}
         <div style={HomeHeroStyle.ctaRow}>
           <button
             type="button"
             style={HomeHeroStyle.primaryBtn}
             onClick={onStartPlaying}
           >
-            <span style={HomeHeroStyle.btnIcon}>▶</span>
-            Start Playing!
+            <span style={HomeHeroStyle.btnIcon}>{ICONS.common.play}</span>
+            {STRINGS.HOME.ctas.startPlaying}
           </button>
 
           <button
@@ -54,35 +55,34 @@ export default function HomeHero({
             style={HomeHeroStyle.secondaryBtn}
             onClick={onCreateQuiz}
           >
-            <span style={HomeHeroStyle.btnIcon}>✨</span>
-            Create Quiz
+            <span style={HomeHeroStyle.btnIcon}>{ICONS.brand.sparkles}</span>
+            {STRINGS.HOME.ctas.createQuiz}
           </button>
         </div>
 
-        {/* Stats cards */}
         <div style={HomeHeroStyle.cardsGrid}>
           <StatCard
-            icon="👥"
+            icon={ICONS.common.people}
             value={metrics.active_players}
-            label="Active Players"
+            label={STRINGS.HOME.stats.activePlayers}
             valueColor={colors.accent.blue}
           />
           <StatCard
-            icon="❓"
+            icon={ICONS.common.question}
             value={metrics.questions}
-            label="Questions"
+            label={STRINGS.HOME.stats.questions}
             valueColor={colors.accent.green}
           />
           <StatCard
-            icon="✨"
+            icon={ICONS.brand.sparkles}
             value={metrics.quizzes_created}
-            label="Quizzes Created"
+            label={STRINGS.HOME.stats.quizzesCreated}
             valueColor={colors.primary[300]}
           />
           <StatCard
-            icon="🎉"
+            icon={ICONS.common.party}
             value={metrics.fun_level}
-            label="Fun Level"
+            label={STRINGS.HOME.stats.funLevel}
             valueColor={colors.secondary[400]}
           />
         </div>

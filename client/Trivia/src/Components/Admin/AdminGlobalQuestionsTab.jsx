@@ -1,6 +1,7 @@
 import React from 'react';
-import colors from '../../constants/colors';
 import AdminStyle from '../../Styles/ComponentStyles/AdminStyle';
+import AdminGlobalQuestionsTabStyle from '../../Styles/ComponentStyles/AdminGlobalQuestionsTabStyle';
+import { STRINGS } from '@/constants/strings';
 
 export default function AdminGlobalQuestionsTab({
   busy,
@@ -18,19 +19,19 @@ export default function AdminGlobalQuestionsTab({
   return (
     <div style={AdminStyle.grid}>
       <div style={AdminStyle.section}>
-        <h3 style={AdminStyle.sectionTitle}>Global Question Bank</h3>
+        <h3 style={AdminStyle.sectionTitle}>{STRINGS.ADMIN.sections.globalQuestionBank}</h3>
         <div style={AdminStyle.sectionSub}>
-          Browse all global questions, then assign them to a story level.
+          {STRINGS.ADMIN.sections.globalBankSubtitle}
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 10 }}>
+        <div style={AdminGlobalQuestionsTabStyle.rowMt10}>
           <select
-            style={{ ...AdminStyle.select, flex: 1 }}
+            style={AdminGlobalQuestionsTabStyle.selectFlex1}
             value={bank.levelId}
             onChange={(e) => setBank((v) => ({ ...v, levelId: e.target.value }))}
             disabled={busy}
           >
-            <option value="">Select story level...</option>
+            <option value="">{STRINGS.ADMIN.sections.selectStoryLevel}</option>
             {levels.map((lvl) => (
               <option key={lvl.id} value={lvl.id}>
                 #{lvl.level_number} - {lvl.title}
@@ -39,12 +40,12 @@ export default function AdminGlobalQuestionsTab({
           </select>
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 10 }}>
+        <div style={AdminGlobalQuestionsTabStyle.rowMt10}>
           <input
-            style={{ ...AdminStyle.input, flex: 1 }}
+            style={AdminGlobalQuestionsTabStyle.inputFlex1}
             value={bank.q}
             onChange={(e) => setBank((v) => ({ ...v, q: e.target.value }))}
-            placeholder="Search (optional)..."
+            placeholder={STRINGS.ADMIN.sections.searchOptional}
             disabled={busy}
             onKeyDown={(e) => {
               if (e.key === 'Enter') onSearch?.(0);
@@ -57,11 +58,11 @@ export default function AdminGlobalQuestionsTab({
             onClick={() => onSearch?.(0)}
             disabled={busy}
           >
-            Search
+            {STRINGS.ADMIN.actions.search}
           </button>
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 10 }}>
+        <div style={AdminGlobalQuestionsTabStyle.rowMt10}>
           <button
             type="button"
             className="tv-card tv-card--hover"
@@ -69,7 +70,7 @@ export default function AdminGlobalQuestionsTab({
             onClick={onSelectAll}
             disabled={busy || bank.results.length === 0}
           >
-            Select all (page)
+            {STRINGS.ADMIN.actions.selectAllPage}
           </button>
           <button
             type="button"
@@ -78,7 +79,7 @@ export default function AdminGlobalQuestionsTab({
             onClick={onClearSelected}
             disabled={busy || bank.selected.length === 0}
           >
-            Clear
+            {STRINGS.ADMIN.actions.clear}
           </button>
           <button
             type="button"
@@ -89,7 +90,7 @@ export default function AdminGlobalQuestionsTab({
             }
             disabled={busy || (bank.offset || 0) <= 0}
           >
-            Prev
+            {STRINGS.ADMIN.actions.prev}
           </button>
           <button
             type="button"
@@ -98,22 +99,28 @@ export default function AdminGlobalQuestionsTab({
             onClick={() => onSearch?.((bank.offset || 0) + (bank.limit || 30))}
             disabled={busy || bank.results.length < (bank.limit || 30)}
           >
-            Next
+            {STRINGS.ADMIN.actions.next}
           </button>
-          <span style={AdminStyle.pill}>Selected: {bank.selected.length}</span>
-          <span style={AdminStyle.pill}>Max: {selectedLimit}</span>
-          <span style={AdminStyle.pill}>Offset: {bank.offset || 0}</span>
+          <span style={AdminStyle.pill}>
+            {STRINGS.ADMIN.pills.selected} {bank.selected.length}
+          </span>
+          <span style={AdminStyle.pill}>
+            {STRINGS.ADMIN.pills.max} {selectedLimit}
+          </span>
+          <span style={AdminStyle.pill}>
+            {STRINGS.ADMIN.pills.offset} {bank.offset || 0}
+          </span>
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 12 }}>
+        <div style={AdminGlobalQuestionsTabStyle.rowMt12}>
           <button
             type="button"
             className="tv-card tv-card--hover"
-            style={{ ...AdminStyle.btn, ...AdminStyle.btnPrimary }}
+            style={AdminStyle.btnPrimaryFull}
             onClick={onAddSelectedToLevel}
             disabled={busy || !bank.levelId || bank.selected.length === 0}
           >
-            Add selected to level
+            {STRINGS.ADMIN.actions.addSelectedToLevel}
           </button>
           <button
             type="button"
@@ -121,22 +128,22 @@ export default function AdminGlobalQuestionsTab({
             style={AdminStyle.btn}
             onClick={onReplaceLevelPool}
             disabled={busy || !bank.levelId || bank.selected.length === 0}
-            title="Replace the entire level pool with your selection"
+            title={STRINGS.ADMIN.hints.replaceLevelPoolTitle}
           >
-            Replace level pool
+            {STRINGS.ADMIN.actions.replaceLevelPool}
           </button>
         </div>
 
-        <div style={{ ...AdminStyle.list, marginTop: 12 }}>
+        <div style={AdminGlobalQuestionsTabStyle.listMt12}>
           {bank.results.map((r) => (
             <div key={r.id} style={AdminStyle.listItem}>
-              <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <label style={AdminGlobalQuestionsTabStyle.resultLabel}>
                 <input
                   type="checkbox"
                   checked={bank.selected.includes(r.id)}
                   onChange={() => onToggleSelected?.(r.id)}
                   disabled={busy}
-                  style={{ marginTop: 3 }}
+                  style={AdminGlobalQuestionsTabStyle.checkbox}
                 />
                 <div>
                   <div style={AdminStyle.listItemTitle}>{r.question_text}</div>
@@ -149,8 +156,8 @@ export default function AdminGlobalQuestionsTab({
           ))}
 
           {bank.results.length === 0 && (
-            <div style={{ fontWeight: 850, color: colors.neutral[700] }}>
-              Click “Search” to load global questions.
+            <div style={AdminGlobalQuestionsTabStyle.emptyText}>
+              {STRINGS.ADMIN.hints.globalBankEmpty}
             </div>
           )}
         </div>
@@ -158,4 +165,3 @@ export default function AdminGlobalQuestionsTab({
     </div>
   );
 }
-

@@ -71,6 +71,9 @@ export const endpoints = {
   friendRequestCancel: (requestId) => `/api/friends/requests/${requestId}`,
   friendStats: (friendUserId) => `/api/friends/${friendUserId}/stats`,
 
+  // me
+  meProfile: () => '/api/me/profile',
+
   // admin
   adminStoryLevels: () => '/api/admin/story/levels',
   adminCreateStoryLevel: () => '/api/admin/story/levels',

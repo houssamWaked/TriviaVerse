@@ -1,12 +1,13 @@
 import React from 'react';
-import colors from '../../constants/colors';
 import AdminStyle from '../../Styles/ComponentStyles/AdminStyle';
+import AdminUiStyle from '../../Styles/ComponentStyles/AdminUiStyle';
+import { STRINGS } from '@/constants/strings';
 
 export function TabButton({ active, label, onClick }) {
   return (
     <button
       type="button"
-      style={{ ...AdminStyle.tabBtn, ...(active ? AdminStyle.tabBtnActive : {}) }}
+      style={AdminUiStyle.tabBtn(active)}
       onClick={onClick}
     >
       {label}
@@ -20,59 +21,27 @@ export function AdminModal({ open, title, onClose, children, maxWidth = 980 }) {
     <div
       role="dialog"
       aria-modal="true"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(6, 8, 20, 0.55)',
-        backdropFilter: 'blur(10px)',
-        zIndex: 9999,
-        padding: 18,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+      style={AdminUiStyle.modalOverlay}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose?.();
       }}
     >
       <div
         className="tv-card"
-        style={{
-          width: '100%',
-          maxWidth,
-          maxHeight: 'calc(100vh - 36px)',
-          overflow: 'auto',
-          borderRadius: 22,
-          background: colors.neutral.white,
-          boxShadow: '0 30px 90px rgba(0,0,0,0.35)',
-          border: `1px solid ${colors.neutral[200]}`,
-        }}
+        style={AdminUiStyle.modalCard(maxWidth)}
       >
-        <div
-          style={{
-            padding: 14,
-            borderBottom: `1px solid ${colors.neutral[200]}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-          }}
-        >
-          <div style={{ fontWeight: 950, color: colors.neutral[900] }}>{title}</div>
+        <div style={AdminUiStyle.modalHeader}>
+          <div style={AdminUiStyle.modalTitle}>{title}</div>
           <button
             type="button"
             className="tv-card tv-card--hover"
-            style={{
-              ...AdminStyle.btn,
-              height: 40,
-              borderRadius: 14,
-            }}
+            style={AdminUiStyle.modalCloseBtn}
             onClick={onClose}
           >
-            Close
+            {STRINGS.COMMON.buttons.close}
           </button>
         </div>
-        <div style={{ padding: 14 }}>{children}</div>
+        <div style={AdminUiStyle.modalBody}>{children}</div>
       </div>
     </div>
   );
@@ -83,19 +52,19 @@ export function SearchResults({
   selected,
   onToggle,
   busy,
-  emptyText = 'Search to see results here.',
+  emptyText = STRINGS.ADMIN.hints.searchToSeeResultsEmpty,
 }) {
   return (
     <div style={AdminStyle.list}>
       {results.map((r) => (
         <div key={r.id} style={AdminStyle.listItem}>
-          <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <label style={AdminUiStyle.resultLabel}>
             <input
               type="checkbox"
               checked={selected.includes(r.id)}
               onChange={() => onToggle(r.id)}
               disabled={busy}
-              style={{ marginTop: 3 }}
+              style={AdminUiStyle.checkbox}
             />
             <div>
               <div style={AdminStyle.listItemTitle}>{r.question_text}</div>
@@ -107,7 +76,7 @@ export function SearchResults({
         </div>
       ))}
       {results.length === 0 && (
-        <div style={{ fontWeight: 850, color: colors.neutral[700] }}>{emptyText}</div>
+        <div style={AdminUiStyle.emptyText}>{emptyText}</div>
       )}
     </div>
   );

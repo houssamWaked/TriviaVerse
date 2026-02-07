@@ -72,5 +72,21 @@ const CreateQuizBannerStyle = {
     color: colors.accent.yellow,
     userSelect: 'none',
   },
+  starTopRight: {
+    position: 'absolute',
+    fontSize: 22,
+    color: colors.accent.yellow,
+    userSelect: 'none',
+    top: 18,
+    right: 22,
+  },
+  starBottomLeft: {
+    position: 'absolute',
+    fontSize: 22,
+    color: colors.accent.yellow,
+    userSelect: 'none',
+    bottom: 20,
+    left: 26,
+  },
 };
 export default CreateQuizBannerStyle;

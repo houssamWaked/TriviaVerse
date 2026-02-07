@@ -64,6 +64,13 @@ const LeaderboardStyle = {
     alignItems: 'center',
     flexWrap: 'wrap',
   },
+  rowBetween: {
+    display: 'flex',
+    gap: 10,
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
   btn: {
     height: 46,
     padding: '0 16px',
@@ -104,6 +111,7 @@ const LeaderboardStyle = {
     flexDirection: 'column',
     gap: 10,
   },
+  emptyMessage: { fontWeight: 850, color: colors.neutral[700] },
   item: {
     padding: 12,
     borderRadius: 18,
@@ -120,6 +128,7 @@ const LeaderboardStyle = {
     gap: 12,
     minWidth: 0,
   },
+  nameWrap: { minWidth: 0 },
   rank: {
     width: 44,
     height: 44,
@@ -160,4 +169,3 @@ const LeaderboardStyle = {
 };
 
 export default LeaderboardStyle;
-

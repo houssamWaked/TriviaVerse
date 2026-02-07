@@ -1,15 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import colors from '../constants/colors';
-import { api } from '../api';
-import ModeStartStyle from '../Styles/ComponentStyles/ModeStartStyle';
-
-function getApiErrorMessage(err) {
-  return (
-    err?.response?.data?.message ||
-    err?.message ||
-    'Something went wrong. Please try again.'
-  );
-}
+import { ICONS } from '@/constants/icons';
+import { STRINGS } from '@/constants/strings';
+import { api } from '@/api';
+import ModeStartStyle from '@/Styles/ComponentStyles/ModeStartStyle';
+import MillionaireStyle from '@/Styles/ComponentStyles/MillionaireStyle';
+import { getApiErrorMessage } from '@/utils/apiError';
 
 export default function Millionaire({
   user,
@@ -66,99 +61,46 @@ export default function Millionaire({
       <div style={ModeStartStyle.container}>
         <div style={ModeStartStyle.hero}>
           <div
-            style={{
-              width: 74,
-              height: 74,
-              borderRadius: 999,
-              background: colors.accent.yellow,
-              margin: '0 auto 14px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 18px 44px rgba(216, 46, 46, 0.18)',
-              color: colors.neutral.white,
-              fontSize: 34,
-              fontWeight: 950,
-            }}
-            aria-label="Crown"
+            style={MillionaireStyle.crown}
+            aria-label={STRINGS.MILLIONAIRE.aria.crown}
           >
-            ♛
+            {ICONS.common.crown}
           </div>
-          <h1 style={ModeStartStyle.title}>Millionaire Mode</h1>
-          <p style={ModeStartStyle.subtitle}>
-            Answer 15 questions to win €1,000,000.
-          </p>
+          <h1 style={ModeStartStyle.title}>{STRINGS.MILLIONAIRE.title}</h1>
+          <p style={ModeStartStyle.subtitle}>{STRINGS.MILLIONAIRE.subtitle}</p>
         </div>
 
         <div className="tv-card" style={ModeStartStyle.card}>
-          <div
-            style={{ ...ModeStartStyle.row, justifyContent: 'space-between' }}
-          >
+          <div style={MillionaireStyle.cardTopRow}>
             <button
               type="button"
               className="tv-card tv-card--hover"
               style={ModeStartStyle.btn}
               onClick={onNavigateHome}
             >
-              Back to Home
+              {STRINGS.COMMON.backHome}
             </button>
-            <span style={ModeStartStyle.pill}>Lifelines enabled</span>
+            <span style={ModeStartStyle.pill}>{STRINGS.MILLIONAIRE.lifelinesEnabled}</span>
           </div>
 
           {!!error && <div style={ModeStartStyle.error}>{error}</div>}
 
           <div
             className="tv-card"
-            style={{
-              ...ModeStartStyle.section,
-              maxWidth: 720,
-              margin: '18px auto 0',
-              background:
-                'linear-gradient(180deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.14) 100%)',
-              border: '1px solid rgba(255,255,255,0.32)',
-              boxShadow: '0 18px 44px rgba(0,0,0,0.14)',
-              backdropFilter: 'blur(10px)',
-            }}
+            style={MillionaireStyle.rulesCard}
           >
-            <h3
-              style={{
-                ...ModeStartStyle.sectionTitle,
-                textAlign: 'center',
-                color: colors.neutral.white,
-              }}
-            >
-              Rules
+            <h3 style={MillionaireStyle.rulesTitle}>
+              {STRINGS.MILLIONAIRE.rulesTitle}
             </h3>
 
-            <div
-              style={{
-                marginTop: 14,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 10,
-              }}
-            >
-              {[
-                'Answer 15 multiple choice questions',
-                'Use three lifelines: 50:50, Phone a Friend, Ask the Audience',
-                'One wrong answer ends the game',
-                'Walk away at any time with your current winnings',
-              ].map((t) => (
+            <div style={MillionaireStyle.rulesList}>
+              {STRINGS.MILLIONAIRE.rules.map((t) => (
                 <div
                   key={t}
-                  style={{
-                    display: 'flex',
-                    gap: 10,
-                    alignItems: 'flex-start',
-                    fontSize: 14,
-                    fontWeight: 900,
-                    color: 'rgba(255,255,255,0.94)',
-                    lineHeight: 1.55,
-                    textShadow: '0 10px 26px rgba(0,0,0,0.14)',
-                  }}
+                  style={MillionaireStyle.ruleRow}
                 >
-                  <span style={{ color: colors.accent.green, fontWeight: 950 }}>
-                    ✓
+                  <span style={MillionaireStyle.ruleTick}>
+                    {ICONS.common.tick}
                   </span>
                   <span>{t}</span>
                 </div>
@@ -166,39 +108,26 @@ export default function Millionaire({
             </div>
 
             {ladders.length > 0 ? (
-              <div style={{ marginTop: 16 }}>
+              <div style={MillionaireStyle.ladderToggleWrap}>
                 <button
                   type="button"
                   className="tv-card tv-card--hover"
-                  style={{
-                    ...ModeStartStyle.btn,
-                    background: 'rgba(255,255,255,0.10)',
-                    border: '1px solid rgba(255,255,255,0.22)',
-                    color: colors.neutral.white,
-                  }}
+                  style={MillionaireStyle.ladderToggleBtn}
                   onClick={() => setShowAdvanced((v) => !v)}
                   disabled={busy}
                 >
-                  {showAdvanced ? 'Hide' : 'Show'} advanced ladder
+                  {showAdvanced
+                    ? STRINGS.MILLIONAIRE.ladder.toggleHide
+                    : STRINGS.MILLIONAIRE.ladder.toggleShow}
                 </button>
 
                 {showAdvanced && (
                   <div style={ModeStartStyle.field}>
-                    <span
-                      style={{
-                        ...ModeStartStyle.label,
-                        color: 'rgba(255,255,255,0.92)',
-                      }}
-                    >
-                      Ladder config
+                    <span style={MillionaireStyle.ladderLabel}>
+                      {STRINGS.MILLIONAIRE.ladder.configLabel}
                     </span>
                     <select
-                      style={{
-                        ...ModeStartStyle.select,
-                        background: 'rgba(255,255,255,0.92)',
-                        color: colors.neutral[900],
-                        border: '1px solid rgba(255,255,255,0.32)',
-                      }}
+                      style={MillionaireStyle.ladderSelect}
                       value={ladderId}
                       onChange={(e) => setLadderId(e.target.value)}
                       disabled={busy}
@@ -209,15 +138,9 @@ export default function Millionaire({
                         </option>
                       ))}
                     </select>
-                    <div
-                      style={{
-                        marginTop: 8,
-                        fontSize: 12,
-                        fontWeight: 850,
-                        color: 'rgba(255,255,255,0.82)',
-                      }}
-                    >
-                      Current: {selectedLadder?.name || 'Default'}
+                    <div style={MillionaireStyle.ladderCurrent}>
+                      {STRINGS.MILLIONAIRE.ladder.currentPrefix}{' '}
+                      {selectedLadder?.name || STRINGS.MILLIONAIRE.ladder.defaultName}
                     </div>
                   </div>
                 )}
@@ -225,66 +148,36 @@ export default function Millionaire({
             ) : null}
           </div>
 
-          <div
-            style={{
-              marginTop: 18,
-              display: 'flex',
-              justifyContent: 'center',
-              gap: 12,
-              flexWrap: 'wrap',
-            }}
-          >
+          <div style={MillionaireStyle.actions}>
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{
-                ...ModeStartStyle.btn,
-                height: 54,
-                minWidth: 180,
-                border: 'none',
-                background: colors.accent.yellow,
-                color: colors.neutral.white,
-                boxShadow: '0 18px 44px rgba(0,0,0,0.18)',
-              }}
+              style={MillionaireStyle.startBtn}
               onClick={start}
               disabled={busy || !user}
             >
-              Start Game
+              {STRINGS.MILLIONAIRE.buttons.startGame}
             </button>
 
             {!user ? (
               <button
                 type="button"
                 className="tv-card tv-card--hover"
-                style={{
-                  ...ModeStartStyle.btn,
-                  height: 54,
-                  minWidth: 180,
-                  background: 'rgba(255,255,255,0.14)',
-                  border: '1px solid rgba(255,255,255,0.22)',
-                  color: colors.neutral.white,
-                }}
+                style={MillionaireStyle.secondaryBtn}
                 onClick={() => onRequireAuth?.('millionaire')}
                 disabled={busy}
               >
-                Join / Login
+                {STRINGS.COMMON.joinLogin}
               </button>
             ) : (
               <button
                 type="button"
                 className="tv-card tv-card--hover"
-                style={{
-                  ...ModeStartStyle.btn,
-                  height: 54,
-                  minWidth: 180,
-                  background: 'rgba(255,255,255,0.14)',
-                  border: '1px solid rgba(255,255,255,0.22)',
-                  color: colors.neutral.white,
-                }}
+                style={MillionaireStyle.secondaryBtn}
                 onClick={onNavigateHome}
                 disabled={busy}
               >
-                Back to Home
+                {STRINGS.COMMON.backHome}
               </button>
             )}
           </div>

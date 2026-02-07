@@ -73,6 +73,7 @@ const StoryStyle = {
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
+  topActions: { display: 'flex', gap: 10, flexWrap: 'wrap' },
   btn: {
     height: 46,
     padding: '0 16px',
@@ -82,6 +83,30 @@ const StoryStyle = {
     fontSize: 14,
     fontWeight: 950,
     boxShadow: '0 12px 26px rgba(0,0,0,0.10)',
+  },
+  btnWhite: {
+    height: 46,
+    padding: '0 16px',
+    borderRadius: 16,
+    border: `1px solid ${colors.neutral[200]}`,
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 950,
+    boxShadow: '0 12px 26px rgba(0,0,0,0.10)',
+    background: colors.neutral.white,
+    color: colors.neutral[900],
+  },
+  btnPrimary: {
+    height: 46,
+    padding: '0 16px',
+    borderRadius: 16,
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 950,
+    boxShadow: '0 12px 26px rgba(0,0,0,0.10)',
+    background: colors.gradients.main,
+    color: colors.neutral.white,
   },
   pills: {
     display: 'flex',
@@ -126,6 +151,17 @@ const StoryStyle = {
     background: colors.neutral.white,
     cursor: 'pointer',
     boxShadow: '0 18px 50px rgba(0,0,0,0.12)',
+  },
+  levelCardLocked: {
+    width: '100%',
+    textAlign: 'left',
+    padding: 16,
+    borderRadius: 22,
+    border: `1px solid ${colors.neutral[200]}`,
+    background: colors.neutral.white,
+    cursor: 'not-allowed',
+    boxShadow: '0 18px 50px rgba(0,0,0,0.12)',
+    opacity: 0.62,
   },
   levelTop: {
     display: 'flex',
@@ -177,4 +213,3 @@ const StoryStyle = {
 };
 
 export default StoryStyle;
-

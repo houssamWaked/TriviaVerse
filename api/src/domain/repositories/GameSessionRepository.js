@@ -100,4 +100,18 @@ export class GameSessionRepository {
     if (error) throw toAppError(error);
     return true;
   }
+
+  async listByUserId(userId, limit = 200) {
+    const lim = Math.min(1000, Math.max(1, Number(limit) || 200));
+    const { data, error } = await supabase
+      .from('game_sessions')
+      .select(
+        'id, user_id, mode, quiz_id, category_id, difficulty, total_questions, started_at, ended_at, score_total, status'
+      )
+      .eq('user_id', userId)
+      .order('ended_at', { ascending: false, nullsFirst: false })
+      .limit(lim);
+    if (error) throw toAppError(error);
+    return data || [];
+  }
 }

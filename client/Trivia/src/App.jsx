@@ -8,6 +8,7 @@ import PlaySession from './Pages/PlaySession';
 import MyPlays from './Pages/MyPlays';
 import Friends from './Pages/Friends';
 import FriendProfile from './Pages/FriendProfile';
+import Profile from './Pages/Profile';
 import Story from './Pages/Story';
 import Classic from './Pages/Classic';
 import Blitz from './Pages/Blitz';
@@ -17,7 +18,9 @@ import Admin from './Pages/Admin';
 import Navbar from './shared/layout/Navbar';
 import Footer from './shared/layout/Footer';
 import AuthModal from './Components/Auth/AuthModal';
-import colors from './constants/colors';
+import AppStyle from './Styles/AppStyle';
+import { getApiErrorMessage } from '@/utils/apiError';
+import { STRINGS } from '@/constants/strings';
 import {
   api,
   clearAuthToken,
@@ -26,14 +29,6 @@ import {
   setAuthToken,
   setCurrentUser,
 } from './api';
-
-function getApiErrorMessage(err) {
-  return (
-    err?.response?.data?.message ||
-    err?.message ||
-    'Something went wrong. Please try again.'
-  );
-}
 
 function getRoute() {
   const hash = String(window.location.hash || '').replace(/^#/, '') || '/';
@@ -56,6 +51,7 @@ function getRoute() {
   if (parts[0] === 'my-plays') return { name: 'my-plays' };
   if (parts[0] === 'friends' && parts[1]) return { name: 'friend', friendUserId: parts[1] };
   if (parts[0] === 'friends') return { name: 'friends' };
+  if (parts[0] === 'profile') return { name: 'profile' };
   if (parts[0] === 'story') {
     return { name: 'story' };
   }
@@ -111,6 +107,10 @@ function navigate(route, params = {}) {
   }
   if (route === 'friend') {
     window.location.hash = `#/friends/${encodeURIComponent(params.friendUserId)}`;
+    return;
+  }
+  if (route === 'profile') {
+    window.location.hash = '#/profile';
     return;
   }
   if (route === 'story') {
@@ -210,7 +210,7 @@ function App() {
   }, [user?.email]);
 
   return (
-    <div style={{ minHeight: '100vh', background: colors.neutral.white }}>
+    <div style={AppStyle.shell}>
       <Navbar
         user={user}
         onJoin={() => {
@@ -240,6 +240,7 @@ function App() {
         onDiscoverQuizzes={() => navigate('quizzes')}
         onMyPlays={() => navigate('my-plays')}
         onFriends={() => navigate('friends')}
+        onProfile={() => navigate('profile')}
         showAdmin={isAdmin}
         onAdmin={() => navigate('admin')}
         onLeaderboard={() => navigate('leaderboard')}
@@ -273,7 +274,9 @@ function App() {
           sessionId={route.sessionId}
           user={user}
           variant={route.from === 'story' ? 'story' : 'default'}
-          backLabel={route.from === 'story' ? 'Back to story' : 'Back to quizzes'}
+          backLabel={
+            route.from === 'story' ? STRINGS.PLAY.backToStory : STRINGS.PLAY.backToQuizzes
+          }
           onRequireAuth={() =>
             openAuth('login', {
               name: 'play',
@@ -306,6 +309,13 @@ function App() {
           onBack={() => navigate('friends')}
           onOpenQuiz={(quizId) => navigate('quiz', { quizId })}
           onNavigateHome={() => navigate('home')}
+        />
+      ) : route.name === 'profile' ? (
+        <Profile
+          user={user}
+          onRequireAuth={() => openAuth('login', 'profile')}
+          onNavigateHome={() => navigate('home')}
+          onOpenQuiz={(quizId) => navigate('quiz', { quizId })}
         />
       ) : route.name === 'story' ? (
         <Story

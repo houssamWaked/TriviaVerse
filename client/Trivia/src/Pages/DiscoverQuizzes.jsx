@@ -1,29 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import colors from '../constants/colors';
-import { api } from '../api';
-import DiscoverQuizzesStyle from '../Styles/ComponentStyles/DiscoverQuizzesStyle';
-
-function getApiErrorMessage(err) {
-  return (
-    err?.response?.data?.message ||
-    err?.message ||
-    'Something went wrong. Please try again.'
-  );
-}
+import { ICONS } from '@/constants/icons';
+import { STRINGS } from '@/constants/strings';
+import { api } from '@/api';
+import DiscoverQuizzesStyle from '@/Styles/ComponentStyles/DiscoverQuizzesStyle';
+import { getApiErrorMessage } from '@/utils/apiError';
 
 function formatRating(avg, count) {
   const a = Number(avg);
   const c = Number(count);
   const avgText = Number.isFinite(a) ? a.toFixed(a % 1 === 0 ? 0 : 1) : '0';
   const countText = Number.isFinite(c) ? c : 0;
-  return `⭐ ${avgText} (${countText})`;
+  return `${ICONS.common.star} ${avgText} (${countText})`;
 }
 
-export default function DiscoverQuizzes({
-  user,
-  onOpenQuiz,
-  onNavigateHome,
-}) {
+export default function DiscoverQuizzes({ user, onOpenQuiz, onNavigateHome }) {
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -32,8 +22,8 @@ export default function DiscoverQuizzes({
   const canSeePrivate = !!user;
 
   const placeholder = canSeePrivate
-    ? 'Search quizzes by title (includes private shared with you)…'
-    : 'Search public quizzes by title…';
+    ? STRINGS.DISCOVER_QUIZZES.placeholder.loggedIn
+    : STRINGS.DISCOVER_QUIZZES.placeholder.loggedOut;
 
   const loadTop = useCallback(async () => {
     setBusy(true);
@@ -89,15 +79,15 @@ export default function DiscoverQuizzes({
     if (!user) {
       return (
         <div style={DiscoverQuizzesStyle.note}>
-          <span style={DiscoverQuizzesStyle.noteIcon}>🔓</span>
-          Login to also see private quizzes shared with you.
+          <span style={DiscoverQuizzesStyle.noteIcon}>{ICONS.common.bookmark}</span>
+          {STRINGS.DISCOVER_QUIZZES.note.loggedOut}
         </div>
       );
     }
     return (
       <div style={DiscoverQuizzesStyle.note}>
-        <span style={DiscoverQuizzesStyle.noteIcon}>🔒</span>
-        Private quizzes shared with you can appear here.
+        <span style={DiscoverQuizzesStyle.noteIcon}>{ICONS.common.lock}</span>
+        {STRINGS.DISCOVER_QUIZZES.note.loggedIn}
       </div>
     );
   }, [user]);
@@ -107,16 +97,20 @@ export default function DiscoverQuizzes({
       <div style={DiscoverQuizzesStyle.container}>
         <div style={DiscoverQuizzesStyle.hero}>
           <div style={DiscoverQuizzesStyle.badge}>
-            <span style={DiscoverQuizzesStyle.badgeIcon}>🔎</span>
-            <span style={DiscoverQuizzesStyle.badgeText}>Discover quizzes</span>
-            <span style={DiscoverQuizzesStyle.badgeDot}>✨</span>
+            <span style={DiscoverQuizzesStyle.badgeIcon}>{ICONS.common.search}</span>
+            <span style={DiscoverQuizzesStyle.badgeText}>
+              {STRINGS.DISCOVER_QUIZZES.badge.text}
+            </span>
+            <span style={DiscoverQuizzesStyle.badgeDot}>{ICONS.brand.sparkles}</span>
           </div>
           <h1 style={DiscoverQuizzesStyle.title}>
-            Find the <span style={DiscoverQuizzesStyle.titleAccent}>best</span> quizzes
+            {STRINGS.DISCOVER_QUIZZES.titlePrefix}{' '}
+            <span style={DiscoverQuizzesStyle.titleAccent}>
+              {STRINGS.DISCOVER_QUIZZES.titleAccent}
+            </span>{' '}
+            {STRINGS.DISCOVER_QUIZZES.titleSuffix}
           </h1>
-          <p style={DiscoverQuizzesStyle.subtitle}>
-            Search by name — results are sorted by rating, so the best rise to the top.
-          </p>
+          <p style={DiscoverQuizzesStyle.subtitle}>{STRINGS.DISCOVER_QUIZZES.subtitle}</p>
         </div>
 
         {headerNote}
@@ -133,24 +127,20 @@ export default function DiscoverQuizzes({
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{
-                ...DiscoverQuizzesStyle.btn,
-                background: colors.gradients.main,
-                color: colors.neutral.white,
-              }}
+              style={DiscoverQuizzesStyle.btnPrimary}
               disabled={busy || !String(q).trim()}
               onClick={() => doSearch(q)}
             >
-              Search
+              {STRINGS.DISCOVER_QUIZZES.buttons.search}
             </button>
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{ ...DiscoverQuizzesStyle.btn, background: colors.neutral.white }}
+              style={DiscoverQuizzesStyle.btnWhite}
               onClick={onNavigateHome}
               disabled={busy}
             >
-              Home
+              {STRINGS.COMMON.buttons.home}
             </button>
           </div>
           {!!error && <div style={DiscoverQuizzesStyle.error}>{error}</div>}
@@ -170,7 +160,15 @@ export default function DiscoverQuizzes({
                   <div style={DiscoverQuizzesStyle.quizTitle}>{quiz.title}</div>
                   <div style={DiscoverQuizzesStyle.pills}>
                     <span style={DiscoverQuizzesStyle.pill}>
-                      {quiz.visibility === 'private' ? '🔒 private' : '🌍 public'}
+                      {quiz.visibility === 'private' ? (
+                        <>
+                          {ICONS.common.lock} {STRINGS.MY_PLAYS.visibility.private}
+                        </>
+                      ) : (
+                        <>
+                          {ICONS.common.globe} {STRINGS.MY_PLAYS.visibility.public}
+                        </>
+                      )}
                     </span>
                     <span style={DiscoverQuizzesStyle.pill}>
                       {formatRating(quiz.ratings_avg, quiz.ratings_count)}
@@ -180,14 +178,14 @@ export default function DiscoverQuizzes({
 
                 <div style={DiscoverQuizzesStyle.meta}>
                   <span style={DiscoverQuizzesStyle.metaItem}>
-                    <span style={DiscoverQuizzesStyle.metaIcon}>👤</span>
-                    {quiz.owner?.username || 'Unknown'}
+                    <span style={DiscoverQuizzesStyle.metaIcon}>{ICONS.common.user}</span>
+                    {quiz.owner?.username || STRINGS.DISCOVER_QUIZZES.ownerUnknown}
                   </span>
                   <span style={DiscoverQuizzesStyle.metaItem}>
-                    <span style={DiscoverQuizzesStyle.metaIcon}>🗓</span>
+                    <span style={DiscoverQuizzesStyle.metaIcon}>{ICONS.common.calendar}</span>
                     {quiz.published_at
                       ? new Date(quiz.published_at).toLocaleDateString()
-                      : '—'}
+                      : STRINGS.COMMON.separators.emDash}
                   </span>
                 </div>
 
@@ -195,17 +193,19 @@ export default function DiscoverQuizzes({
                   <div style={DiscoverQuizzesStyle.desc}>{quiz.description}</div>
                 )}
 
-                <div style={DiscoverQuizzesStyle.openHint}>Open →</div>
+                <div style={DiscoverQuizzesStyle.openHint}>
+                  {STRINGS.DISCOVER_QUIZZES.openHint}
+                </div>
               </button>
             ))}
           </div>
         ) : (
           <div style={DiscoverQuizzesStyle.empty}>
-            <div style={DiscoverQuizzesStyle.emptyTitle}>Top quizzes ✨</div>
+            <div style={DiscoverQuizzesStyle.emptyTitle}>
+              {STRINGS.DISCOVER_QUIZZES.empty.title}
+            </div>
             <div style={DiscoverQuizzesStyle.emptyText}>
-              {busy
-                ? 'Loading…'
-                : 'No quizzes yet — publish some quizzes and ratings will rank them here.'}
+              {busy ? STRINGS.DISCOVER_QUIZZES.empty.loading : STRINGS.DISCOVER_QUIZZES.empty.noQuizzes}
             </div>
           </div>
         )}

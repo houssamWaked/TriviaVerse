@@ -13,6 +13,12 @@ const FeatureCardStyle = {
     marginBottom: 18,
     filter: 'drop-shadow(0 8px 14px rgba(0,0,0,0.15))',
   },
+  iconColor: (color) => ({
+    fontSize: 56,
+    marginBottom: 18,
+    filter: 'drop-shadow(0 8px 14px rgba(0,0,0,0.15))',
+    color,
+  }),
 
   title: {
     margin: 0,

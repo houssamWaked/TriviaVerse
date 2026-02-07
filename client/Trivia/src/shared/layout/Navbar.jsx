@@ -1,4 +1,6 @@
-import colors from '../../constants/colors'; // adjust path if needed
+import colors from '@/constants/colors';
+import { ICONS } from '@/constants/icons';
+import { STRINGS } from '@/constants/strings';
 
 export default function Navbar({
   user,
@@ -9,6 +11,7 @@ export default function Navbar({
   onDiscoverQuizzes,
   onMyPlays,
   onFriends,
+  onProfile,
   showAdmin = false,
   onAdmin,
   onLeaderboard,
@@ -16,38 +19,78 @@ export default function Navbar({
   return (
     <nav style={styles.nav}>
       <div style={styles.container}>
-        {/* Left: Logo */}
         <div style={styles.logoWrap}>
-          <div style={styles.logoIcon}>✨</div>
-          <span style={styles.logoText}>TriviaVerse</span>
+          <div style={styles.logoIcon}>{ICONS.brand.sparkles}</div>
+          <span style={styles.logoText}>{STRINGS.COMMON.appName}</span>
         </div>
 
-        {/* Center: Links */}
         <div style={styles.links}>
-          <NavItem icon="📚" label="Story" onClick={onStory} />
-          <NavItem icon="🔎" label="Quizzes" onClick={onDiscoverQuizzes} />
-          {user && <NavItem icon="🎮" label="My Plays" onClick={onMyPlays} />}
-          {user && <NavItem icon="🤝" label="Friends" onClick={onFriends} />}
-          {showAdmin && <NavItem icon="🛠️" label="Admin" onClick={onAdmin} />}
-          <NavItem icon="🏆" label="Leaderboard" onClick={onLeaderboard} />
-          <NavItem icon="✨" label="Create Quiz" onClick={onCreateQuiz} />
+          <NavItem
+            icon={ICONS.common.book}
+            label={STRINGS.NAV.story}
+            onClick={onStory}
+          />
+          <NavItem
+            icon={ICONS.common.search}
+            label={STRINGS.NAV.quizzes}
+            onClick={onDiscoverQuizzes}
+          />
+          {user && (
+            <NavItem
+              icon={ICONS.common.gamepad}
+              label={STRINGS.NAV.myPlays}
+              onClick={onMyPlays}
+            />
+          )}
+          {user && (
+            <NavItem
+              icon={ICONS.common.handshake}
+              label={STRINGS.NAV.friends}
+              onClick={onFriends}
+            />
+          )}
+          {user && (
+            <NavItem
+              icon={ICONS.common.user}
+              label={STRINGS.NAV.profile}
+              onClick={onProfile}
+            />
+          )}
+          {showAdmin && (
+            <NavItem
+              icon={ICONS.common.wrench}
+              label={STRINGS.NAV.admin}
+              onClick={onAdmin}
+            />
+          )}
+          <NavItem
+            icon={ICONS.common.trophy}
+            label={STRINGS.NAV.leaderboard}
+            onClick={onLeaderboard}
+          />
+          <NavItem
+            icon={ICONS.brand.sparkles}
+            label={STRINGS.NAV.createQuiz}
+            onClick={onCreateQuiz}
+          />
         </div>
 
-        {/* Right: CTA */}
         <div style={styles.right}>
           {user ? (
             <>
               <div style={styles.userPill}>
-                <span style={styles.userIcon}>👋</span>
-                <span style={styles.userName}>{user.username || 'Player'}</span>
+                <span style={styles.userIcon}>{ICONS.common.wave}</span>
+                <span style={styles.userName}>
+                  {user.username || STRINGS.COMMON.playerFallback}
+                </span>
               </div>
               <button type="button" style={styles.logout} onClick={onLogout}>
-                Logout
+                {STRINGS.COMMON.logout}
               </button>
             </>
           ) : (
             <button type="button" style={styles.cta} onClick={onJoin}>
-              Join Now! 🚀
+              {STRINGS.COMMON.joinNow} {ICONS.common.rocket}
             </button>
           )}
         </div>
@@ -64,8 +107,6 @@ function NavItem({ icon, label, onClick }) {
     </button>
   );
 }
-
-/* ================= STYLES ================= */
 
 const styles = {
   nav: {
@@ -85,7 +126,6 @@ const styles = {
     gap: 18,
   },
 
-  /* Logo */
   logoWrap: {
     display: 'flex',
     alignItems: 'center',
@@ -111,7 +151,6 @@ const styles = {
     WebkitTextFillColor: 'transparent',
   },
 
-  /* Center links */
   links: {
     display: 'flex',
     alignItems: 'center',
@@ -134,7 +173,6 @@ const styles = {
     fontSize: 16,
   },
 
-  /* CTA */
   right: {
     display: 'flex',
     justifyContent: 'flex-end',
@@ -151,7 +189,7 @@ const styles = {
     fontWeight: 700,
     color: colors.neutral.white,
     background: colors.gradients.main,
-    boxShadow: `0 8px 20px rgba(139,44,255,0.25)`,
+    boxShadow: '0 8px 20px rgba(139,44,255,0.25)',
   },
 
   userPill: {
@@ -178,6 +216,6 @@ const styles = {
     fontWeight: 900,
     color: colors.neutral[800],
     background: colors.neutral.white,
-    boxShadow: `0 8px 20px rgba(0,0,0,0.08)`,
+    boxShadow: '0 8px 20px rgba(0,0,0,0.08)',
   },
 };

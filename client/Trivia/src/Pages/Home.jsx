@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import colors from '../constants/colors';
-import HomeHero from '../Components/HomeComponents/HomeHero';
-import Modes from '../Components/HomeComponents/Modes';
-import CreateQuizBanner from '../Components/HomeComponents/CreateQuizBanner';
-import FeaturesStrip from '../Components/HomeComponents/FeaturesStrip';
-import { api } from '../api';
+import colors from '@/constants/colors';
+import { STRINGS } from '@/constants/strings';
+import { api } from '@/api';
+import CreateQuizBanner from '@/Components/HomeComponents/CreateQuizBanner';
+import FeaturesStrip from '@/Components/HomeComponents/FeaturesStrip';
+import HomeHero from '@/Components/HomeComponents/HomeHero';
+import Modes from '@/Components/HomeComponents/Modes';
 
 const styles = {
   main: {
@@ -17,7 +18,7 @@ const styles = {
 
 function formatCount(n) {
   const num = Number(n);
-  if (!Number.isFinite(num)) return '—';
+  if (!Number.isFinite(num)) return STRINGS.COMMON.separators.emDash;
   if (num >= 1_000_000) return `${Math.floor(num / 1_000_000)}M+`;
   if (num >= 1_000) return `${Math.floor(num / 1_000)}K+`;
   return String(num);
@@ -88,4 +89,6 @@ function Home({
     </main>
   );
 }
+
 export default Home;
+

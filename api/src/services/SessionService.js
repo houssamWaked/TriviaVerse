@@ -2,6 +2,7 @@
  * Shared session gameplay service.
  */
 import AppError from '../utils/AppError.js';
+import { sessionCache } from '../utils/sessionCache.js';
 
 const LABELS = ['A', 'B', 'C', 'D', 'E', 'F'];
 const MILLIONAIRE_PRIZES = [
@@ -25,6 +26,13 @@ function computeStars({ scoreTotal = 0, maxScore = 0, passScoreMin = null }) {
 function computeTimeRemainingSec(session) {
   if (!session?.started_at) return null;
   const started = new Date(session.started_at).getTime();
+  const elapsed = Math.floor((Date.now() - started) / 1000);
+  return Math.max(0, 60 - elapsed);
+}
+
+function computeTimeRemainingFromStartedAt(started_at) {
+  if (!started_at) return null;
+  const started = new Date(started_at).getTime();
   const elapsed = Math.floor((Date.now() - started) / 1000);
   return Math.max(0, 60 - elapsed);
 }
@@ -99,6 +107,24 @@ export class SessionService {
   }
 
   async getCurrent(sessionId, userId) {
+    const cached = sessionCache.get(sessionId);
+    if (cached?.mode === 'blitz') {
+      if (cached.user_id !== userId) throw new AppError('Forbidden', 403, 'FORBIDDEN');
+      if (cached.status && cached.status !== 'in_progress') {
+        throw new AppError('Session is not active', 409, 'NOT_ACTIVE');
+      }
+
+      const idx = Math.max(0, Number(cached.current_index) || 0);
+      const current = Array.isArray(cached.questions) ? cached.questions[idx] : null;
+      if (!current) throw new AppError('No current question', 404, 'NO_CURRENT_QUESTION');
+
+      return {
+        ...current,
+        score_total: cached.score_total ?? 0,
+        time_remaining_sec: computeTimeRemainingFromStartedAt(cached.started_at),
+      };
+    }
+
     const session = await this.assertSessionOwner(sessionId, userId);
     const questions = await this.sessionQuestionRepository.listBySessionId(sessionId);
     if (questions.length === 0) throw new AppError('No questions in session', 404, 'NOT_FOUND');
@@ -169,6 +195,65 @@ export class SessionService {
   }
 
   async submitAnswer(sessionId, userId, body) {
+    const cached = sessionCache.get(sessionId);
+    if (cached?.mode === 'blitz') {
+      if (cached.user_id !== userId) throw new AppError('Forbidden', 403, 'FORBIDDEN');
+
+      const remaining = computeTimeRemainingFromStartedAt(cached.started_at);
+      if (remaining != null && remaining <= 0) {
+        throw new AppError('Time is up', 409, 'TIME_UP');
+      }
+
+      const idx = Math.max(0, Number(cached.current_index) || 0);
+      const current = Array.isArray(cached.questions) ? cached.questions[idx] : null;
+      if (!current) throw new AppError('No current question', 404, 'NO_CURRENT_QUESTION');
+
+      if (String(body.session_question_id) !== String(current.session_question_id)) {
+        throw new AppError('Invalid session_question_id', 400, 'INVALID_INPUT');
+      }
+
+      const chosen = (current.options || []).find((o) => o.id === body.chosen_option_id);
+      if (!chosen) throw new AppError('Invalid chosen_option_id', 400, 'INVALID_INPUT');
+
+      const correctId =
+        cached.correct_option_id_by_session_question_id?.[current.session_question_id] || null;
+      const is_correct = correctId ? String(correctId) === String(body.chosen_option_id) : false;
+
+      // Persist answer (DB is still the source of truth).
+      await this.sessionAnswerRepository.create({
+        session_question_id: current.session_question_id,
+        chosen_option_id: body.chosen_option_id,
+        is_correct,
+        answered_in_sec: body.answered_in_sec ?? null,
+      });
+
+      const scoreDelta = is_correct ? 1 : 0;
+      const updatedSession = await this.gameSessionRepository.addScore(sessionId, scoreDelta);
+      cached.score_total = updatedSession?.score_total ?? cached.score_total ?? 0;
+      cached.current_index = idx + 1;
+
+      const next = Array.isArray(cached.questions) ? cached.questions[cached.current_index] : null;
+      const next_question_available = !!next;
+
+      sessionCache.set(sessionId, cached);
+
+      return {
+        is_correct,
+        score_total: cached.score_total ?? 0,
+        time_remaining_sec: computeTimeRemainingFromStartedAt(cached.started_at),
+        next_question_available,
+        ...(next
+          ? {
+              next_question: {
+                ...next,
+                score_total: cached.score_total ?? 0,
+                time_remaining_sec: computeTimeRemainingFromStartedAt(cached.started_at),
+              },
+            }
+          : {}),
+      };
+    }
+
     const session = await this.assertSessionOwner(sessionId, userId);
 
     if (session.mode === 'blitz') {
@@ -216,10 +301,61 @@ export class SessionService {
         questions.map((q) => q.id)
       );
       const next_question_available = answers.length < questions.length;
+      let next_question = null;
+      if (next_question_available) {
+        const answeredSet = new Set(answers.map((a) => a.session_question_id));
+        const next = questions.find((q) => !answeredSet.has(q.id)) || null;
+        if (next) {
+          const nextOptions = await this.sessionOptionRepository.listBySessionQuestionId(next.id);
+          const lifelines = await this.sessionLifelineRepository.listBySessionId(sessionId);
+
+          next_question = {
+            session_question_id: next.id,
+            mode: session.mode,
+            question_number: next.order_index,
+            total_questions: session.total_questions,
+            question_text: next.question_text_snapshot,
+            options: nextOptions.map((o) => ({
+              id: o.id,
+              label: LABELS[o.order_index - 1] || String(o.order_index),
+              text: o.option_text_snapshot,
+            })),
+            score_total: updatedSession?.score_total ?? prize,
+            time_limit_sec: next.time_limit_snapshot,
+            lifelines_used: lifelines.map((l) => l.lifeline_type),
+            prizes: MILLIONAIRE_PRIZES.slice(0, Math.max(1, session.total_questions || 15)),
+          };
+
+          const fifty = lifelines.find(
+            (l) => l.lifeline_type === 'fifty_fifty' && l.payload_json?.session_question_id === next.id
+          );
+          if (fifty?.payload_json?.disabled_option_ids) {
+            next_question.disabled_option_ids = fifty.payload_json.disabled_option_ids;
+          }
+
+          const audience = lifelines.find(
+            (l) => l.lifeline_type === 'audience' && l.payload_json?.session_question_id === next.id
+          );
+          if (audience?.payload_json?.audience_poll) {
+            next_question.audience_poll = audience.payload_json.audience_poll;
+          }
+
+          const phone = lifelines.find(
+            (l) => l.lifeline_type === 'phone' && l.payload_json?.session_question_id === next.id
+          );
+          if (phone?.payload_json?.suggestion_option_id) {
+            next_question.phone_suggestion_option_id = phone.payload_json.suggestion_option_id;
+          }
+          if (phone?.payload_json?.message) {
+            next_question.phone_message = phone.payload_json.message;
+          }
+        }
+      }
       return {
         is_correct: true,
         current_prize: updatedSession?.score_total ?? prize,
         next_question_available,
+        ...(next_question ? { next_question } : {}),
       };
     }
 
@@ -246,18 +382,65 @@ export class SessionService {
     const next_question_available = answers.length < questions.length;
 
     if (session.mode === 'blitz') {
+      let next_question = null;
+      if (next_question_available) {
+        const answeredSet = new Set(answers.map((a) => a.session_question_id));
+        const next = questions.find((q) => !answeredSet.has(q.id)) || null;
+        if (next) {
+          const nextOptions = await this.sessionOptionRepository.listBySessionQuestionId(next.id);
+          next_question = {
+            session_question_id: next.id,
+            mode: session.mode,
+            question_number: next.order_index,
+            total_questions: session.total_questions,
+            question_text: next.question_text_snapshot,
+            options: nextOptions.map((o) => ({
+              id: o.id,
+              label: LABELS[o.order_index - 1] || String(o.order_index),
+              text: o.option_text_snapshot,
+            })),
+            score_total: updatedSession?.score_total ?? session.score_total ?? 0,
+            time_remaining_sec: computeTimeRemainingSec(updatedSession || session),
+          };
+        }
+      }
       return {
         is_correct,
         score_total: updatedSession?.score_total ?? session.score_total,
         time_remaining_sec: computeTimeRemainingSec(updatedSession || session),
         next_question_available,
+        ...(next_question ? { next_question } : {}),
       };
+    }
+
+    let next_question = null;
+    if (next_question_available) {
+      const answeredSet = new Set(answers.map((a) => a.session_question_id));
+      const next = questions.find((q) => !answeredSet.has(q.id)) || null;
+      if (next) {
+        const nextOptions = await this.sessionOptionRepository.listBySessionQuestionId(next.id);
+        next_question = {
+          session_question_id: next.id,
+          mode: session.mode,
+          question_number: next.order_index,
+          total_questions: session.total_questions,
+          question_text: next.question_text_snapshot,
+          options: nextOptions.map((o) => ({
+            id: o.id,
+            label: LABELS[o.order_index - 1] || String(o.order_index),
+            text: o.option_text_snapshot,
+          })),
+          score_total: updatedSession?.score_total ?? session.score_total ?? 0,
+          time_limit_sec: next.time_limit_snapshot,
+        };
+      }
     }
 
     return {
       is_correct,
       score_total: updatedSession?.score_total ?? session.score_total,
       next_question_available,
+      ...(next_question ? { next_question } : {}),
       ...(session.mode === 'custom' ? { speed_bonus } : {}),
     };
   }
@@ -431,6 +614,7 @@ export class SessionService {
 
     await this.userStatsRepository.addXp(session.user_id, updated.score_total ?? 0);
 
+    sessionCache.del(sessionId);
     return { status: updated.status };
   }
 }

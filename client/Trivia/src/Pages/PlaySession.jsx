@@ -1,19 +1,9 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
-import colors from '../constants/colors';
-import { api } from '../api';
-import PlaySessionStyle from '../Styles/ComponentStyles/PlaySessionStyle';
-
-function getApiErrorMessage(err) {
-  return (
-    err?.response?.data?.message ||
-    err?.message ||
-    'Something went wrong. Please try again.'
-  );
-}
-
-function isUnauthorized(err) {
-  return Number(err?.response?.status) === 401;
-}
+import { ICONS } from '@/constants/icons';
+import { STRINGS } from '@/constants/strings';
+import { api } from '@/api';
+import PlaySessionStyle, { getStoryOptionTheme } from '@/Styles/ComponentStyles/PlaySessionStyle';
+import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
 
 function clampPct(n) {
   const x = Number(n);
@@ -31,10 +21,13 @@ export default function PlaySession({
   user,
   onRequireAuth,
   onBack,
-  backLabel = 'Back',
+  backLabel = STRINGS.COMMON.buttons.back,
   variant = 'default', // 'default' | 'story'
 }) {
   const isStory = variant === 'story';
+  // Keep answer->next transitions snappy. Any intentional pause here is felt as lag.
+  const nextTransitionMs = 0;
+  const sleep = (ms) => new Promise((r) => window.setTimeout(r, ms));
   const [sessionMode, setSessionMode] = useState('');
 
   const [disabledOptionIds, setDisabledOptionIds] = useState([]);
@@ -49,6 +42,7 @@ export default function PlaySession({
   const [error, setError] = useState('');
   const [question, setQuestion] = useState(null);
   const [answerResult, setAnswerResult] = useState(null);
+  const [pendingChoiceId, setPendingChoiceId] = useState(null);
   const [finished, setFinished] = useState(false);
   const [scoreTotal, setScoreTotal] = useState(0);
   const [speedBonus, setSpeedBonus] = useState(0);
@@ -56,28 +50,35 @@ export default function PlaySession({
   const [correctCount, setCorrectCount] = useState(0);
 
   const questionStartRef = useRef(Date.now());
+  const submitSeqRef = useRef(0);
+
+  const applyQuestion = (q) => {
+    const mode = q?.mode || '';
+    setQuestion(q);
+    setSessionMode(mode);
+    setAnswerResult(null);
+    setPendingChoiceId(null);
+    setSpeedBonus(0);
+    setDisabledOptionIds(Array.isArray(q?.disabled_option_ids) ? q.disabled_option_ids : []);
+    setAudiencePoll(q?.audience_poll || null);
+    setPhoneSuggestionOptionId(q?.phone_suggestion_option_id || null);
+    setPhoneMessage(q?.phone_message || '');
+    setLifelinesUsed(Array.isArray(q?.lifelines_used) ? q.lifelines_used : []);
+    if (mode === 'blitz' && Number.isFinite(Number(q?.time_remaining_sec))) {
+      setBlitzRemaining(Number(q.time_remaining_sec));
+    } else {
+      setBlitzRemaining(null);
+    }
+    timeUpRef.current = false;
+    questionStartRef.current = Date.now();
+  };
 
   const loadCurrent = async () => {
     setBusy(true);
     setError('');
     try {
       const q = await api.getCurrentQuestion(sessionId);
-      setQuestion(q);
-      setSessionMode(q?.mode || '');
-      setAnswerResult(null);
-      setSpeedBonus(0);
-      setDisabledOptionIds(Array.isArray(q?.disabled_option_ids) ? q.disabled_option_ids : []);
-      setAudiencePoll(q?.audience_poll || null);
-      setPhoneSuggestionOptionId(q?.phone_suggestion_option_id || null);
-      setPhoneMessage(q?.phone_message || '');
-      setLifelinesUsed(Array.isArray(q?.lifelines_used) ? q.lifelines_used : []);
-      if (Number.isFinite(Number(q?.time_remaining_sec))) {
-        setBlitzRemaining(Number(q.time_remaining_sec));
-      } else {
-        setBlitzRemaining(null);
-      }
-      timeUpRef.current = false;
-      questionStartRef.current = Date.now();
+      applyQuestion(q);
     } catch (err) {
       if (isUnauthorized(err)) return onRequireAuth?.('play');
       setError(getApiErrorMessage(err));
@@ -105,6 +106,7 @@ export default function PlaySession({
   }, [sessionId, !!user]);
 
   useEffect(() => {
+    if (sessionMode !== 'blitz') return undefined;
     if (!Number.isFinite(Number(blitzRemaining))) return undefined;
     if (finished) return undefined;
     if (busy) return undefined;
@@ -118,9 +120,10 @@ export default function PlaySession({
     }, 1000);
 
     return () => window.clearInterval(t);
-  }, [blitzRemaining, finished, busy]);
+  }, [sessionMode, blitzRemaining, finished, busy]);
 
   useEffect(() => {
+    if (sessionMode !== 'blitz') return;
     if (!Number.isFinite(Number(blitzRemaining))) return;
     if (finished) return;
     if (timeUpRef.current) return;
@@ -129,23 +132,24 @@ export default function PlaySession({
     timeUpRef.current = true;
     finish();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blitzRemaining, finished]);
+  }, [sessionMode, blitzRemaining, finished]);
 
   const title = useMemo(() => {
-    if (!question) return 'Question';
+    if (!question) return STRINGS.PLAY_SESSION.header.question;
     const a = Number(question.question_number);
     const b = Number(question.total_questions);
-    if (Number.isFinite(a) && Number.isFinite(b)) return `Question ${a} / ${b}`;
-    return 'Question';
+    if (Number.isFinite(a) && Number.isFinite(b))
+      return STRINGS.PLAY_SESSION.header.questionProgress(a, b);
+    return STRINGS.PLAY_SESSION.header.question;
   }, [question]);
 
   const timeInfo = useMemo(() => {
     if (!question) return null;
     if (Number.isFinite(Number(blitzRemaining))) {
-      return `â± ${blitzRemaining}s left`;
+      return STRINGS.PLAY_SESSION.header.timeLeft(blitzRemaining);
     }
     if (Number.isFinite(Number(question.time_limit_sec))) {
-      return `â± ${question.time_limit_sec}s`;
+      return STRINGS.PLAY_SESSION.header.timeLimit(question.time_limit_sec);
     }
     return null;
   }, [question, blitzRemaining]);
@@ -183,34 +187,14 @@ export default function PlaySession({
   }, [answeredCount, correctCount]);
 
   const storyEmoji = useMemo(() => {
-    if (!answerResult) return 'ðŸ¤”';
-    return answerResult.is_correct ? 'ðŸŽ‰' : 'ðŸ˜¬';
+    if (!answerResult) return '🤔';
+    return answerResult.is_correct ? ICONS.common.moodCorrect : ICONS.common.moodWrong;
   }, [answerResult]);
-
-  const storyOptionTheme = (index) => {
-    if (index === 0)
-      return {
-        bg: `linear-gradient(90deg, ${colors.accent.red} 0%, #ff2d55 100%)`,
-        shape: 'â–³',
-      };
-    if (index === 1)
-      return {
-        bg: `linear-gradient(90deg, ${colors.accent.blue} 0%, #2563eb 100%)`,
-        shape: 'â—‡',
-      };
-    if (index === 2)
-      return {
-        bg: `linear-gradient(90deg, ${colors.accent.yellow} 0%, #f59e0b 100%)`,
-        shape: 'â—‹',
-      };
-    return {
-      bg: `linear-gradient(90deg, ${colors.accent.green} 0%, #16a34a 100%)`,
-      shape: 'â–¡',
-    };
-  };
 
   const submit = async (chosenOptionId) => {
     if (!question || !chosenOptionId || busy || answerResult) return;
+    const submitSeq = (submitSeqRef.current += 1);
+    setPendingChoiceId(chosenOptionId);
     setBusy(true);
     setError('');
     try {
@@ -230,20 +214,29 @@ export default function PlaySession({
       if (Number.isFinite(Number(result.score_total))) setScoreTotal(result.score_total);
       if (Number.isFinite(Number(result.current_prize))) setScoreTotal(result.current_prize);
       if (Number.isFinite(Number(result.speed_bonus))) setSpeedBonus(result.speed_bonus);
-      if (Number.isFinite(Number(result.time_remaining_sec))) {
+      if (question.mode === 'blitz' && Number.isFinite(Number(result.time_remaining_sec))) {
         setBlitzRemaining(Number(result.time_remaining_sec));
+      } else if (question.mode !== 'blitz') {
+        setBlitzRemaining(null);
       }
 
       if (!result.next_question_available) {
-        window.setTimeout(() => {
-          finish();
-        }, isStory ? 700 : 500);
+        if (nextTransitionMs) await sleep(nextTransitionMs);
+        if (submitSeqRef.current !== submitSeq) return;
+        await finish();
         return;
       }
 
-      window.setTimeout(() => {
-        loadCurrent();
-      }, isStory ? 700 : 350);
+      const nextQuestionPromise = result?.next_question
+        ? Promise.resolve(result.next_question)
+        : api.getCurrentQuestion(sessionId);
+
+      const [, nextQuestion] = await Promise.all([
+        nextTransitionMs ? sleep(nextTransitionMs) : Promise.resolve(),
+        nextQuestionPromise,
+      ]);
+      if (submitSeqRef.current !== submitSeq) return;
+      applyQuestion(nextQuestion);
     } catch (err) {
       if (isUnauthorized(err)) return onRequireAuth?.('play');
       if (err?.response?.data?.code === 'TIME_UP') {
@@ -251,6 +244,7 @@ export default function PlaySession({
         return;
       }
       setError(getApiErrorMessage(err));
+      setPendingChoiceId(null);
     } finally {
       setBusy(false);
     }
@@ -308,7 +302,7 @@ export default function PlaySession({
         setPhoneMessage(res.message || '');
       } else if (res?.lifeline_type === 'skip' && res?.skipped) {
         setAnswerResult({ is_correct: false, skipped: true, next_question_available: true });
-        window.setTimeout(() => loadCurrent(), 250);
+        window.setTimeout(() => loadCurrent(), 80);
       }
     } catch (err) {
       if (isUnauthorized(err)) return onRequireAuth?.('play');
@@ -323,25 +317,27 @@ export default function PlaySession({
       <div style={PlaySessionStyle.page}>
         <div style={PlaySessionStyle.container}>
           <div className="tv-card" style={PlaySessionStyle.lockCard}>
-            <h2 style={PlaySessionStyle.lockTitle}>Login to play</h2>
+            <h2 style={PlaySessionStyle.lockTitle}>
+              {STRINGS.PLAY_SESSION.locked.title}
+            </h2>
             <p style={PlaySessionStyle.lockText}>
-              You need an account to play sessions and save progress.
+              {STRINGS.PLAY_SESSION.locked.subtitle}
             </p>
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{ ...PlaySessionStyle.primaryBtn, background: colors.gradients.main }}
+              style={PlaySessionStyle.primaryBtnMain}
               onClick={() => onRequireAuth?.('play')}
             >
-              Join / Login ðŸš€
+              {STRINGS.COMMON.joinLogin} {ICONS.common.rocket}
             </button>
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{ ...PlaySessionStyle.secondaryBtn, background: colors.neutral.white }}
+              style={PlaySessionStyle.secondaryBtnWhite}
               onClick={onBack}
             >
-              Back
+              {STRINGS.COMMON.buttons.back}
             </button>
           </div>
         </div>
@@ -352,29 +348,30 @@ export default function PlaySession({
   return (
     <div style={PlaySessionStyle.page}>
       <div
-        style={
-          isStory
-            ? { ...PlaySessionStyle.container, ...PlaySessionStyle.storyShell }
-            : PlaySessionStyle.container
-        }
+        style={isStory ? PlaySessionStyle.containerStory : PlaySessionStyle.container}
       >
         {!isStory ? (
           <div style={PlaySessionStyle.topRow}>
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{ ...PlaySessionStyle.secondaryBtn, background: colors.neutral.white }}
+              style={PlaySessionStyle.secondaryBtnWhite}
               onClick={onBack}
               disabled={busy}
             >
-              â† Back
+              {STRINGS.COMMON.symbols.leftArrow} {STRINGS.COMMON.buttons.back}
             </button>
 
             <div style={PlaySessionStyle.pills}>
-              <span style={PlaySessionStyle.pill}>ðŸŽ¯ {title}</span>
+              <span style={PlaySessionStyle.pill}>
+                {ICONS.common.target} {title}
+              </span>
               {timeInfo && <span style={PlaySessionStyle.pill}>{timeInfo}</span>}
               <span style={PlaySessionStyle.pill}>
-                {question?.mode === 'millionaire' ? 'ðŸ’° Prize' : 'ðŸ† Score'}: {scoreTotal}
+                {question?.mode === 'millionaire'
+                  ? `${ICONS.common.money} ${STRINGS.PLAY_SESSION.header.prizeLabel}`
+                  : `${ICONS.common.trophy} ${STRINGS.PLAY_SESSION.header.scoreLabel}`}
+                : {scoreTotal}
               </span>
             </div>
           </div>
@@ -382,22 +379,28 @@ export default function PlaySession({
           <div style={PlaySessionStyle.storyTop}>
             <div style={PlaySessionStyle.storyTopRow}>
               <div style={PlaySessionStyle.storyCount}>
-                Question {question.question_number} of {question.total_questions}
+                {STRINGS.PLAY_SESSION.header.questionOf(
+                  question.question_number,
+                  question.total_questions
+                )}
               </div>
-              <div style={PlaySessionStyle.storyDots} aria-label="Progress dots">
+              <div
+                style={PlaySessionStyle.storyDots}
+                aria-label={STRINGS.PLAY_SESSION.aria.progressDots}
+              >
                 {Array.from({ length: storyDots }).map((_, i) => (
                   <span
                     key={i}
-                    style={{
-                      ...PlaySessionStyle.storyDot,
-                      ...(i < storyDotActiveCount ? PlaySessionStyle.storyDotActive : null),
-                    }}
+                    style={PlaySessionStyle.storyDotItem(i < storyDotActiveCount)}
                   />
                 ))}
               </div>
             </div>
-            <div style={PlaySessionStyle.storyTrack} aria-label="Progress bar">
-              <div style={{ ...PlaySessionStyle.storyFill, width: `${storyProgressPct}%` }} />
+            <div
+              style={PlaySessionStyle.storyTrack}
+              aria-label={STRINGS.PLAY_SESSION.aria.progressBar}
+            >
+              <div style={PlaySessionStyle.storyFillWidth(storyProgressPct)} />
             </div>
           </div>
         ) : null}
@@ -410,23 +413,25 @@ export default function PlaySession({
 
         {finished && !question ? (
           <div className="tv-card" style={PlaySessionStyle.doneCard}>
-            <h2 style={PlaySessionStyle.doneTitle}>Nice run! ðŸŽ‰</h2>
+            <h2 style={PlaySessionStyle.doneTitle}>{STRINGS.PLAY_SESSION.done.title}</h2>
             <p style={PlaySessionStyle.doneText}>
               {sessionMode === 'millionaire'
-                ? `Final prize: ${formatMoney(scoreTotal)}`
-                : `Final score: ${scoreTotal}`}
+                ? STRINGS.PLAY_SESSION.done.finalPrize(formatMoney(scoreTotal))
+                : STRINGS.PLAY_SESSION.done.finalScore(scoreTotal)}
             </p>
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{ ...PlaySessionStyle.primaryBtn, background: colors.gradients.main }}
+              style={PlaySessionStyle.primaryBtnMain}
               onClick={onBack}
             >
               {backLabel}
             </button>
           </div>
         ) : !question ? (
-          <div style={PlaySessionStyle.loading}>{busy ? 'Loadingâ€¦' : 'No question'}</div>
+          <div style={PlaySessionStyle.loading}>
+            {busy ? STRINGS.PLAY_SESSION.states.loading : STRINGS.PLAY_SESSION.states.noQuestion}
+          </div>
         ) : !isStory && question.mode === 'millionaire' ? (
           <div style={PlaySessionStyle.millionaireShell}>
             <div style={PlaySessionStyle.millionaireTopBar}>
@@ -437,11 +442,11 @@ export default function PlaySession({
                 onClick={walkAway}
                 disabled={busy}
               >
-                ← Exit
+                {STRINGS.COMMON.symbols.leftArrow} {STRINGS.PLAY_SESSION.millionaire.exit}
               </button>
 
               <div style={PlaySessionStyle.millionairePrizePill}>
-                👑 {formatMoney(scoreTotal)}
+                {ICONS.common.crownGold} {formatMoney(scoreTotal)}
               </div>
             </div>
 
@@ -449,7 +454,10 @@ export default function PlaySession({
               <div style={PlaySessionStyle.millionaireLeftCol}>
                 <div style={PlaySessionStyle.millionaireCard}>
                   <div style={PlaySessionStyle.millionaireCount}>
-                    Question {question.question_number} of {question.total_questions}
+                    {STRINGS.PLAY_SESSION.header.questionOf(
+                      question.question_number,
+                      question.total_questions
+                    )}
                   </div>
                   <div style={PlaySessionStyle.millionaireQuestion}>
                     {question.question_text}
@@ -457,7 +465,7 @@ export default function PlaySession({
 
                   {!!phoneMessage && (
                     <div style={PlaySessionStyle.millionaireHint}>
-                      📞 {phoneMessage}
+                      {ICONS.common.phone} {phoneMessage}
                     </div>
                   )}
 
@@ -465,16 +473,16 @@ export default function PlaySession({
                     {(question.options || []).slice(0, 4).map((o) => {
                       const disabled = busy || !!answerResult || disabledOptionIds.includes(o.id);
                       const suggested = phoneSuggestionOptionId === o.id;
+                      const selected = pendingChoiceId === o.id;
                       return (
                         <button
                           key={o.id}
                           type="button"
                           className="tv-card tv-card--hover"
-                          style={{
-                            ...PlaySessionStyle.millionaireOptionBtn,
-                            ...(suggested ? PlaySessionStyle.millionaireOptionSuggested : null),
-                            ...(disabled ? PlaySessionStyle.millionaireOptionDisabled : null),
-                          }}
+                          style={PlaySessionStyle.millionaireOptionBtnState(
+                            suggested || selected,
+                            disabled
+                          )}
                           disabled={disabled}
                           onClick={() => submit(o.id)}
                         >
@@ -488,21 +496,18 @@ export default function PlaySession({
                   </div>
 
                   {!!answerResult && (
-                    <div
-                      style={{
-                        ...PlaySessionStyle.result,
-                        ...(answerResult.is_correct
-                          ? PlaySessionStyle.resultOk
-                          : PlaySessionStyle.resultBad),
-                      }}
-                    >
-                      {answerResult.is_correct ? 'Correct!' : 'Wrong!'}
+                    <div style={PlaySessionStyle.resultState(answerResult.is_correct)}>
+                      {answerResult.is_correct
+                        ? STRINGS.PLAY_SESSION.results.correct
+                        : STRINGS.PLAY_SESSION.results.wrong}
                     </div>
                   )}
                 </div>
 
                 <div style={PlaySessionStyle.millionaireLifelinesCard}>
-                  <div style={PlaySessionStyle.millionaireLifelinesTitle}>Lifelines</div>
+                  <div style={PlaySessionStyle.millionaireLifelinesTitle}>
+                    {STRINGS.PLAY_SESSION.millionaire.lifelines}
+                  </div>
                   <div style={PlaySessionStyle.millionaireLifelinesRow}>
                     <button
                       type="button"
@@ -512,7 +517,9 @@ export default function PlaySession({
                       onClick={() => triggerLifeline('fifty_fifty')}
                     >
                       <div style={PlaySessionStyle.millionaireLifelineIcon}>½</div>
-                      <div style={PlaySessionStyle.millionaireLifelineText}>50:50</div>
+                      <div style={PlaySessionStyle.millionaireLifelineText}>
+                        {STRINGS.PLAY_SESSION.millionaire.lifelineFifty}
+                      </div>
                     </button>
                     <button
                       type="button"
@@ -521,8 +528,12 @@ export default function PlaySession({
                       disabled={busy || !!answerResult || lifelinesUsed.includes('phone')}
                       onClick={() => triggerLifeline('phone')}
                     >
-                      <div style={PlaySessionStyle.millionaireLifelineIcon}>📞</div>
-                      <div style={PlaySessionStyle.millionaireLifelineText}>Phone</div>
+                      <div style={PlaySessionStyle.millionaireLifelineIcon}>
+                        {ICONS.common.phone}
+                      </div>
+                      <div style={PlaySessionStyle.millionaireLifelineText}>
+                        {STRINGS.PLAY_SESSION.millionaire.lifelinePhone}
+                      </div>
                     </button>
                     <button
                       type="button"
@@ -531,14 +542,18 @@ export default function PlaySession({
                       disabled={busy || !!answerResult || lifelinesUsed.includes('audience')}
                       onClick={() => triggerLifeline('audience')}
                     >
-                      <div style={PlaySessionStyle.millionaireLifelineIcon}>👥</div>
-                      <div style={PlaySessionStyle.millionaireLifelineText}>Audience</div>
+                      <div style={PlaySessionStyle.millionaireLifelineIcon}>
+                        {ICONS.common.people}
+                      </div>
+                      <div style={PlaySessionStyle.millionaireLifelineText}>
+                        {STRINGS.PLAY_SESSION.millionaire.lifelineAudience}
+                      </div>
                     </button>
                   </div>
 
                   {audiencePoll ? (
                     <div style={PlaySessionStyle.millionaireHint}>
-                      👥 Audience:{' '}
+                      {ICONS.common.people} {STRINGS.PLAY_SESSION.millionaire.audienceLabel}:{' '}
                       {(question.options || [])
                         .map((o) => ({
                           label: o.label,
@@ -553,17 +568,16 @@ export default function PlaySession({
               </div>
 
               <div style={PlaySessionStyle.millionaireLadderCard}>
-                <div style={PlaySessionStyle.millionaireLadderTitle}>Prize Ladder</div>
+                <div style={PlaySessionStyle.millionaireLadderTitle}>
+                  {STRINGS.PLAY_SESSION.millionaire.prizeLadder}
+                </div>
                 <div style={PlaySessionStyle.millionaireLadderList}>
                   {prizeLadder.map((row) => {
                     const active = Number(question.question_number) === row.index;
                     return (
                       <div
                         key={row.index}
-                        style={{
-                          ...PlaySessionStyle.millionaireLadderRow,
-                          ...(active ? PlaySessionStyle.millionaireLadderRowActive : null),
-                        }}
+                        style={PlaySessionStyle.millionaireLadderRowState(active)}
                       >
                         <span style={PlaySessionStyle.millionaireLadderNum}>{row.index}</span>
                         <span style={PlaySessionStyle.millionaireLadderValue}>
@@ -581,7 +595,7 @@ export default function PlaySession({
             <div style={PlaySessionStyle.qText}>{question.question_text}</div>
 
             {question.mode === 'millionaire' ? (
-              <div style={{ ...PlaySessionStyle.pills, marginTop: 12, justifyContent: 'center' }}>
+              <div style={PlaySessionStyle.pillsCentered}>
                 <button
                   type="button"
                   className="tv-card tv-card--hover"
@@ -589,7 +603,7 @@ export default function PlaySession({
                   disabled={busy || !!answerResult || lifelinesUsed.includes('fifty_fifty')}
                   onClick={() => triggerLifeline('fifty_fifty')}
                 >
-                  50/50
+                  {STRINGS.PLAY_SESSION.millionaire.lifelineFiftyShort}
                 </button>
                 <button
                   type="button"
@@ -598,7 +612,7 @@ export default function PlaySession({
                   disabled={busy || !!answerResult || lifelinesUsed.includes('phone')}
                   onClick={() => triggerLifeline('phone')}
                 >
-                  Phone
+                  {STRINGS.PLAY_SESSION.millionaire.lifelinePhone}
                 </button>
                 <button
                   type="button"
@@ -607,25 +621,14 @@ export default function PlaySession({
                   disabled={busy || !!answerResult || lifelinesUsed.includes('audience')}
                   onClick={() => triggerLifeline('audience')}
                 >
-                  Audience
+                  {STRINGS.PLAY_SESSION.millionaire.lifelineAudience}
                 </button>
               </div>
             ) : null}
 
             {question.mode === 'millionaire' && audiencePoll ? (
-              <div
-                style={{
-                  marginTop: 12,
-                  padding: 12,
-                  borderRadius: 16,
-                  border: '1px solid rgba(139,44,255,0.22)',
-                  background: 'rgba(139,44,255,0.08)',
-                  fontSize: 13,
-                  fontWeight: 900,
-                  color: colors.primary[800],
-                }}
-              >
-                Audience poll:{' '}
+              <div style={PlaySessionStyle.audiencePollCard}>
+                {STRINGS.PLAY_SESSION.millionaire.audiencePollLabel}:{' '}
                 {(question.options || [])
                   .map((o) => ({
                     label: o.label,
@@ -638,19 +641,8 @@ export default function PlaySession({
             ) : null}
 
             {question.mode === 'millionaire' && phoneMessage ? (
-              <div
-                style={{
-                  marginTop: 12,
-                  padding: 12,
-                  borderRadius: 16,
-                  border: '1px solid rgba(255,255,255,0.24)',
-                  background: 'rgba(255,255,255,0.14)',
-                  fontSize: 13,
-                  fontWeight: 900,
-                  color: colors.neutral[900],
-                }}
-              >
-                📞 {phoneMessage}
+              <div style={PlaySessionStyle.phoneHintCard}>
+                {ICONS.common.phone} {phoneMessage}
               </div>
             ) : null}
 
@@ -658,15 +650,13 @@ export default function PlaySession({
               {(question.options || []).map((o) => {
                 const disabled = busy || !!answerResult;
                 const suggested = phoneSuggestionOptionId === o.id;
+                const selected = pendingChoiceId === o.id;
                 return (
                   <button
                     key={o.id}
                     type="button"
                     className="tv-card tv-card--hover"
-                    style={{
-                      ...PlaySessionStyle.optionBtn,
-                      ...(suggested ? PlaySessionStyle.optionBtnActive : null),
-                    }}
+                    style={PlaySessionStyle.optionBtnState(suggested || selected)}
                     disabled={disabled || disabledOptionIds.includes(o.id)}
                     onClick={() => submit(o.id)}
                   >
@@ -678,21 +668,17 @@ export default function PlaySession({
             </div>
 
             {!!answerResult && (
-              <div
-                style={{
-                  ...PlaySessionStyle.result,
-                  ...(answerResult.is_correct
-                    ? PlaySessionStyle.resultOk
-                    : PlaySessionStyle.resultBad),
-                }}
-              >
+              <div style={PlaySessionStyle.resultState(answerResult.is_correct)}>
                 {answerResult.skipped
-                  ? 'Skipped âž¡'
+                  ? STRINGS.PLAY_SESSION.results.skipped
                   : answerResult.is_correct
-                    ? 'Correct âœ…'
-                    : 'Wrong âŒ'}
+                    ? STRINGS.PLAY_SESSION.results.correctShort
+                    : STRINGS.PLAY_SESSION.results.wrongShort}
                 {!!speedBonus && answerResult.is_correct && (
-                  <span style={PlaySessionStyle.bonus}> +{speedBonus} speed</span>
+                  <span style={PlaySessionStyle.bonus}>
+                    {' '}
+                    {STRINGS.PLAY_SESSION.results.bonusSpeed(speedBonus)}
+                  </span>
                 )}
               </div>
             )}
@@ -702,30 +688,35 @@ export default function PlaySession({
                 <button
                   type="button"
                   className="tv-card tv-card--hover"
-                  style={{ ...PlaySessionStyle.primaryBtn, background: colors.gradients.main }}
+                  style={PlaySessionStyle.primaryBtnMain}
                   disabled={busy}
                   onClick={answerResult.next_question_available ? loadCurrent : finish}
                 >
-                  {answerResult.next_question_available ? 'Next â†’' : 'Finish ðŸ'}
+                  {answerResult.next_question_available
+                    ? STRINGS.PLAY_SESSION.results.next
+                    : STRINGS.PLAY_SESSION.results.finish}
                 </button>
               ) : null}
 
               <button
                 type="button"
                 className="tv-card tv-card--hover"
-                style={{ ...PlaySessionStyle.secondaryBtn, background: colors.neutral.white }}
+                style={PlaySessionStyle.secondaryBtnWhite}
                 disabled={busy}
                 onClick={loadCurrent}
-                title="Reload current question"
+                title={STRINGS.PLAY_SESSION.actions.reloadTitle}
               >
-                Refresh â†»
+                {STRINGS.COMMON.buttons.refresh} {ICONS.common.refresh}
               </button>
             </div>
           </div>
         ) : (
           <>
             <div className="tv-card" style={PlaySessionStyle.storyCard}>
-              <div style={PlaySessionStyle.storyEmoji} aria-label="Mood">
+              <div
+                style={PlaySessionStyle.storyEmoji}
+                aria-label={STRINGS.PLAY_SESSION.aria.mood}
+              >
                 {storyEmoji}
               </div>
               <div style={PlaySessionStyle.storyQuestion}>{question.question_text}</div>
@@ -733,21 +724,19 @@ export default function PlaySession({
               <div style={PlaySessionStyle.storyOptions}>
                 {(question.options || []).slice(0, 4).map((o, idx) => {
                   const disabled = busy || !!answerResult;
-                  const theme = storyOptionTheme(idx);
+                  const theme = getStoryOptionTheme(idx);
+                  const selected = pendingChoiceId === o.id;
                   return (
                     <button
                       key={o.id}
                       type="button"
                       className="tv-card tv-card--hover"
-                      style={PlaySessionStyle.storyOptionBtn}
+                      style={PlaySessionStyle.storyOptionBtnState(selected)}
                       disabled={disabled}
                       onClick={() => submit(o.id)}
                     >
                       <div
-                        style={{
-                          ...PlaySessionStyle.storyOptionInner,
-                          background: theme.bg,
-                        }}
+                        style={PlaySessionStyle.storyOptionInnerBg(theme.bg)}
                       >
                         <div style={PlaySessionStyle.storyShape}>{theme.shape}</div>
                         <div style={PlaySessionStyle.storyOptionText}>{o.text}</div>
@@ -759,30 +748,25 @@ export default function PlaySession({
 
               {!!answerResult && (
                 <div
-                  style={{
-                    ...PlaySessionStyle.storyToast,
-                    ...(answerResult.is_correct
-                      ? {
-                          background: 'rgba(34,197,94,0.14)',
-                          border: '1px solid rgba(34,197,94,0.30)',
-                          color: colors.accent.green,
-                        }
-                      : {
-                          background: 'rgba(239,68,68,0.14)',
-                          border: '1px solid rgba(239,68,68,0.30)',
-                          color: colors.accent.red,
-                        }),
-                  }}
+                  style={PlaySessionStyle.storyToastState(answerResult.is_correct)}
                 >
-                  {answerResult.is_correct ? 'Correct âœ…' : 'Wrong âŒ'}
+                  {answerResult.is_correct
+                    ? STRINGS.PLAY_SESSION.results.correctShort
+                    : STRINGS.PLAY_SESSION.results.wrongShort}
                 </div>
               )}
             </div>
 
             <div style={PlaySessionStyle.storyBottom}>
-              <div style={PlaySessionStyle.storyBottomPill}>ðŸ… {correctCount} Correct!</div>
-              <div style={PlaySessionStyle.storyBottomPill}>âš¡ {accuracyPct}%</div>
-              <div style={PlaySessionStyle.storyBottomPill}>ðŸ† {scoreTotal}</div>
+              <div style={PlaySessionStyle.storyBottomPill}>
+                {STRINGS.PLAY_SESSION.story.correctCount(correctCount)}
+              </div>
+              <div style={PlaySessionStyle.storyBottomPill}>
+                {ICONS.common.bolt} {accuracyPct}%
+              </div>
+              <div style={PlaySessionStyle.storyBottomPill}>
+                {ICONS.common.trophy} {scoreTotal}
+              </div>
             </div>
           </>
         )}

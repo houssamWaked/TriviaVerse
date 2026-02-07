@@ -23,6 +23,7 @@ const FriendProfileStyle = {
     gap: 10,
     flexWrap: 'wrap',
   },
+  topActions: { display: 'flex', gap: 10, flexWrap: 'wrap' },
   btn: {
     height: 46,
     padding: '0 16px',
@@ -32,6 +33,30 @@ const FriendProfileStyle = {
     fontSize: 14,
     fontWeight: 950,
     boxShadow: '0 12px 26px rgba(0,0,0,0.10)',
+  },
+  btnWhite: {
+    height: 46,
+    padding: '0 16px',
+    borderRadius: 16,
+    border: `1px solid ${colors.neutral[200]}`,
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 950,
+    boxShadow: '0 12px 26px rgba(0,0,0,0.10)',
+    background: colors.neutral.white,
+    color: colors.neutral[900],
+  },
+  btnPrimary: {
+    height: 46,
+    padding: '0 16px',
+    borderRadius: 16,
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 950,
+    boxShadow: '0 12px 26px rgba(0,0,0,0.10)',
+    background: colors.gradients.main,
+    color: colors.neutral.white,
   },
 
   headerCard: {
@@ -46,6 +71,8 @@ const FriendProfileStyle = {
     gap: 14,
     flexWrap: 'wrap',
   },
+  nameWrap: { flex: 1, minWidth: 220 },
+  handshakeIcon: { fontSize: 18 },
   avatar: {
     width: 56,
     height: 56,
@@ -205,6 +232,19 @@ const FriendProfileStyle = {
     color: colors.neutral.white,
     boxShadow: '0 14px 30px rgba(0,0,0,0.16)',
   },
+  primaryBtnMain: {
+    marginTop: 14,
+    width: '100%',
+    height: 46,
+    borderRadius: 16,
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 950,
+    color: colors.neutral.white,
+    boxShadow: '0 14px 30px rgba(0,0,0,0.16)',
+    background: colors.gradients.main,
+  },
   secondaryBtn: {
     marginTop: 10,
     width: '100%',
@@ -216,7 +256,19 @@ const FriendProfileStyle = {
     fontWeight: 950,
     boxShadow: '0 14px 30px rgba(0,0,0,0.10)',
   },
+  secondaryBtnWhite: {
+    marginTop: 10,
+    width: '100%',
+    height: 46,
+    borderRadius: 16,
+    border: `1px solid ${colors.neutral[200]}`,
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 950,
+    boxShadow: '0 14px 30px rgba(0,0,0,0.10)',
+    background: colors.neutral.white,
+    color: colors.neutral[900],
+  },
 };
 
 export default FriendProfileStyle;
-

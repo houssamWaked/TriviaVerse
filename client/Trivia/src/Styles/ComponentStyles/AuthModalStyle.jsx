@@ -131,6 +131,22 @@ const AuthModalStyle = {
     userSelect: 'none',
     opacity: 0.95,
   },
+  sparkleTopRight: {
+    position: 'absolute',
+    fontSize: 22,
+    userSelect: 'none',
+    opacity: 0.95,
+    top: 18,
+    right: 20,
+  },
+  sparkleBottomLeft: {
+    position: 'absolute',
+    fontSize: 22,
+    userSelect: 'none',
+    opacity: 0.95,
+    bottom: 22,
+    left: 22,
+  },
 
   right: {
     flex: '1 1 360px',
@@ -181,6 +197,17 @@ const AuthModalStyle = {
     color: colors.primary[600],
     boxShadow: '0 10px 20px rgba(0,0,0,0.08)',
   },
+  tabBtnState: (active) => ({
+    border: 'none',
+    cursor: 'pointer',
+    padding: '10px 14px',
+    borderRadius: 999,
+    background: active ? colors.neutral.white : 'transparent',
+    fontSize: 13,
+    fontWeight: 900,
+    color: active ? colors.primary[600] : colors.neutral[700],
+    ...(active ? { boxShadow: '0 10px 20px rgba(0,0,0,0.08)' } : null),
+  }),
 
   form: {
     display: 'flex',
@@ -238,6 +265,18 @@ const AuthModalStyle = {
     fontSize: 15,
     fontWeight: 950,
     boxShadow: '0 18px 34px rgba(139,44,255,0.28)',
+  },
+  submitBtnMain: {
+    marginTop: 4,
+    height: 48,
+    borderRadius: 16,
+    border: 'none',
+    cursor: 'pointer',
+    color: colors.neutral.white,
+    fontSize: 15,
+    fontWeight: 950,
+    boxShadow: '0 18px 34px rgba(139,44,255,0.28)',
+    background: colors.gradients.main,
   },
 
   altRow: {

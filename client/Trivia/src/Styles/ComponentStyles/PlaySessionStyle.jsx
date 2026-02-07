@@ -1,5 +1,27 @@
 import colors from '../../constants/colors';
 
+export const getStoryOptionTheme = (index) => {
+  if (index === 0)
+    return {
+      bg: `linear-gradient(90deg, ${colors.accent.red} 0%, #ff2d55 100%)`,
+      shape: '△',
+    };
+  if (index === 1)
+    return {
+      bg: `linear-gradient(90deg, ${colors.accent.blue} 0%, #2563eb 100%)`,
+      shape: '◇',
+    };
+  if (index === 2)
+    return {
+      bg: `linear-gradient(90deg, ${colors.accent.yellow} 0%, #f59e0b 100%)`,
+      shape: '○',
+    };
+  return {
+    bg: `linear-gradient(90deg, ${colors.accent.green} 0%, #16a34a 100%)`,
+    shape: '□',
+  };
+};
+
 const PlaySessionStyle = {
   page: {
     width: '100%',
@@ -11,6 +33,14 @@ const PlaySessionStyle = {
   container: {
     width: '100%',
     maxWidth: 980,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 16,
+  },
+  containerStory: {
+    width: '100%',
+    maxWidth: 1100,
+    margin: '0 auto',
     display: 'flex',
     flexDirection: 'column',
     gap: 16,
@@ -40,6 +70,14 @@ const PlaySessionStyle = {
     fontWeight: 950,
     boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18)',
     backdropFilter: 'blur(10px)',
+  },
+  pillsCentered: {
+    display: 'flex',
+    gap: 8,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
   },
 
   card: {
@@ -78,6 +116,19 @@ const PlaySessionStyle = {
     border: `1px solid ${colors.primary[200]}`,
     background: colors.primary[50],
   },
+  optionBtnState: (active) => ({
+    width: '100%',
+    textAlign: 'left',
+    padding: 14,
+    borderRadius: 20,
+    border: active ? `1px solid ${colors.primary[200]}` : `1px solid ${colors.neutral[200]}`,
+    background: active ? colors.primary[50] : colors.neutral.white,
+    cursor: 'pointer',
+    boxShadow: '0 14px 30px rgba(0,0,0,0.10)',
+    display: 'flex',
+    gap: 12,
+    alignItems: 'center',
+  }),
   optionLabel: {
     width: 34,
     height: 34,
@@ -116,6 +167,18 @@ const PlaySessionStyle = {
     fontWeight: 950,
     boxShadow: '0 18px 34px rgba(139,44,255,0.28)',
   },
+  primaryBtnMain: {
+    height: 46,
+    padding: '0 18px',
+    borderRadius: 16,
+    border: 'none',
+    cursor: 'pointer',
+    color: colors.neutral.white,
+    fontSize: 14,
+    fontWeight: 950,
+    boxShadow: '0 18px 34px rgba(139,44,255,0.28)',
+    background: colors.gradients.main,
+  },
   secondaryBtn: {
     height: 46,
     padding: '0 16px',
@@ -126,6 +189,18 @@ const PlaySessionStyle = {
     fontWeight: 950,
     color: colors.neutral[900],
     boxShadow: '0 12px 26px rgba(0,0,0,0.10)',
+  },
+  secondaryBtnWhite: {
+    height: 46,
+    padding: '0 16px',
+    borderRadius: 16,
+    border: `1px solid ${colors.neutral[200]}`,
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 950,
+    color: colors.neutral[900],
+    boxShadow: '0 12px 26px rgba(0,0,0,0.10)',
+    background: colors.neutral.white,
   },
 
   result: {
@@ -145,6 +220,24 @@ const PlaySessionStyle = {
     border: '1px solid rgba(239,68,68,0.35)',
     color: colors.accent.red,
   },
+  resultState: (isCorrect) => ({
+    marginTop: 14,
+    padding: '10px 12px',
+    borderRadius: 16,
+    fontSize: 13,
+    fontWeight: 950,
+    ...(isCorrect
+      ? {
+          background: 'rgba(34,197,94,0.12)',
+          border: '1px solid rgba(34,197,94,0.35)',
+          color: colors.accent.green,
+        }
+      : {
+          background: 'rgba(239,68,68,0.12)',
+          border: '1px solid rgba(239,68,68,0.35)',
+          color: colors.accent.red,
+        }),
+  }),
   bonus: {
     marginLeft: 10,
     padding: '4px 8px',
@@ -173,6 +266,27 @@ const PlaySessionStyle = {
     fontWeight: 850,
     textShadow: '0 10px 26px rgba(0,0,0,0.16)',
     padding: '22px 0',
+  },
+
+  audiencePollCard: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 16,
+    border: '1px solid rgba(139,44,255,0.22)',
+    background: 'rgba(139,44,255,0.08)',
+    fontSize: 13,
+    fontWeight: 900,
+    color: colors.primary[800],
+  },
+  phoneHintCard: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 16,
+    border: '1px solid rgba(255,255,255,0.24)',
+    background: 'rgba(255,255,255,0.14)',
+    fontSize: 13,
+    fontWeight: 900,
+    color: colors.neutral[900],
   },
 
   lockCard: {
@@ -322,6 +436,24 @@ const PlaySessionStyle = {
     color: colors.neutral.white,
     backdropFilter: 'blur(10px)',
   },
+  millionaireOptionBtnState: (suggested, disabled) => ({
+    width: '100%',
+    textAlign: 'left',
+    padding: 16,
+    borderRadius: 20,
+    border: suggested
+      ? '1px solid rgba(255,204,0,0.78)'
+      : '1px solid rgba(255,255,255,0.30)',
+    background: suggested ? 'rgba(255,204,0,0.20)' : 'rgba(255,255,255,0.18)',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    boxShadow: '0 18px 44px rgba(0,0,0,0.16)',
+    display: 'flex',
+    gap: 12,
+    alignItems: 'center',
+    color: colors.neutral.white,
+    backdropFilter: 'blur(10px)',
+    opacity: disabled ? 0.45 : 1,
+  }),
   millionaireOptionLabel: {
     width: 36,
     height: 36,
@@ -436,6 +568,17 @@ const PlaySessionStyle = {
     border: '1px solid rgba(255,204,0,0.55)',
     background: 'rgba(255,204,0,0.20)',
   },
+  millionaireLadderRowState: (active) => ({
+    padding: '10px 12px',
+    borderRadius: 18,
+    border: active ? '1px solid rgba(255,204,0,0.55)' : '1px solid rgba(255,255,255,0.22)',
+    background: active ? 'rgba(255,204,0,0.20)' : 'rgba(255,255,255,0.14)',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 10,
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14)',
+  }),
   millionaireLadderNum: {
     fontSize: 13,
     fontWeight: 950,
@@ -485,6 +628,15 @@ const PlaySessionStyle = {
     background: colors.neutral.white,
     border: '1px solid rgba(255,255,255,0.70)',
   },
+  storyDotItem: (active) => ({
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    background: active ? colors.neutral.white : 'rgba(255,255,255,0.35)',
+    border: active
+      ? '1px solid rgba(255,255,255,0.70)'
+      : '1px solid rgba(255,255,255,0.40)',
+  }),
   storyTrack: {
     marginTop: 10,
     height: 14,
@@ -500,6 +652,14 @@ const PlaySessionStyle = {
     boxShadow: '0 10px 22px rgba(34,197,94,0.28)',
     transition: 'width 220ms ease',
   },
+  storyFillWidth: (pct) => ({
+    height: '100%',
+    borderRadius: 999,
+    background: colors.accent.green,
+    boxShadow: '0 10px 22px rgba(34,197,94,0.28)',
+    transition: 'width 220ms ease',
+    width: `${pct}%`,
+  }),
 
   storyCard: {
     width: '100%',
@@ -548,6 +708,19 @@ const PlaySessionStyle = {
     overflow: 'hidden',
     textAlign: 'left',
   },
+  storyOptionBtnState: (selected) => ({
+    width: '100%',
+    padding: 0,
+    borderRadius: 20,
+    border: 'none',
+    cursor: 'pointer',
+    boxShadow: selected
+      ? '0 0 0 2px rgba(255,255,255,0.95), 0 18px 44px rgba(0,0,0,0.16)'
+      : '0 18px 44px rgba(0,0,0,0.16)',
+    overflow: 'hidden',
+    textAlign: 'left',
+    transform: selected ? 'translateY(-1px)' : 'none',
+  }),
   storyOptionInner: {
     minHeight: 96,
     padding: 18,
@@ -557,6 +730,16 @@ const PlaySessionStyle = {
     justifyContent: 'center',
     position: 'relative',
   },
+  storyOptionInnerBg: (bg) => ({
+    minHeight: 96,
+    padding: 18,
+    borderRadius: 20,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    background: bg,
+  }),
   storyShape: {
     position: 'absolute',
     top: 12,
@@ -591,6 +774,27 @@ const PlaySessionStyle = {
     fontSize: 13,
     fontWeight: 950,
   },
+  storyToastState: (isCorrect) => ({
+    marginTop: 14,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '10px 14px',
+    borderRadius: 999,
+    fontSize: 13,
+    fontWeight: 950,
+    ...(isCorrect
+      ? {
+          background: 'rgba(34,197,94,0.14)',
+          border: '1px solid rgba(34,197,94,0.30)',
+          color: colors.accent.green,
+        }
+      : {
+          background: 'rgba(239,68,68,0.14)',
+          border: '1px solid rgba(239,68,68,0.30)',
+          color: colors.accent.red,
+        }),
+  }),
 
   storyBottom: {
     marginTop: 18,

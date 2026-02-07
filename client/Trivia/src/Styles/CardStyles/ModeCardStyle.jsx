@@ -11,6 +11,18 @@ const ModeCardStyle = {
     justifyContent: 'flex-start',
     boxShadow: '0 18px 40px rgba(0,0,0,0.20)',
   },
+  cardWithGradient: (gradient) => ({
+    width: 270,
+    height: 330,
+    borderRadius: 22,
+    padding: '34px 26px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    boxShadow: '0 18px 40px rgba(0,0,0,0.20)',
+    background: gradient,
+  }),
 
   cardIcon: {
     fontSize: 64,

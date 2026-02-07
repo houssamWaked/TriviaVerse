@@ -1,21 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import colors from '../constants/colors';
-import { api } from '../api';
-import LeaderboardStyle from '../Styles/ComponentStyles/LeaderboardStyle';
-
-function getApiErrorMessage(err) {
-  return (
-    err?.response?.data?.message ||
-    err?.message ||
-    'Something went wrong. Please try again.'
-  );
-}
+import { ICONS } from '@/constants/icons';
+import { STRINGS } from '@/constants/strings';
+import { api } from '@/api';
+import LeaderboardStyle from '@/Styles/ComponentStyles/LeaderboardStyle';
+import { getApiErrorMessage } from '@/utils/apiError';
 
 export default function Leaderboard({ onNavigateHome }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [period, setPeriod] = useState('all_time');
-  const [mode, setMode] = useState('global');
+  const [period, setPeriod] = useState(STRINGS.LEADERBOARD.periods.allTime);
+  const [mode, setMode] = useState(STRINGS.LEADERBOARD.modes.global);
   const [entries, setEntries] = useState([]);
 
   const load = async () => {
@@ -41,18 +35,16 @@ export default function Leaderboard({ onNavigateHome }) {
       <div style={LeaderboardStyle.container}>
         <div style={LeaderboardStyle.hero}>
           <div style={LeaderboardStyle.badge}>
-            <span style={LeaderboardStyle.badgeIcon}>🏆</span>
-            <span style={LeaderboardStyle.badgeText}>Leaderboard</span>
-            <span style={LeaderboardStyle.badgeDot}>✨</span>
+            <span style={LeaderboardStyle.badgeIcon}>{ICONS.common.trophy}</span>
+            <span style={LeaderboardStyle.badgeText}>{STRINGS.LEADERBOARD.title}</span>
+            <span style={LeaderboardStyle.badgeDot}>{ICONS.brand.sparkles}</span>
           </div>
-          <h1 style={LeaderboardStyle.title}>Top Players</h1>
-          <p style={LeaderboardStyle.subtitle}>
-            Pick a mode and see who’s dominating right now.
-          </p>
+          <h1 style={LeaderboardStyle.title}>{STRINGS.LEADERBOARD.headline}</h1>
+          <p style={LeaderboardStyle.subtitle}>{STRINGS.LEADERBOARD.subtitle}</p>
         </div>
 
         <div className="tv-card" style={LeaderboardStyle.card}>
-          <div style={{ ...LeaderboardStyle.row, justifyContent: 'space-between' }}>
+          <div style={LeaderboardStyle.rowBetween}>
             <div style={LeaderboardStyle.row}>
               <button
                 type="button"
@@ -60,7 +52,7 @@ export default function Leaderboard({ onNavigateHome }) {
                 style={LeaderboardStyle.btn}
                 onClick={onNavigateHome}
               >
-                Home
+                {STRINGS.LEADERBOARD.buttons.home}
               </button>
               <button
                 type="button"
@@ -69,7 +61,7 @@ export default function Leaderboard({ onNavigateHome }) {
                 onClick={load}
                 disabled={busy}
               >
-                Refresh
+                {STRINGS.LEADERBOARD.buttons.refresh}
               </button>
             </div>
 
@@ -80,7 +72,7 @@ export default function Leaderboard({ onNavigateHome }) {
                 onChange={(e) => setMode(e.target.value)}
                 disabled={busy}
               >
-                {['global', 'story', 'millionaire', 'classic', 'blitz', 'custom'].map((m) => (
+                {Object.values(STRINGS.LEADERBOARD.modes).map((m) => (
                   <option key={m} value={m}>
                     {m}
                   </option>
@@ -93,8 +85,12 @@ export default function Leaderboard({ onNavigateHome }) {
                 onChange={(e) => setPeriod(e.target.value)}
                 disabled={busy}
               >
-                <option value="all_time">all_time</option>
-                <option value="weekly">weekly</option>
+                <option value={STRINGS.LEADERBOARD.periods.allTime}>
+                  {STRINGS.LEADERBOARD.periods.allTime}
+                </option>
+                <option value={STRINGS.LEADERBOARD.periods.weekly}>
+                  {STRINGS.LEADERBOARD.periods.weekly}
+                </option>
               </select>
             </div>
           </div>
@@ -103,17 +99,24 @@ export default function Leaderboard({ onNavigateHome }) {
 
           <div style={LeaderboardStyle.list}>
             {entries.length === 0 ? (
-              <div style={{ fontWeight: 850, color: colors.neutral[700] }}>
-                {busy ? 'Loading…' : 'No leaderboard entries yet.'}
+              <div style={LeaderboardStyle.emptyMessage}>
+                {busy ? STRINGS.COMMON.loading : STRINGS.LEADERBOARD.empty.none}
               </div>
             ) : (
               entries.map((e) => (
-                <div key={`${e.user_id}-${e.rank_position}`} style={LeaderboardStyle.item}>
+                <div
+                  key={`${e.user_id}-${e.rank_position}`}
+                  style={LeaderboardStyle.item}
+                >
                   <div style={LeaderboardStyle.left}>
                     <div style={LeaderboardStyle.rank}>{e.rank_position}</div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={LeaderboardStyle.name}>{e.username || 'Player'}</div>
-                      <div style={LeaderboardStyle.meta}>Level {e.level || 1}</div>
+                    <div style={LeaderboardStyle.nameWrap}>
+                      <div style={LeaderboardStyle.name}>
+                        {e.username || STRINGS.COMMON.playerFallback}
+                      </div>
+                      <div style={LeaderboardStyle.meta}>
+                        {STRINGS.LEADERBOARD.level.label} {e.level || 1}
+                      </div>
                     </div>
                   </div>
                   <div style={LeaderboardStyle.score}>{e.score_value}</div>
@@ -126,4 +129,3 @@ export default function Leaderboard({ onNavigateHome }) {
     </div>
   );
 }
-

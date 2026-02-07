@@ -1,19 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import colors from '../constants/colors';
-import { api } from '../api';
-import CreateQuizPageStyle from '../Styles/ComponentStyles/CreateQuizPageStyle';
-
-function getApiErrorMessage(err) {
-  return (
-    err?.response?.data?.message ||
-    err?.message ||
-    'Something went wrong. Please try again.'
-  );
-}
-
-function isUnauthorized(err) {
-  return Number(err?.response?.status) === 401;
-}
+import { ICONS } from '@/constants/icons';
+import { STRINGS } from '@/constants/strings';
+import { api } from '@/api';
+import CreateQuizPageStyle from '@/Styles/ComponentStyles/CreateQuizPageStyle';
+import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
 
 function sortByOrderIndex(a, b) {
   return (a?.order_index ?? 0) - (b?.order_index ?? 0);
@@ -27,11 +17,16 @@ function validateQuestionsForPublish(questions = []) {
     const correctCount = opts.filter((o) => !!o.is_correct).length;
 
     if (optionCount < 2) {
-      issues.push(`Question ${q?.order_index ?? '?'} needs at least 2 options.`);
+      issues.push(
+        STRINGS.CREATE_QUIZ.validation.questionNeedsOptions(q?.order_index ?? '?')
+      );
     }
     if (correctCount !== 1) {
       issues.push(
-        `Question ${q?.order_index ?? '?'} must have exactly 1 correct option (currently ${correctCount}).`
+        STRINGS.CREATE_QUIZ.validation.questionNeedsCorrect(
+          q?.order_index ?? '?',
+          correctCount
+        )
       );
     }
   }
@@ -51,9 +46,9 @@ export default function CreateQuiz({
   const [quizIdInput, setQuizIdInput] = useState('');
 
   const [quizForm, setQuizForm] = useState({
-    title: 'My Trivia Quiz ✨',
-    description: 'A fun quiz made on TriviaVerse!',
-    visibility: 'private',
+    title: STRINGS.CREATE_QUIZ.defaults.title,
+    description: STRINGS.CREATE_QUIZ.defaults.description,
+    visibility: STRINGS.CREATE_QUIZ.defaults.visibility,
   });
 
   const [myQuizzesBusy, setMyQuizzesBusy] = useState(false);
@@ -115,7 +110,7 @@ export default function CreateQuiz({
       const id = String(quizId || '').trim();
       if (!id) return;
 
-      const ok = window.confirm('Delete this quiz forever? This cannot be undone.');
+      const ok = window.confirm(STRINGS.CREATE_QUIZ.buttons.deleteQuizForeverConfirm);
       if (!ok) return;
 
       setBusy(true);
@@ -159,10 +154,7 @@ export default function CreateQuiz({
 
     const publishIssues = validateQuestionsForPublish(questions);
     const canPublish = quiz.status !== 'published' && publishIssues.length === 0;
-    const pillStyle = {
-      ...CreateQuizPageStyle.pill,
-      ...(quiz.status === 'published' ? CreateQuizPageStyle.pillOk : {}),
-    };
+    const pillStyle = CreateQuizPageStyle.pillState(quiz.status === 'published');
     return (
       <div style={CreateQuizPageStyle.quizHeader}>
         <div>
@@ -175,11 +167,11 @@ export default function CreateQuiz({
           )}
           <div style={CreateQuizPageStyle.metaRow}>
             <span style={CreateQuizPageStyle.metaItem}>
-              <span style={CreateQuizPageStyle.metaIcon}>🔒</span>
+              <span style={CreateQuizPageStyle.metaIcon}>{ICONS.common.lock}</span>
               {quiz.visibility}
             </span>
             <span style={CreateQuizPageStyle.metaItem}>
-              <span style={CreateQuizPageStyle.metaIcon}>🆔</span>
+              <span style={CreateQuizPageStyle.metaIcon}>{ICONS.common.id}</span>
               <code style={CreateQuizPageStyle.code}>{quiz.id}</code>
             </span>
           </div>
@@ -189,41 +181,32 @@ export default function CreateQuiz({
           <button
             type="button"
             className="tv-card tv-card--hover"
-            style={{ ...CreateQuizPageStyle.actionBtn, background: colors.neutral.white }}
+            style={CreateQuizPageStyle.actionBtnWhite}
             onClick={onNavigateHome}
           >
-            ← Back Home
+            {STRINGS.COMMON.symbols.leftArrow} {STRINGS.CREATE_QUIZ.buttons.backHome}
           </button>
 
           <button
             type="button"
             className="tv-card tv-card--hover"
-            style={{
-              ...CreateQuizPageStyle.actionBtn,
-              background: colors.neutral.white,
-              border: `1px solid ${colors.secondary[100]}`,
-              color: colors.secondary[700],
-            }}
+            style={CreateQuizPageStyle.actionBtnDelete}
             disabled={busy}
             onClick={() => deleteQuiz(quiz.id)}
-            title="Delete this quiz"
+            title={STRINGS.CREATE_QUIZ.buttons.deleteThisQuizTitle}
           >
-            Delete 🗑
+            {STRINGS.CREATE_QUIZ.buttons.deleteQuiz}
           </button>
 
           <button
             type="button"
             className="tv-card tv-card--hover"
-            style={{
-              ...CreateQuizPageStyle.actionBtn,
-              background: colors.gradients.main,
-              color: colors.neutral.white,
-            }}
+            style={CreateQuizPageStyle.actionBtnPublish}
             disabled={busy || !canPublish}
             onClick={async () => {
               const issues = validateQuestionsForPublish(questions);
               if (issues.length > 0) {
-                setError(`Fix your quiz before publishing:\n- ${issues.join('\n- ')}`);
+                setError(STRINGS.CREATE_QUIZ.publish.fixBefore(issues));
                 return;
               }
               setError('');
@@ -241,13 +224,13 @@ export default function CreateQuiz({
             }}
             title={
               canPublish
-                ? 'Publish'
+                ? STRINGS.CREATE_QUIZ.buttons.publish
                 : publishIssues.length
-                  ? 'Add 2+ options and set exactly 1 correct per question'
-                  : 'Publish'
+                  ? STRINGS.CREATE_QUIZ.buttons.publishDisabledTitle
+                  : STRINGS.CREATE_QUIZ.buttons.publish
             }
           >
-            Publish 🚀
+            {STRINGS.CREATE_QUIZ.buttons.publishRocket}
           </button>
         </div>
       </div>
@@ -323,50 +306,50 @@ export default function CreateQuiz({
       <div style={CreateQuizPageStyle.container}>
         <div style={CreateQuizPageStyle.hero}>
           <div style={CreateQuizPageStyle.heroBadge}>
-            <span style={CreateQuizPageStyle.heroBadgeIcon}>🎨</span>
+            <span style={CreateQuizPageStyle.heroBadgeIcon}>{ICONS.common.palette}</span>
             <span style={CreateQuizPageStyle.heroBadgeText}>
-              Build a quiz in minutes
+              {STRINGS.CREATE_QUIZ.hero.badgeText}
             </span>
-            <span style={CreateQuizPageStyle.heroBadgeDot}>✨</span>
+            <span style={CreateQuizPageStyle.heroBadgeDot}>{ICONS.brand.sparkles}</span>
           </div>
           <h1 style={CreateQuizPageStyle.heroTitle}>
-            Create Your <span style={CreateQuizPageStyle.heroTitleAccent}>Quiz</span>
+            {STRINGS.CREATE_QUIZ.hero.titlePrefix}{' '}
+            <span style={CreateQuizPageStyle.heroTitleAccent}>
+              {STRINGS.CREATE_QUIZ.hero.titleAccent}
+            </span>
           </h1>
           <p style={CreateQuizPageStyle.heroSubtitle}>
-            Add questions, set correct answers, then publish and share with friends.
+            {STRINGS.CREATE_QUIZ.hero.subtitle}
           </p>
         </div>
 
         {!canUseBuilder ? (
           <div className="tv-card" style={CreateQuizPageStyle.lockCard}>
-            <h2 style={CreateQuizPageStyle.lockTitle}>Login to create quizzes</h2>
+            <h2 style={CreateQuizPageStyle.lockTitle}>{STRINGS.CREATE_QUIZ.locked.title}</h2>
             <p style={CreateQuizPageStyle.lockText}>
-              You need an account to save drafts and publish your quiz.
+              {STRINGS.CREATE_QUIZ.locked.subtitle}
             </p>
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{
-                ...CreateQuizPageStyle.primaryBtn,
-                background: colors.gradients.main,
-              }}
+              style={CreateQuizPageStyle.primaryBtnMain}
               onClick={() => onRequireAuth?.()}
             >
-              Join / Login 🚀
+              {STRINGS.COMMON.joinLogin} {ICONS.common.rocket}
             </button>
           </div>
         ) : (
           <>
             {!!error && (
               <div className="tv-card" style={CreateQuizPageStyle.errorCard}>
-                <div style={CreateQuizPageStyle.errorTitle}>Oops</div>
+                <div style={CreateQuizPageStyle.errorTitle}>{STRINGS.CREATE_QUIZ.errorTitle}</div>
                 <div style={CreateQuizPageStyle.errorText}>{error}</div>
               </div>
             )}
 
             <div style={CreateQuizPageStyle.grid}>
               <div className="tv-card" style={CreateQuizPageStyle.panel}>
-                <h2 style={CreateQuizPageStyle.panelTitle}>1) Create quiz</h2>
+                <h2 style={CreateQuizPageStyle.panelTitle}>{STRINGS.CREATE_QUIZ.panels.create}</h2>
 
                 <form
                   style={CreateQuizPageStyle.form}
@@ -393,7 +376,7 @@ export default function CreateQuiz({
                   }}
                 >
                   <label style={CreateQuizPageStyle.field}>
-                    <span style={CreateQuizPageStyle.label}>Title</span>
+                    <span style={CreateQuizPageStyle.label}>{STRINGS.CREATE_QUIZ.labels.title}</span>
                     <input
                       style={CreateQuizPageStyle.input}
                       value={quizForm.title}
@@ -407,7 +390,9 @@ export default function CreateQuiz({
                   </label>
 
                   <label style={CreateQuizPageStyle.field}>
-                    <span style={CreateQuizPageStyle.label}>Description</span>
+                    <span style={CreateQuizPageStyle.label}>
+                      {STRINGS.CREATE_QUIZ.labels.description}
+                    </span>
                     <textarea
                       style={CreateQuizPageStyle.textarea}
                       value={quizForm.description}
@@ -420,7 +405,9 @@ export default function CreateQuiz({
                   </label>
 
                   <label style={CreateQuizPageStyle.field}>
-                    <span style={CreateQuizPageStyle.label}>Visibility</span>
+                    <span style={CreateQuizPageStyle.label}>
+                      {STRINGS.CREATE_QUIZ.labels.visibility}
+                    </span>
                     <select
                       style={CreateQuizPageStyle.input}
                       value={quizForm.visibility}
@@ -429,57 +416,57 @@ export default function CreateQuiz({
                       }
                       disabled={busy}
                     >
-                      <option value="private">private</option>
-                      <option value="public">public</option>
-                      <option value="unlisted">unlisted</option>
+                      <option value={STRINGS.COMMON.visibility.private}>
+                        {STRINGS.COMMON.visibility.private}
+                      </option>
+                      <option value={STRINGS.COMMON.visibility.public}>
+                        {STRINGS.COMMON.visibility.public}
+                      </option>
+                      <option value={STRINGS.COMMON.visibility.unlisted}>
+                        {STRINGS.COMMON.visibility.unlisted}
+                      </option>
                     </select>
                   </label>
 
                   <button
                     type="submit"
                     className="tv-card tv-card--hover"
-                    style={{
-                      ...CreateQuizPageStyle.primaryBtn,
-                      background: colors.gradients.main,
-                    }}
+                    style={CreateQuizPageStyle.primaryBtnMain}
                     disabled={busy}
                   >
-                    Create draft ✨
+                    {STRINGS.CREATE_QUIZ.buttons.createDraft}
                   </button>
                 </form>
               </div>
 
               <div className="tv-card" style={CreateQuizPageStyle.panel}>
                 <div style={CreateQuizPageStyle.panelWideHeader}>
-                  <h2 style={CreateQuizPageStyle.panelTitle}>2) My quizzes</h2>
+                  <h2 style={CreateQuizPageStyle.panelTitle}>{STRINGS.CREATE_QUIZ.panels.myQuizzes}</h2>
                   <button
                     type="button"
                     className="tv-card tv-card--hover"
-                    style={{
-                      ...CreateQuizPageStyle.secondaryBtn,
-                      background: colors.neutral.white,
-                    }}
+                    style={CreateQuizPageStyle.secondaryBtnWhite}
                     disabled={busy || myQuizzesBusy}
                     onClick={async () => {
                       setError('');
                       await refreshMyQuizzes();
                     }}
                   >
-                    Refresh ↻
+                    {STRINGS.CREATE_QUIZ.buttons.refresh}
                   </button>
                 </div>
 
                 <p style={CreateQuizPageStyle.panelHint}>
-                  Open any quiz you’ve created (by name, not UUID).
+                  {STRINGS.CREATE_QUIZ.help.myQuizzesHint}
                 </p>
 
                 <label style={CreateQuizPageStyle.field}>
-                  <span style={CreateQuizPageStyle.label}>Search</span>
+                  <span style={CreateQuizPageStyle.label}>{STRINGS.CREATE_QUIZ.labels.search}</span>
                   <input
                     style={CreateQuizPageStyle.input}
                     value={myQuizFilter}
                     onChange={(e) => setMyQuizFilter(e.target.value)}
-                    placeholder="Type a quiz title..."
+                    placeholder={STRINGS.CREATE_QUIZ.placeholders.quizTitleSearch}
                     disabled={busy || myQuizzesBusy}
                   />
                 </label>
@@ -498,10 +485,7 @@ export default function CreateQuiz({
                         <button
                           type="button"
                           className="tv-card tv-card--hover"
-                          style={{
-                            ...CreateQuizPageStyle.myQuizItem,
-                            ...CreateQuizPageStyle.myQuizOpenBtn,
-                          }}
+                          style={CreateQuizPageStyle.myQuizItemOpen}
                           disabled={busy}
                           onClick={() => loadQuiz(q.id)}
                         >
@@ -526,7 +510,7 @@ export default function CreateQuiz({
                           style={CreateQuizPageStyle.myQuizDeleteBtn}
                           disabled={busy}
                           onClick={() => deleteQuiz(q.id)}
-                          title="Delete quiz"
+                          title={STRINGS.CREATE_QUIZ.buttons.deleteQuizTitle}
                         >
                           🗑
                         </button>
@@ -535,12 +519,14 @@ export default function CreateQuiz({
 
                   {(!myQuizzes || myQuizzes.length === 0) && !myQuizzesBusy && (
                     <div style={CreateQuizPageStyle.emptyOptions}>
-                      No quizzes yet — create your first draft on the left ✨
+                      {STRINGS.CREATE_QUIZ.empty.noQuizzes}
                     </div>
                   )}
 
                   {myQuizzesBusy && (
-                    <div style={CreateQuizPageStyle.emptyOptions}>Loading…</div>
+                    <div style={CreateQuizPageStyle.emptyOptions}>
+                      {STRINGS.CREATE_QUIZ.empty.loadingOptions}
+                    </div>
                   )}
                 </div>
 
@@ -549,22 +535,19 @@ export default function CreateQuiz({
                     style={CreateQuizPageStyle.input}
                     value={quizIdInput}
                     onChange={(e) => setQuizIdInput(e.target.value)}
-                    placeholder="Quiz ID (UUID)"
+                    placeholder={STRINGS.CREATE_QUIZ.placeholders.quizId}
                     disabled={busy}
                   />
                   <button
                     type="button"
                     className="tv-card tv-card--hover"
-                    style={{
-                      ...CreateQuizPageStyle.secondaryBtn,
-                      background: colors.neutral.white,
-                    }}
+                    style={CreateQuizPageStyle.secondaryBtnWhite}
                     disabled={busy || !quizIdInput.trim()}
                     onClick={async () => {
                       await loadQuiz(quizIdInput.trim());
                     }}
                   >
-                    Open
+                    {STRINGS.CREATE_QUIZ.buttons.open}
                   </button>
                 </div>
               </div>
@@ -577,14 +560,11 @@ export default function CreateQuiz({
                 {!!quizEdit && (
                   <div className="tv-card" style={CreateQuizPageStyle.panelWide}>
                     <div style={CreateQuizPageStyle.panelWideHeader}>
-                      <h2 style={CreateQuizPageStyle.panelTitle}>Quiz settings</h2>
+                      <h2 style={CreateQuizPageStyle.panelTitle}>{STRINGS.CREATE_QUIZ.panels.settings}</h2>
                       <button
                         type="button"
                         className="tv-card tv-card--hover"
-                        style={{
-                          ...CreateQuizPageStyle.secondaryBtn,
-                          background: colors.neutral.white,
-                        }}
+                        style={CreateQuizPageStyle.secondaryBtnWhite}
                         disabled={busy}
                         onClick={() => {
                           setQuiz(null);
@@ -593,7 +573,7 @@ export default function CreateQuiz({
                           setOptionDrafts({});
                         }}
                       >
-                        Close ✕
+                        {STRINGS.CREATE_QUIZ.buttons.close}
                       </button>
                     </div>
 
@@ -625,7 +605,7 @@ export default function CreateQuiz({
                       }}
                     >
                       <label style={CreateQuizPageStyle.field}>
-                        <span style={CreateQuizPageStyle.label}>Title</span>
+                        <span style={CreateQuizPageStyle.label}>{STRINGS.CREATE_QUIZ.labels.title}</span>
                         <input
                           style={CreateQuizPageStyle.input}
                           value={quizEdit.title}
@@ -639,7 +619,9 @@ export default function CreateQuiz({
                       </label>
 
                       <label style={CreateQuizPageStyle.field}>
-                        <span style={CreateQuizPageStyle.label}>Description</span>
+                        <span style={CreateQuizPageStyle.label}>
+                          {STRINGS.CREATE_QUIZ.labels.description}
+                        </span>
                         <textarea
                           style={CreateQuizPageStyle.textarea}
                           value={quizEdit.description}
@@ -655,7 +637,9 @@ export default function CreateQuiz({
                       </label>
 
                       <label style={CreateQuizPageStyle.field}>
-                        <span style={CreateQuizPageStyle.label}>Visibility</span>
+                        <span style={CreateQuizPageStyle.label}>
+                          {STRINGS.CREATE_QUIZ.labels.visibility}
+                        </span>
                         <select
                           style={CreateQuizPageStyle.input}
                           value={quizEdit.visibility}
@@ -667,22 +651,25 @@ export default function CreateQuiz({
                           }
                           disabled={busy}
                         >
-                          <option value="private">private</option>
-                          <option value="public">public</option>
-                          <option value="unlisted">unlisted</option>
+                          <option value={STRINGS.COMMON.visibility.private}>
+                            {STRINGS.COMMON.visibility.private}
+                          </option>
+                          <option value={STRINGS.COMMON.visibility.public}>
+                            {STRINGS.COMMON.visibility.public}
+                          </option>
+                          <option value={STRINGS.COMMON.visibility.unlisted}>
+                            {STRINGS.COMMON.visibility.unlisted}
+                          </option>
                         </select>
                       </label>
 
                       <button
                         type="submit"
                         className="tv-card tv-card--hover"
-                        style={{
-                          ...CreateQuizPageStyle.primaryBtn,
-                          background: colors.gradients.main,
-                        }}
+                        style={CreateQuizPageStyle.primaryBtnMain}
                         disabled={busy}
                       >
-                        Save changes 💾
+                        {STRINGS.CREATE_QUIZ.buttons.saveChanges}
                       </button>
                     </form>
 
@@ -695,19 +682,16 @@ export default function CreateQuiz({
                           <button
                             type="button"
                             className="tv-card tv-card--hover"
-                            style={{
-                              ...CreateQuizPageStyle.secondaryBtn,
-                              background: colors.neutral.white,
-                            }}
+                            style={CreateQuizPageStyle.secondaryBtnWhite}
                             disabled={busy || accessBusy}
                             onClick={refreshAccess}
                           >
-                            Refresh ↻
+                            {STRINGS.CREATE_QUIZ.buttons.refresh}
                           </button>
                         </div>
 
                         <p style={CreateQuizPageStyle.panelHint}>
-                          Add usernames that can view this private quiz.
+                          {STRINGS.CREATE_QUIZ.help.privateAccessHint}
                         </p>
 
                         <form
@@ -735,7 +719,7 @@ export default function CreateQuiz({
                             style={CreateQuizPageStyle.input}
                             value={accessUsername}
                             onChange={(e) => setAccessUsername(e.target.value)}
-                            placeholder="Username (e.g. coolplayer123)"
+                            placeholder={STRINGS.CREATE_QUIZ.placeholders.accessUsername}
                             disabled={busy || accessBusy}
                             minLength={3}
                             maxLength={30}
@@ -744,10 +728,7 @@ export default function CreateQuiz({
                           <button
                             type="submit"
                             className="tv-card tv-card--hover"
-                            style={{
-                              ...CreateQuizPageStyle.secondaryBtn,
-                              background: colors.neutral.white,
-                            }}
+                            style={CreateQuizPageStyle.secondaryBtnWhite}
                             disabled={busy || accessBusy}
                           >
                             Add
@@ -796,14 +777,11 @@ export default function CreateQuiz({
 
                 <div className="tv-card" style={CreateQuizPageStyle.panelWide}>
                   <div style={CreateQuizPageStyle.panelWideHeader}>
-                    <h2 style={CreateQuizPageStyle.panelTitle}>3) Add questions</h2>
+                    <h2 style={CreateQuizPageStyle.panelTitle}>{STRINGS.CREATE_QUIZ.panels.addQuestions}</h2>
                     <button
                       type="button"
                       className="tv-card tv-card--hover"
-                      style={{
-                        ...CreateQuizPageStyle.secondaryBtn,
-                        background: colors.neutral.white,
-                      }}
+                      style={CreateQuizPageStyle.secondaryBtnWhite}
                       disabled={busy}
                       onClick={async () => {
                         setError('');
@@ -818,7 +796,7 @@ export default function CreateQuiz({
                         }
                       }}
                     >
-                      Refresh ↻
+                      {STRINGS.CREATE_QUIZ.buttons.refresh}
                     </button>
                   </div>
 
@@ -846,8 +824,8 @@ export default function CreateQuiz({
                       }
                     }}
                   >
-                    <label style={{ ...CreateQuizPageStyle.field, flex: 1 }}>
-                      <span style={CreateQuizPageStyle.label}>Question text</span>
+                    <label style={CreateQuizPageStyle.fieldFlex1}>
+                      <span style={CreateQuizPageStyle.label}>{STRINGS.CREATE_QUIZ.labels.questionText}</span>
                       <input
                         style={CreateQuizPageStyle.input}
                         value={questionForm.question_text}
@@ -865,7 +843,7 @@ export default function CreateQuiz({
                     </label>
 
                     <label style={CreateQuizPageStyle.smallField}>
-                      <span style={CreateQuizPageStyle.label}>Time (sec)</span>
+                      <span style={CreateQuizPageStyle.label}>{STRINGS.CREATE_QUIZ.labels.timeSec}</span>
                       <input
                         style={CreateQuizPageStyle.input}
                         type="number"
@@ -883,7 +861,7 @@ export default function CreateQuiz({
                     </label>
 
                     <label style={CreateQuizPageStyle.smallField}>
-                      <span style={CreateQuizPageStyle.label}>Points</span>
+                      <span style={CreateQuizPageStyle.label}>{STRINGS.CREATE_QUIZ.labels.points}</span>
                       <input
                         style={CreateQuizPageStyle.input}
                         type="number"
@@ -903,14 +881,10 @@ export default function CreateQuiz({
                     <button
                       type="submit"
                       className="tv-card tv-card--hover"
-                      style={{
-                        ...CreateQuizPageStyle.primaryBtn,
-                        background: colors.gradients.main,
-                        alignSelf: 'flex-end',
-                      }}
+                      style={CreateQuizPageStyle.primaryBtnMainEnd}
                       disabled={busy}
                     >
-                      Add ➕
+                      {STRINGS.CREATE_QUIZ.buttons.addPlus}
                     </button>
                   </form>
                 </div>
@@ -953,13 +927,8 @@ export default function CreateQuiz({
                           {opts.map((o) => (
                             <div key={o.id} style={CreateQuizPageStyle.optionRow}>
                               <label
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 8,
-                                  marginRight: 8,
-                                }}
-                                title="Mark as correct"
+                                style={CreateQuizPageStyle.correctRadioLabel}
+                                title={STRINGS.CREATE_QUIZ.buttons.markCorrectTitle}
                               >
                                 <input
                                   type="radio"
@@ -984,7 +953,7 @@ export default function CreateQuiz({
                           ))}
                           {(q.options || []).length === 0 && (
                             <div style={CreateQuizPageStyle.emptyOptions}>
-                              Add at least 2 options and mark 1 as correct.
+                              {STRINGS.CREATE_QUIZ.empty.optionsNeedTwo}
                             </div>
                           )}
                           {(q.options || []).length > 0 && correctCount !== 1 && (
@@ -1032,7 +1001,7 @@ export default function CreateQuiz({
                                 [q.id]: { ...draft, option_text: e.target.value },
                               }))
                             }
-                            placeholder="Option text"
+                            placeholder={STRINGS.CREATE_QUIZ.placeholders.optionText}
                             maxLength={300}
                             required
                             disabled={busy}
@@ -1056,10 +1025,7 @@ export default function CreateQuiz({
                           <button
                             type="submit"
                             className="tv-card tv-card--hover"
-                            style={{
-                              ...CreateQuizPageStyle.secondaryBtn,
-                              background: colors.neutral.white,
-                            }}
+                            style={CreateQuizPageStyle.secondaryBtnWhite}
                             disabled={busy}
                           >
                             Add

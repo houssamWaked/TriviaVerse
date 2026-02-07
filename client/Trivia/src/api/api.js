@@ -140,6 +140,9 @@ export const api = {
   getFriendStats: async (friendUserId) =>
     (await http.get(endpoints.friendStats(friendUserId))).data,
 
+  // me
+  getMyProfile: async () => (await http.get(endpoints.meProfile())).data,
+
   // quiz delete
   deleteQuiz: async (quizId) => (await http.delete(endpoints.quizById(quizId))).data,
 

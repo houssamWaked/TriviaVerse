@@ -1,5 +1,7 @@
 import React from 'react';
 import AdminStyle from '../../Styles/ComponentStyles/AdminStyle';
+import AdminQuestionBankTabStyle from '../../Styles/ComponentStyles/AdminQuestionBankTabStyle';
+import { STRINGS } from '@/constants/strings';
 
 export default function AdminQuestionBankTab({
   busy,
@@ -10,26 +12,28 @@ export default function AdminQuestionBankTab({
   return (
     <div style={AdminStyle.grid}>
       <div style={AdminStyle.section}>
-        <h3 style={AdminStyle.sectionTitle}>Create global question</h3>
+        <h3 style={AdminStyle.sectionTitle}>{STRINGS.ADMIN.sections.createGlobalQuestion}</h3>
         <div style={AdminStyle.sectionSub}>
-          Pick the correct option (radio), choose modes, then create.
+          {STRINGS.ADMIN.text.createGlobalQuestionSubtitle}
         </div>
 
         <div style={AdminStyle.field}>
-          <span style={AdminStyle.label}>Question</span>
+          <span style={AdminStyle.label}>{STRINGS.ADMIN.labels.question}</span>
           <textarea
             style={AdminStyle.textarea}
             value={questionForm.question_text}
             onChange={(e) =>
               setQuestionForm((v) => ({ ...v, question_text: e.target.value }))
             }
-            placeholder="What is the capital of France?"
+            placeholder={STRINGS.ADMIN.text.questionPlaceholder}
             disabled={busy}
           />
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 10 }}>
-          <span style={{ ...AdminStyle.label, marginRight: 6 }}>Difficulty (1-10)</span>
+        <div style={AdminQuestionBankTabStyle.rowMt10}>
+          <span style={AdminQuestionBankTabStyle.labelMr6}>
+            {STRINGS.ADMIN.labels.difficultyRating}
+          </span>
           <input
             type="range"
             min={1}
@@ -39,11 +43,11 @@ export default function AdminQuestionBankTab({
               setQuestionForm((v) => ({ ...v, difficulty_rating: Number(e.target.value) }))
             }
             disabled={busy}
-            style={{ flex: 1, minWidth: 180 }}
-            aria-label="Difficulty rating"
+            style={AdminQuestionBankTabStyle.range}
+            aria-label={STRINGS.ADMIN.aria.difficultyRating}
           />
           <input
-            style={{ ...AdminStyle.input, width: 90 }}
+            style={AdminQuestionBankTabStyle.inputW90}
             type="number"
             min={1}
             max={10}
@@ -55,7 +59,7 @@ export default function AdminQuestionBankTab({
           />
         </div>
 
-        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={AdminQuestionBankTabStyle.optionsWrap}>
           {(questionForm.options || []).map((opt, idx) => (
             <div key={idx} style={AdminStyle.row}>
               <input
@@ -66,7 +70,7 @@ export default function AdminQuestionBankTab({
                 disabled={busy}
               />
               <input
-                style={{ ...AdminStyle.input, flex: 1 }}
+                style={AdminQuestionBankTabStyle.inputFlex1}
                 value={opt}
                 onChange={(e) =>
                   setQuestionForm((v) => {
@@ -90,29 +94,32 @@ export default function AdminQuestionBankTab({
                   }))
                 }
                 disabled={busy || (questionForm.options || []).length <= 2}
-                title="Remove option"
+                title={STRINGS.ADMIN.hints.removeOptionTitle}
               >
-                Remove
+                {STRINGS.ADMIN.actions.remove}
               </button>
             </div>
           ))}
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 10 }}>
+        <div style={AdminQuestionBankTabStyle.rowMt10}>
           <button
             type="button"
             className="tv-card tv-card--hover"
             style={AdminStyle.btn}
             onClick={() =>
-              setQuestionForm((v) => ({ ...v, options: [...v.options, 'New option'] }))
+              setQuestionForm((v) => ({
+                ...v,
+                options: [...v.options, STRINGS.ADMIN.placeholders.newOption],
+              }))
             }
             disabled={busy || (questionForm.options || []).length >= 6}
           >
-            + Add option
+            {STRINGS.ADMIN.actions.addOption}
           </button>
         </div>
 
-        <label style={{ ...AdminStyle.smallHelp, cursor: 'pointer' }}>
+        <label style={AdminQuestionBankTabStyle.toggleLabel}>
           <input
             type="checkbox"
             checked={!!questionForm.showAdvanced}
@@ -120,21 +127,21 @@ export default function AdminQuestionBankTab({
               setQuestionForm((v) => ({ ...v, showAdvanced: e.target.checked }))
             }
             disabled={busy}
-            style={{ marginRight: 8 }}
+            style={AdminQuestionBankTabStyle.checkboxMr8}
           />
           Show advanced settings (explanation, time, points)
         </label>
 
         {questionForm.showAdvanced && (
           <>
-            <div style={{ ...AdminStyle.row, marginTop: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 950, color: '#222' }}>
+            <div style={AdminQuestionBankTabStyle.rowMt12}>
+              <div style={AdminQuestionBankTabStyle.advancedTitle}>
                 Assign to modes (optional)
               </div>
             </div>
-            <div style={{ ...AdminStyle.row, marginTop: 8 }}>
+            <div style={AdminQuestionBankTabStyle.rowMt8}>
               {['classic', 'blitz', 'millionaire'].map((m) => (
-                <label key={m} style={{ ...AdminStyle.pill, cursor: 'pointer' }}>
+                <label key={m} style={AdminQuestionBankTabStyle.modePillLabel}>
                   <input
                     type="checkbox"
                     checked={!!questionForm.modes?.[m]}
@@ -145,7 +152,7 @@ export default function AdminQuestionBankTab({
                       }))
                     }
                     disabled={busy}
-                    style={{ marginRight: 8 }}
+                    style={AdminQuestionBankTabStyle.checkboxMr8}
                   />
                   {m}
                 </label>
@@ -153,21 +160,21 @@ export default function AdminQuestionBankTab({
             </div>
 
             <div style={AdminStyle.field}>
-              <span style={AdminStyle.label}>Explanation</span>
+              <span style={AdminStyle.label}>{STRINGS.ADMIN.labels.explanation}</span>
               <textarea
-                style={{ ...AdminStyle.textarea, minHeight: 70 }}
+                style={AdminQuestionBankTabStyle.textareaMin70}
                 value={questionForm.explanation}
                 onChange={(e) =>
                   setQuestionForm((v) => ({ ...v, explanation: e.target.value }))
                 }
-                placeholder="Optional..."
+                placeholder={STRINGS.ADMIN.text.explanationPlaceholder}
                 disabled={busy}
               />
             </div>
 
-            <div style={{ ...AdminStyle.row, marginTop: 10 }}>
-              <label style={{ ...AdminStyle.field, flex: 1, marginTop: 0 }}>
-                <span style={AdminStyle.label}>Time limit (sec)</span>
+            <div style={AdminQuestionBankTabStyle.rowMt10}>
+              <label style={AdminQuestionBankTabStyle.fieldFlex1NoMt}>
+                <span style={AdminStyle.label}>{STRINGS.ADMIN.labels.timeLimitSec}</span>
                 <input
                   style={AdminStyle.input}
                   type="number"
@@ -183,8 +190,8 @@ export default function AdminQuestionBankTab({
                   disabled={busy}
                 />
               </label>
-              <label style={{ ...AdminStyle.field, flex: 1, marginTop: 0 }}>
-                <span style={AdminStyle.label}>Points</span>
+              <label style={AdminQuestionBankTabStyle.fieldFlex1NoMt}>
+                <span style={AdminStyle.label}>{STRINGS.ADMIN.labels.points}</span>
                 <input
                   style={AdminStyle.input}
                   type="number"
@@ -200,26 +207,26 @@ export default function AdminQuestionBankTab({
           </>
         )}
 
-        <div style={{ ...AdminStyle.row, marginTop: 14 }}>
+        <div style={AdminQuestionBankTabStyle.rowMt14}>
           <button
             type="button"
             className="tv-card tv-card--hover"
-            style={{ ...AdminStyle.btn, ...AdminStyle.btnPrimary }}
+            style={AdminStyle.btnPrimaryFull}
             onClick={onCreateQuestion}
             disabled={busy || !String(questionForm.question_text || '').trim()}
           >
-            Create question
+            {STRINGS.ADMIN.text.createQuestionButton}
           </button>
         </div>
       </div>
 
       <div style={AdminStyle.section}>
-        <h3 style={AdminStyle.sectionTitle}>Quick flow</h3>
+        <h3 style={AdminStyle.sectionTitle}>{STRINGS.ADMIN.sections.quickFlow}</h3>
         <div style={AdminStyle.sectionSub}>
-          <ol style={{ marginTop: 10, marginBottom: 0, paddingLeft: 18 }}>
-            <li>Create questions here.</li>
-            <li>Assign them to mode pools in "Mode Pools".</li>
-            <li>Assign them to story levels in "Story".</li>
+          <ol style={AdminQuestionBankTabStyle.quickFlowList}>
+            <li>{STRINGS.ADMIN.quickFlowSteps.create}</li>
+            <li>{STRINGS.ADMIN.quickFlowSteps.modes}</li>
+            <li>{STRINGS.ADMIN.quickFlowSteps.story}</li>
           </ol>
         </div>
       </div>

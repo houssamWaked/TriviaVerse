@@ -1,20 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import colors from '../constants/colors';
-import { api } from '../api';
-import MyPlaysStyle from '../Styles/ComponentStyles/MyPlaysStyle';
-
-function getApiErrorMessage(err) {
-  return (
-    err?.response?.data?.message ||
-    err?.message ||
-    'Something went wrong. Please try again.'
-  );
-}
+import { ICONS } from '@/constants/icons';
+import { STRINGS } from '@/constants/strings';
+import { api } from '@/api';
+import MyPlaysStyle from '@/Styles/ComponentStyles/MyPlaysStyle';
+import { getApiErrorMessage } from '@/utils/apiError';
 
 function formatDate(d) {
-  if (!d) return '—';
+  if (!d) return STRINGS.COMMON.separators.emDash;
   const t = new Date(d);
-  if (Number.isNaN(t.getTime())) return '—';
+  if (Number.isNaN(t.getTime())) return STRINGS.COMMON.separators.emDash;
   return t.toLocaleDateString();
 }
 
@@ -54,25 +48,23 @@ export default function MyPlays({ user, onRequireAuth, onOpenQuiz, onNavigateHom
       <div style={MyPlaysStyle.page}>
         <div style={MyPlaysStyle.container}>
           <div className="tv-card" style={MyPlaysStyle.lockCard}>
-            <h2 style={MyPlaysStyle.lockTitle}>Login to see your plays</h2>
-            <p style={MyPlaysStyle.lockText}>
-              We’ll show every quiz you played and your best score.
-            </p>
+            <h2 style={MyPlaysStyle.lockTitle}>{STRINGS.MY_PLAYS.locked.title}</h2>
+            <p style={MyPlaysStyle.lockText}>{STRINGS.MY_PLAYS.locked.subtitle}</p>
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{ ...MyPlaysStyle.primaryBtn, background: colors.gradients.main }}
+              style={MyPlaysStyle.primaryBtnMain}
               onClick={() => onRequireAuth?.('my-plays')}
             >
-              Join / Login 🚀
+              {STRINGS.COMMON.joinLogin} {ICONS.common.rocket}
             </button>
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{ ...MyPlaysStyle.secondaryBtn, background: colors.neutral.white }}
+              style={MyPlaysStyle.secondaryBtnWhite}
               onClick={onNavigateHome}
             >
-              Home
+              {STRINGS.COMMON.buttons.home}
             </button>
           </div>
         </div>
@@ -85,16 +77,15 @@ export default function MyPlays({ user, onRequireAuth, onOpenQuiz, onNavigateHom
       <div style={MyPlaysStyle.container}>
         <div style={MyPlaysStyle.hero}>
           <div style={MyPlaysStyle.badge}>
-            <span style={MyPlaysStyle.badgeIcon}>🎮</span>
-            <span style={MyPlaysStyle.badgeText}>My plays</span>
-            <span style={MyPlaysStyle.badgeDot}>✨</span>
+            <span style={MyPlaysStyle.badgeIcon}>{ICONS.common.gamepad}</span>
+            <span style={MyPlaysStyle.badgeText}>{STRINGS.MY_PLAYS.badge.text}</span>
+            <span style={MyPlaysStyle.badgeDot}>{ICONS.brand.sparkles}</span>
           </div>
           <h1 style={MyPlaysStyle.title}>
-            Your best <span style={MyPlaysStyle.titleAccent}>scores</span>
+            {STRINGS.MY_PLAYS.titlePrefix}{' '}
+            <span style={MyPlaysStyle.titleAccent}>{STRINGS.MY_PLAYS.titleAccent}</span>
           </h1>
-          <p style={MyPlaysStyle.subtitle}>
-            Click any quiz to play again and beat your record.
-          </p>
+          <p style={MyPlaysStyle.subtitle}>{STRINGS.MY_PLAYS.subtitle}</p>
         </div>
 
         <div className="tv-card" style={MyPlaysStyle.card}>
@@ -103,29 +94,25 @@ export default function MyPlays({ user, onRequireAuth, onOpenQuiz, onNavigateHom
               style={MyPlaysStyle.input}
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              placeholder="Search by quiz title…"
+              placeholder={STRINGS.MY_PLAYS.searchPlaceholder}
               disabled={busy}
             />
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{ ...MyPlaysStyle.btn, background: colors.neutral.white }}
+              style={MyPlaysStyle.btnWhite}
               onClick={load}
               disabled={busy}
             >
-              Refresh ↻
+              {STRINGS.COMMON.buttons.refresh} {ICONS.common.refresh}
             </button>
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{
-                ...MyPlaysStyle.btn,
-                background: colors.gradients.main,
-                color: colors.neutral.white,
-              }}
+              style={MyPlaysStyle.btnPrimary}
               onClick={onNavigateHome}
             >
-              Home
+              {STRINGS.COMMON.buttons.home}
             </button>
           </div>
 
@@ -143,20 +130,32 @@ export default function MyPlays({ user, onRequireAuth, onOpenQuiz, onNavigateHom
               >
                 <div style={MyPlaysStyle.itemTop}>
                   <div style={MyPlaysStyle.itemTitle}>{e.title}</div>
-                  <div style={MyPlaysStyle.scorePill}>🏅 {e.best_score}</div>
+                  <div style={MyPlaysStyle.scorePill}>
+                    {ICONS.common.medal} {e.best_score}
+                  </div>
                 </div>
                 <div style={MyPlaysStyle.meta}>
                   <span style={MyPlaysStyle.metaItem}>
-                    {e.visibility === 'private' ? '🔒 private' : '🌍 public'}
+                    {e.visibility === STRINGS.MY_PLAYS.visibility.private ? (
+                      <>
+                        {ICONS.common.lock} {STRINGS.MY_PLAYS.visibility.private}
+                      </>
+                    ) : (
+                      <>
+                        {ICONS.common.globe} {STRINGS.MY_PLAYS.visibility.public}
+                      </>
+                    )}
                   </span>
-                  <span style={MyPlaysStyle.metaItem}>🗓 {formatDate(e.updated_at)}</span>
+                  <span style={MyPlaysStyle.metaItem}>
+                    {ICONS.common.calendar} {formatDate(e.updated_at)}
+                  </span>
                 </div>
               </button>
             ))}
 
             {filtered.length === 0 && !busy && (
               <div style={MyPlaysStyle.empty}>
-                No plays yet — open a quiz and press Play ▶
+                {STRINGS.MY_PLAYS.empty} {ICONS.common.play}
               </div>
             )}
           </div>
@@ -165,4 +164,3 @@ export default function MyPlays({ user, onRequireAuth, onOpenQuiz, onNavigateHom
     </div>
   );
 }
-

@@ -1,46 +1,48 @@
-import colors from '../../constants/colors'; // adjust path if needed
-import ModesStyle from '../../Styles/ComponentStyles/ModesStyle';
-import ModeCard from '../../Cards/HomeCards/ModeCard';
+import colors from '@/constants/colors';
+import { ICONS } from '@/constants/icons';
+import { STRINGS } from '@/constants/strings';
+import ModeCard from '@/Cards/HomeCards/ModeCard';
+import ModesStyle from '@/Styles/ComponentStyles/ModesStyle';
+
 export default function Modes({ onStory, onMillionaire, onClassic, onBlitz }) {
   return (
     <section style={ModesStyle.section}>
       <div style={ModesStyle.container}>
-        {/* Heading */}
         <h1 style={ModesStyle.title}>
-          Choose Your Game! <span style={ModesStyle.titleIcon}>🎮</span>
+          {STRINGS.HOME.modes.title}{' '}
+          <span style={ModesStyle.titleIcon}>{ICONS.common.gamepad}</span>
         </h1>
-        <p style={ModesStyle.subtitle}>Pick a mode and let's get started!</p>
+        <p style={ModesStyle.subtitle}>{STRINGS.HOME.modes.subtitle}</p>
 
-        {/* Cards */}
         <div style={ModesStyle.grid}>
           <ModeCard
-            icon="📚"
-            title="Story Mode"
-            desc="Level up through epic challenges! 🎮"
+            icon={ICONS.common.book}
+            title={STRINGS.HOME.modes.storyTitle}
+            desc={`${STRINGS.HOME.modes.storyDesc} ${ICONS.common.gamepad}`}
             gradient={colors.gradients.story}
             onClick={onStory || (() => {})}
           />
 
           <ModeCard
-            icon="👑"
-            title="Millionaire"
-            desc="Win big with lifelines! 💰"
+            icon={ICONS.common.rich}
+            title={STRINGS.HOME.modes.millionaireTitle}
+            desc={`${STRINGS.HOME.modes.millionaireDesc} ${ICONS.common.money}`}
             gradient={colors.gradients.millionaire}
             onClick={onMillionaire || (() => {})}
           />
 
           <ModeCard
-            icon="🎪"
-            title="Classic Quiz"
-            desc="Pick your category! 🎯"
+            icon={ICONS.common.mask}
+            title={STRINGS.HOME.modes.classicTitle}
+            desc={`${STRINGS.HOME.modes.classicDesc} ${ICONS.common.dart}`}
             gradient={colors.gradients.classic}
             onClick={onClassic || (() => {})}
           />
 
           <ModeCard
-            icon="⚡"
-            title="60s Blitz"
-            desc="Speed is everything! ⚡"
+            icon={ICONS.common.bolt}
+            title={STRINGS.HOME.modes.blitzTitle}
+            desc={`${STRINGS.HOME.modes.blitzDesc} ${ICONS.common.bolt}`}
             gradient={colors.gradients.blitz}
             onClick={onBlitz || (() => {})}
           />

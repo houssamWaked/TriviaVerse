@@ -1,17 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import colors from '../../constants/colors';
 import { api } from '../../api';
 import AdminStyle from '../../Styles/ComponentStyles/AdminStyle';
+import AdminDashboardStyle from '../../Styles/ComponentStyles/AdminDashboardStyle';
 import AdminQuestionBankTab from './AdminQuestionBankTab';
 import { AdminModal } from './AdminUi';
+import { getApiErrorMessage } from '@/utils/apiError';
+import { ICONS } from '@/constants/icons';
+import { STRINGS } from '@/constants/strings';
 
-function getApiErrorMessage(err) {
-  return (
-    err?.response?.data?.message ||
-    err?.message ||
-    'Something went wrong. Please try again.'
-  );
-}
+const DEFAULT_GLOBAL_QUESTION_OPTIONS = [
+  STRINGS.ADMIN.placeholders.optionA,
+  STRINGS.ADMIN.placeholders.optionB,
+  STRINGS.ADMIN.placeholders.optionC,
+  STRINGS.ADMIN.placeholders.optionD,
+];
 
 function clampInt(value, min, max) {
   const n = Number(value);
@@ -29,23 +31,8 @@ function toggleIdLimited(list, id, max = 0) {
 function ProgressBar({ value, max }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
   return (
-    <div
-      style={{
-        height: 10,
-        borderRadius: 999,
-        background: colors.neutral[100],
-        border: `1px solid ${colors.neutral[200]}`,
-        overflow: 'hidden',
-      }}
-    >
-      <div
-        style={{
-          width: `${pct}%`,
-          height: '100%',
-          borderRadius: 999,
-          background: colors.gradients.main,
-        }}
-      />
+    <div style={AdminDashboardStyle.progressTrack}>
+      <div style={AdminDashboardStyle.progressFill(pct)} />
     </div>
   );
 }
@@ -80,7 +67,7 @@ export default function AdminDashboard({
     question_text: '',
     difficulty_rating: 5,
     correctIndex: 0,
-    options: ['Option A', 'Option B', 'Option C', 'Option D'],
+    options: DEFAULT_GLOBAL_QUESTION_OPTIONS,
     modes: { classic: true, blitz: true, millionaire: true },
     showAdvanced: false,
     explanation: '',
@@ -193,7 +180,7 @@ export default function AdminDashboard({
       }
 
       const created = await api.adminCreateStoryLevel(payload);
-      setSuccess(`Created level #${created.level_number}: ${created.title}`);
+      setSuccess(STRINGS.ADMIN.toasts.createdLevel(created.level_number, created.title));
       setLevelForm((v) => ({ ...v, title: '' }));
       await loadDashboard();
     } catch (err) {
@@ -240,12 +227,12 @@ export default function AdminDashboard({
       }
 
       const res = await api.adminCreateGlobalQuestion(payload);
-      setSuccess(`Created question ${res.question_id}`);
+      setSuccess(STRINGS.ADMIN.toasts.createdQuestion(res.question_id));
       setQuestionForm((v) => ({
         ...v,
         question_text: '',
         correctIndex: 0,
-        options: ['Option A', 'Option B', 'Option C', 'Option D'],
+        options: DEFAULT_GLOBAL_QUESTION_OPTIONS,
         explanation: '',
       }));
       await loadDashboard();
@@ -265,7 +252,7 @@ export default function AdminDashboard({
     clearMessages();
     try {
       await api.adminCreateClassicCategory({ name, icon: icon || null });
-      setSuccess('Category created.');
+      setSuccess(STRINGS.ADMIN.toasts.categoryCreated);
       setClassicCategoryForm({ name: '', icon: '' });
       await loadClassicCategories();
     } catch (err) {
@@ -278,19 +265,18 @@ export default function AdminDashboard({
   const deleteClassicCategory = async (categoryId, categoryName) => {
     const cid = String(categoryId || '').trim();
     if (!cid) return;
-    const name = String(categoryName || '').trim() || 'this category';
+    const name =
+      String(categoryName || '').trim() || STRINGS.ADMIN.text.thisCategoryFallback;
 
     // eslint-disable-next-line no-alert
-    const ok = window.confirm(
-      `Delete "${name}"?\n\nThis also removes all Classic pool assignments for this category.`
-    );
+    const ok = window.confirm(STRINGS.ADMIN.confirm.deleteClassicCategory(name));
     if (!ok) return;
 
     setBusy(true);
     clearMessages();
     try {
       await api.adminDeleteClassicCategory(cid);
-      setSuccess('Category deleted.');
+      setSuccess(STRINGS.ADMIN.toasts.categoryDeleted);
       await loadClassicCategories();
     } catch (err) {
       setError(getApiErrorMessage(err));
@@ -308,7 +294,7 @@ export default function AdminDashboard({
     clearMessages();
     try {
       const res = await api.adminSeedClassicCategoryPool(cid, { random_count: count });
-      setSuccess(`Auto-filled category (+${res.added_count || 0}).`);
+      setSuccess(STRINGS.ADMIN.toasts.autoFilledCategory(res.added_count || 0));
       await loadClassicCategories();
     } catch (err) {
       setError(getApiErrorMessage(err));
@@ -319,9 +305,9 @@ export default function AdminDashboard({
 
   const modes = useMemo(
     () => [
-      { key: 'classic', title: 'Classic', desc: 'Balanced gameplay.' },
-      { key: 'blitz', title: 'Blitz', desc: 'Fast 60s sprint.' },
-      { key: 'millionaire', title: 'Millionaire', desc: '15-question ladder.' },
+      { key: 'classic', ...STRINGS.ADMIN.modeCards.classic },
+      { key: 'blitz', ...STRINGS.ADMIN.modeCards.blitz },
+      { key: 'millionaire', ...STRINGS.ADMIN.modeCards.millionaire },
     ],
     []
   );
@@ -391,7 +377,8 @@ export default function AdminDashboard({
 
   const clearPool = async () => {
     if (!pool.kind || !pool.id) return;
-    const ok = window.confirm('Clear this pool? This cannot be undone.');
+    // eslint-disable-next-line no-alert
+    const ok = window.confirm(STRINGS.ADMIN.confirm.clearPoolGeneric);
     if (!ok) return;
 
     setBusy(true);
@@ -406,7 +393,7 @@ export default function AdminDashboard({
       } else {
         return;
       }
-      setSuccess('Pool cleared.');
+      setSuccess(STRINGS.ADMIN.toasts.poolCleared);
       await loadPool({ kind: pool.kind, id: pool.id, title: pool.title, offset: 0 });
       await loadDashboard();
     } catch (err) {
@@ -474,7 +461,7 @@ export default function AdminDashboard({
         return;
       }
 
-      setSuccess(replace ? 'Pool replaced.' : 'Questions added.');
+      setSuccess(replace ? STRINGS.ADMIN.toasts.poolReplaced : STRINGS.ADMIN.toasts.questionsAdded);
       setPicker((v) => ({ ...v, open: false, selected: [] }));
       await loadDashboard();
       if (pool.open && pool.kind === picker.target.kind && pool.id === picker.target.id) {
@@ -501,7 +488,7 @@ export default function AdminDashboard({
     clearMessages();
     try {
       const res = await api.adminSeedModePool(m, { random_count: count });
-      setSuccess(`Auto-filled ${m} (+${res.added_count || 0}).`);
+      setSuccess(STRINGS.ADMIN.toasts.autoFilledMode(m, res.added_count || 0));
       await loadDashboard();
     } catch (err) {
       setError(getApiErrorMessage(err));
@@ -522,7 +509,7 @@ export default function AdminDashboard({
     clearMessages();
     try {
       const res = await api.adminSeedStoryLevelPool(lid, { random_count: count });
-      setSuccess(`Auto-filled level (+${res.added_count || 0}).`);
+      setSuccess(STRINGS.ADMIN.toasts.autoFilledLevel(res.added_count || 0));
       await loadDashboard();
       if (pool.open && pool.kind === 'level' && pool.id === lid) {
         await loadPool({ kind: 'level', id: lid, title: pool.title, offset: pool.offset });
@@ -539,16 +526,16 @@ export default function AdminDashboard({
       <div style={AdminStyle.container}>
         <div style={AdminStyle.hero}>
           <div style={AdminStyle.badge}>
-            <span style={AdminStyle.badgeIcon}>🛠️</span>
-            <span style={AdminStyle.badgeText}>Admin</span>
-            <span style={AdminStyle.badgeDot}>✨</span>
+            <span style={AdminStyle.badgeIcon}>{ICONS.common.wrench}</span>
+            <span style={AdminStyle.badgeText}>{STRINGS.ADMIN.dashboard.badge}</span>
+            <span style={AdminStyle.badgeDot}>{ICONS.brand.sparkles}</span>
           </div>
-          <h1 style={AdminStyle.title}>Dashboard</h1>
-          <p style={AdminStyle.subtitle}>Pick a flow. Finish one thing at a time.</p>
+          <h1 style={AdminStyle.title}>{STRINGS.ADMIN.dashboard.title}</h1>
+          <p style={AdminStyle.subtitle}>{STRINGS.ADMIN.dashboard.subtitle}</p>
         </div>
 
         <div className="tv-card" style={AdminStyle.card}>
-          <div style={{ ...AdminStyle.row, justifyContent: 'space-between' }}>
+          <div style={AdminDashboardStyle.cardTopRowBetween}>
             <div style={AdminStyle.row}>
               <button
                 type="button"
@@ -557,7 +544,7 @@ export default function AdminDashboard({
                 onClick={loadDashboard}
                 disabled={busy}
               >
-                Refresh
+                {STRINGS.COMMON.buttons.refresh}
               </button>
               <button
                 type="button"
@@ -566,47 +553,48 @@ export default function AdminDashboard({
                 onClick={onNavigateHome}
                 disabled={busy}
               >
-                Home
+                {STRINGS.COMMON.buttons.home}
               </button>
               <button
                 type="button"
                 className="tv-card tv-card--hover"
-                style={{ ...AdminStyle.btn, ...AdminStyle.btnPrimary }}
+                style={AdminStyle.btnPrimaryFull}
                 onClick={onNavigateCreateQuiz}
                 disabled={busy}
               >
-                Custom Quiz Builder
+                {STRINGS.ADMIN.actions.customQuizBuilder}
               </button>
             </div>
 
             <div style={AdminStyle.row}>
-              <span style={AdminStyle.pill}>Classic: {modeCounts.classic ?? '-'}</span>
-              <span style={AdminStyle.pill}>Blitz: {modeCounts.blitz ?? '-'}</span>
               <span style={AdminStyle.pill}>
-                Millionaire: {modeCounts.millionaire ?? '-'}
+                {STRINGS.ADMIN.pills.classic} {modeCounts.classic ?? '-'}
+              </span>
+              <span style={AdminStyle.pill}>
+                {STRINGS.ADMIN.pills.blitz} {modeCounts.blitz ?? '-'}
+              </span>
+              <span style={AdminStyle.pill}>
+                {STRINGS.ADMIN.pills.millionaire} {modeCounts.millionaire ?? '-'}
               </span>
             </div>
           </div>
 
-          <div style={{ ...AdminStyle.grid, marginTop: 14 }}>
+          <div style={AdminDashboardStyle.gridMt14}>
             {[
               {
                 key: 'questions',
-                icon: '➕',
-                title: 'Create Questions',
-                desc: 'Add global questions fast (optional advanced).',
+                icon: ICONS.common.plus,
+                ...STRINGS.ADMIN.flows.questions,
               },
               {
                 key: 'modes',
-                icon: '🎮',
-                title: 'Build Game Modes',
-                desc: 'Assign questions to Classic / Blitz / Millionaire.',
+                icon: ICONS.common.gamepad,
+                ...STRINGS.ADMIN.flows.modes,
               },
               {
                 key: 'story',
-                icon: '📖',
-                title: 'Build Story Mode',
-                desc: 'Create levels, fill pools, edit quickly.',
+                icon: ICONS.common.openBook,
+                ...STRINGS.ADMIN.flows.story,
               },
             ].map((a) => (
               <button
@@ -615,27 +603,13 @@ export default function AdminDashboard({
                 className="tv-card tv-card--hover"
                 onClick={() => setWorkspace(a.key)}
                 disabled={busy}
-                style={{
-                  ...AdminStyle.section,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  border:
-                    workspace === a.key
-                      ? `2px solid ${colors.primary[500]}`
-                      : `1px solid ${colors.neutral[200]}`,
-                }}
+                style={AdminDashboardStyle.flowCard(workspace === a.key)}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ fontSize: 22 }}>{a.icon}</div>
+                <div style={AdminDashboardStyle.flowCardHeader}>
+                  <div style={AdminDashboardStyle.flowCardIcon}>{a.icon}</div>
                   <div>
-                    <div style={{ fontWeight: 950, color: colors.neutral[900] }}>
-                      {a.title}
-                    </div>
-                    <div
-                      style={{ marginTop: 2, fontWeight: 850, color: colors.neutral[650] }}
-                    >
-                      {a.desc}
-                    </div>
+                    <div style={AdminDashboardStyle.flowCardTitle}>{a.title}</div>
+                    <div style={AdminDashboardStyle.flowCardDesc}>{a.desc}</div>
                   </div>
                 </div>
               </button>
@@ -658,7 +632,7 @@ export default function AdminDashboard({
             <div style={AdminStyle.grid}>
               {modes.map((m) => (
                 <div key={m.key} style={AdminStyle.section}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <div style={AdminDashboardStyle.modeHeader}>
                     <div>
                       <h3 style={AdminStyle.sectionTitle}>{m.title}</h3>
                       <div style={AdminStyle.sectionSub}>{m.desc}</div>
@@ -666,7 +640,7 @@ export default function AdminDashboard({
                     <span style={AdminStyle.pill}>{modeCounts[m.key] ?? '-'}</span>
                   </div>
 
-                  <div style={{ ...AdminStyle.row, marginTop: 12 }}>
+                  <div style={AdminDashboardStyle.rowMt12}>
                     <button
                       type="button"
                       className="tv-card tv-card--hover"
@@ -675,24 +649,28 @@ export default function AdminDashboard({
                         loadPool({
                           kind: 'mode',
                           id: m.key,
-                          title: `${m.title} Pool`,
+                          title: STRINGS.ADMIN.format.modePoolTitle(m.title),
                           offset: 0,
                         })
                       }
                       disabled={busy}
                     >
-                      View pool
+                      {STRINGS.ADMIN.actions.viewPool}
                     </button>
                     <button
                       type="button"
                       className="tv-card tv-card--hover"
-                      style={{ ...AdminStyle.btn, ...AdminStyle.btnPrimary }}
+                      style={AdminStyle.btnPrimaryFull}
                       onClick={() =>
-                        openPicker({ kind: 'mode', id: m.key, title: `${m.title} Pool` })
+                        openPicker({
+                          kind: 'mode',
+                          id: m.key,
+                          title: STRINGS.ADMIN.format.modePoolTitle(m.title),
+                        })
                       }
                       disabled={busy}
                     >
-                      Add questions
+                      {STRINGS.ADMIN.actions.addQuestions}
                     </button>
                     {m.key === 'classic' && (
                       <button
@@ -702,14 +680,14 @@ export default function AdminDashboard({
                         onClick={openClassicCategories}
                         disabled={busy}
                       >
-                        Categories
+                        {STRINGS.ADMIN.actions.categories}
                       </button>
                     )}
                   </div>
 
-                  <div style={{ ...AdminStyle.row, marginTop: 10 }}>
+                  <div style={AdminDashboardStyle.rowMt10}>
                     <input
-                      style={{ ...AdminStyle.input, width: 110 }}
+                      style={AdminDashboardStyle.inputW110}
                       type="number"
                       min={1}
                       max={100}
@@ -728,33 +706,32 @@ export default function AdminDashboard({
                       style={AdminStyle.btn}
                       onClick={() => seedModePool(m.key)}
                       disabled={busy}
-                      title="Adds random global questions to this mode pool"
+                      title={STRINGS.ADMIN.hints.seedModePoolTitle}
                     >
-                      Auto-fill random
+                      {STRINGS.ADMIN.actions.autoFillRandom}
                     </button>
-                    <span style={AdminStyle.pill}>Adds only (no replace)</span>
+                    <span style={AdminStyle.pill}>{STRINGS.ADMIN.pills.addsOnly}</span>
                   </div>
 
-                  <details style={{ marginTop: 12 }}>
-                    <summary style={{ cursor: 'pointer', fontWeight: 950, color: '#333' }}>
-                      Danger zone
+                  <details style={AdminDashboardStyle.detailsMt12}>
+                    <summary style={AdminDashboardStyle.detailsSummary}>
+                      {STRINGS.ADMIN.sections.dangerZone}
                     </summary>
-                    <div style={{ marginTop: 10, ...AdminStyle.row }}>
+                    <div style={AdminDashboardStyle.detailsRowMt10}>
                       <button
                         type="button"
                         className="tv-card tv-card--hover"
                         style={AdminStyle.btn}
                         disabled={busy}
                         onClick={async () => {
-                          const ok = window.confirm(
-                            `Clear the entire ${m.title} pool? This cannot be undone.`
-                          );
+                          // eslint-disable-next-line no-alert
+                          const ok = window.confirm(STRINGS.ADMIN.confirm.clearModePool(m.title));
                           if (!ok) return;
                           setBusy(true);
                           clearMessages();
                           try {
                             await api.adminReplaceModePool(m.key, { question_ids: [] });
-                            setSuccess(`${m.title} pool cleared.`);
+                            setSuccess(STRINGS.ADMIN.toasts.modePoolCleared(m.title));
                             await loadDashboard();
                           } catch (err) {
                             setError(getApiErrorMessage(err));
@@ -763,7 +740,7 @@ export default function AdminDashboard({
                           }
                         }}
                       >
-                        Clear pool
+                        {STRINGS.ADMIN.actions.clearPool}
                       </button>
                     </div>
                   </details>
@@ -775,21 +752,21 @@ export default function AdminDashboard({
           {workspace === 'story' && (
             <div style={AdminStyle.grid}>
               <div style={AdminStyle.section}>
-                <h3 style={AdminStyle.sectionTitle}>Create story level</h3>
-                <div style={AdminStyle.sectionSub}>Only title is required.</div>
+                <h3 style={AdminStyle.sectionTitle}>{STRINGS.ADMIN.sections.createStoryLevel}</h3>
+                <div style={AdminStyle.sectionSub}>{STRINGS.ADMIN.sections.onlyTitleRequired}</div>
 
                 <div style={AdminStyle.field}>
-                  <span style={AdminStyle.label}>Title</span>
+                  <span style={AdminStyle.label}>{STRINGS.ADMIN.labels.title}</span>
                   <input
                     style={AdminStyle.input}
                     value={levelForm.title}
                     onChange={(e) => setLevelForm((v) => ({ ...v, title: e.target.value }))}
-                    placeholder="The Ancient Library"
+                    placeholder={STRINGS.ADMIN.text.levelTitlePlaceholder}
                     disabled={busy}
                   />
                 </div>
 
-                <label style={{ ...AdminStyle.smallHelp, cursor: 'pointer' }}>
+                <label style={AdminDashboardStyle.toggleLabel}>
                   <input
                     type="checkbox"
                     checked={!!levelForm.showAdvanced}
@@ -797,16 +774,16 @@ export default function AdminDashboard({
                       setLevelForm((v) => ({ ...v, showAdvanced: e.target.checked }))
                     }
                     disabled={busy}
-                    style={{ marginRight: 8 }}
+                    style={AdminDashboardStyle.checkboxMr8}
                   />
-                  Advanced settings
+                  {STRINGS.ADMIN.text.showAdvancedSettings}
                 </label>
 
                 {levelForm.showAdvanced && (
                   <>
-                    <div style={{ ...AdminStyle.row, marginTop: 10 }}>
-                      <label style={{ ...AdminStyle.field, flex: 1, marginTop: 0 }}>
-                        <span style={AdminStyle.label}>Difficulty min</span>
+                    <div style={AdminDashboardStyle.rowMt10}>
+                      <label style={AdminDashboardStyle.fieldFlex1NoMt}>
+                        <span style={AdminStyle.label}>{STRINGS.ADMIN.labels.difficultyMin}</span>
                         <input
                           style={AdminStyle.input}
                           type="number"
@@ -819,8 +796,8 @@ export default function AdminDashboard({
                           disabled={busy}
                         />
                       </label>
-                      <label style={{ ...AdminStyle.field, flex: 1, marginTop: 0 }}>
-                        <span style={AdminStyle.label}>Difficulty max</span>
+                      <label style={AdminDashboardStyle.fieldFlex1NoMt}>
+                        <span style={AdminStyle.label}>{STRINGS.ADMIN.labels.difficultyMax}</span>
                         <input
                           style={AdminStyle.input}
                           type="number"
@@ -835,9 +812,9 @@ export default function AdminDashboard({
                       </label>
                     </div>
 
-                    <div style={{ ...AdminStyle.row, marginTop: 10 }}>
-                      <label style={{ ...AdminStyle.field, flex: 1, marginTop: 0 }}>
-                        <span style={AdminStyle.label}>Pass score min</span>
+                    <div style={AdminDashboardStyle.rowMt10}>
+                      <label style={AdminDashboardStyle.fieldFlex1NoMt}>
+                        <span style={AdminStyle.label}>{STRINGS.ADMIN.labels.passScoreMin}</span>
                         <input
                           style={AdminStyle.input}
                           type="number"
@@ -849,8 +826,8 @@ export default function AdminDashboard({
                           disabled={busy}
                         />
                       </label>
-                      <label style={{ ...AdminStyle.field, flex: 1, marginTop: 0 }}>
-                        <span style={AdminStyle.label}>XP reward</span>
+                      <label style={AdminDashboardStyle.fieldFlex1NoMt}>
+                        <span style={AdminStyle.label}>{STRINGS.ADMIN.labels.xpReward}</span>
                         <input
                           style={AdminStyle.input}
                           type="number"
@@ -866,29 +843,29 @@ export default function AdminDashboard({
                   </>
                 )}
 
-                <div style={{ ...AdminStyle.row, marginTop: 14 }}>
+                <div style={AdminDashboardStyle.rowMt14}>
                   <button
                     type="button"
                     className="tv-card tv-card--hover"
-                    style={{ ...AdminStyle.btn, ...AdminStyle.btnPrimary }}
+                    style={AdminStyle.btnPrimaryFull}
                     onClick={createLevel}
                     disabled={busy || !String(levelForm.title || '').trim()}
                   >
-                    Create level
+                    {STRINGS.ADMIN.text.createLevel}
                   </button>
                 </div>
               </div>
 
               <div style={AdminStyle.section}>
-                <h3 style={AdminStyle.sectionTitle}>Levels overview</h3>
+                <h3 style={AdminStyle.sectionTitle}>{STRINGS.ADMIN.sections.levelsOverview}</h3>
                 <div style={AdminStyle.sectionSub}>
-                  Each level should have 10 questions. Click “Edit” to fill it.
+                  {STRINGS.ADMIN.text.levelsOverviewHint}
                 </div>
 
                 <div style={AdminStyle.list}>
                   {levels.length === 0 ? (
-                    <div style={{ fontWeight: 850, color: colors.neutral[700] }}>
-                      No levels found.
+                    <div style={AdminDashboardStyle.emptyText}>
+                      {STRINGS.ADMIN.sections.noLevelsFound}
                     </div>
                   ) : (
                     levels.map((lvl) => {
@@ -897,33 +874,30 @@ export default function AdminDashboard({
                       const filled = hasCount ? Math.max(0, Math.min(10, count)) : 0;
                       return (
                         <div key={lvl.id} style={AdminStyle.listItem}>
-                          <div
-                            style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'flex-start',
-                              gap: 12,
-                            }}
-                          >
-                            <div style={{ flex: 1 }}>
-                              <div style={AdminStyle.listItemTitle}>
-                                #{lvl.level_number} — {lvl.title}
-                              </div>
-                              <div style={{ marginTop: 8 }}>
+                          <div style={AdminDashboardStyle.levelRow}>
+                              <div style={AdminDashboardStyle.levelLeft}>
+                                <div style={AdminStyle.listItemTitle}>
+                                 {STRINGS.ADMIN.format.levelListTitle(lvl.level_number, lvl.title)}
+                                </div>
+                              <div style={AdminDashboardStyle.mt8}>
                                 <ProgressBar value={filled} max={10} />
                               </div>
-                              <div style={{ ...AdminStyle.listItemMeta, marginTop: 8 }}>
+                              <div style={AdminDashboardStyle.listItemMetaMt8}>
                                 <span style={AdminStyle.pill}>
-                                  {hasCount ? `${filled}/10 questions` : 'Pool: -'}
+                                  {hasCount
+                                    ? STRINGS.ADMIN.format.questionsCount(filled, 10)
+                                    : STRINGS.ADMIN.text.poolEmpty}
                                 </span>
                                 <span style={AdminStyle.pill}>
-                                  Diff {lvl.difficulty_min}-{lvl.difficulty_max}
+                                  {STRINGS.ADMIN.pills.diff} {lvl.difficulty_min}-{lvl.difficulty_max}
                                 </span>
-                                <span style={AdminStyle.pill}>XP {lvl.xp_reward}</span>
+                                <span style={AdminStyle.pill}>
+                                  {STRINGS.ADMIN.pills.xp} {lvl.xp_reward}
+                                </span>
                               </div>
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <div style={AdminDashboardStyle.actionCol}>
                               <button
                                 type="button"
                                 className="tv-card tv-card--hover"
@@ -932,13 +906,13 @@ export default function AdminDashboard({
                                   loadPool({
                                     kind: 'level',
                                     id: lvl.id,
-                                    title: `Level #${lvl.level_number} Pool`,
+                                    title: STRINGS.ADMIN.format.levelPoolTitle(lvl.level_number),
                                     offset: 0,
                                   })
                                 }
                                 disabled={busy}
                               >
-                                Edit
+                                {STRINGS.ADMIN.actions.edit}
                               </button>
                               <button
                                 type="button"
@@ -946,9 +920,9 @@ export default function AdminDashboard({
                                 style={AdminStyle.btn}
                                 onClick={() => seedStoryLevelPool(lvl.id)}
                                 disabled={busy}
-                                title="Adds random global questions to this level"
+                                title={STRINGS.ADMIN.hints.seedLevelPoolTitle}
                               >
-                                Auto-fill
+                                {STRINGS.ADMIN.actions.autoFill}
                               </button>
                             </div>
                           </div>
@@ -969,14 +943,19 @@ export default function AdminDashboard({
         onClose={() => setPool((v) => ({ ...v, open: false }))}
       >
         {pool.kind === 'level' && selectedLevel ? (
-          <div style={{ ...AdminStyle.row, marginBottom: 12 }}>
+          <div style={AdminDashboardStyle.rowMb12}>
             <span style={AdminStyle.pill}>
-              Level #{selectedLevel.level_number}: {selectedLevel.title}
+              {STRINGS.ADMIN.format.levelBadgeTitle(
+                selectedLevel.level_number,
+                selectedLevel.title
+              )}
             </span>
             <span style={AdminStyle.pill}>
-              Diff {selectedLevel.difficulty_min}-{selectedLevel.difficulty_max}
+              {STRINGS.ADMIN.pills.diff} {selectedLevel.difficulty_min}-{selectedLevel.difficulty_max}
             </span>
-            <span style={AdminStyle.pill}>XP {selectedLevel.xp_reward}</span>
+            <span style={AdminStyle.pill}>
+              {STRINGS.ADMIN.pills.xp} {selectedLevel.xp_reward}
+            </span>
           </div>
         ) : null}
 
@@ -984,11 +963,11 @@ export default function AdminDashboard({
           <button
             type="button"
             className="tv-card tv-card--hover"
-            style={{ ...AdminStyle.btn, ...AdminStyle.btnPrimary }}
+            style={AdminStyle.btnPrimaryFull}
             onClick={() => openPicker({ kind: pool.kind, id: pool.id, title: pool.title })}
             disabled={busy || !pool.id}
           >
-            Add questions
+            {STRINGS.ADMIN.actions.addQuestions}
           </button>
           <button
             type="button"
@@ -1004,7 +983,7 @@ export default function AdminDashboard({
             }
             disabled={busy || pool.offset <= 0}
           >
-            Prev
+            {STRINGS.ADMIN.actions.prev}
           </button>
           <button
             type="button"
@@ -1020,19 +999,24 @@ export default function AdminDashboard({
             }
             disabled={busy || pool.questions.length < pool.limit}
           >
-            Next
+            {STRINGS.ADMIN.actions.next}
           </button>
-          <span style={AdminStyle.pill}>Showing: {pool.questions.length}</span>
+          <span style={AdminStyle.pill}>
+            {STRINGS.ADMIN.pills.showing} {pool.questions.length}
+          </span>
         </div>
 
-        <div style={{ ...AdminStyle.list, marginTop: 12 }}>
+        <div style={AdminDashboardStyle.listMt12}>
           {pool.questions.map((q) => (
             <div key={q.id} style={AdminStyle.listItem}>
               <div style={AdminStyle.listItemTitle}>{q.question_text}</div>
-              <div style={{ ...AdminStyle.listItemMeta, justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={AdminDashboardStyle.listItemMetaBetween}>
+                <div style={AdminDashboardStyle.listItemMetaLeft}>
                   {q.difficulty_rating != null ? (
-                    <span style={AdminStyle.pill}>D{q.difficulty_rating}</span>
+                    <span style={AdminStyle.pill}>
+                      {STRINGS.ADMIN.pills.difficultyPrefix}
+                      {q.difficulty_rating}
+                    </span>
                   ) : null}
                   <span style={AdminStyle.pill}>{q.id}</span>
                 </div>
@@ -1043,23 +1027,23 @@ export default function AdminDashboard({
                   onClick={() => removeFromPool(q.id)}
                   disabled={busy}
                 >
-                  Remove
+                  {STRINGS.ADMIN.actions.remove}
                 </button>
               </div>
             </div>
           ))}
           {pool.questions.length === 0 && (
-            <div style={{ fontWeight: 850, color: colors.neutral[700] }}>
-              No questions yet.
+            <div style={AdminDashboardStyle.emptyText}>
+              {STRINGS.ADMIN.sections.noQuestionsYet}
             </div>
           )}
         </div>
 
-        <details style={{ marginTop: 12 }}>
-          <summary style={{ cursor: 'pointer', fontWeight: 950, color: '#333' }}>
-            Danger zone
+        <details style={AdminDashboardStyle.detailsMt12}>
+          <summary style={AdminDashboardStyle.detailsSummary}>
+            {STRINGS.ADMIN.sections.dangerZone}
           </summary>
-          <div style={{ marginTop: 10, ...AdminStyle.row }}>
+          <div style={AdminDashboardStyle.detailsRowMt10}>
             <button
               type="button"
               className="tv-card tv-card--hover"
@@ -1067,7 +1051,7 @@ export default function AdminDashboard({
               onClick={clearPool}
               disabled={busy}
             >
-              Clear pool
+              {STRINGS.ADMIN.actions.clearPool}
             </button>
           </div>
         </details>
@@ -1075,15 +1059,19 @@ export default function AdminDashboard({
 
       <AdminModal
         open={picker.open}
-        title={picker.target ? `Add global questions → ${picker.target.title}` : 'Add questions'}
+        title={
+          picker.target
+            ? STRINGS.ADMIN.modals.addGlobalQuestionsTitle(picker.target.title)
+            : STRINGS.ADMIN.modals.addQuestionsTitle
+        }
         onClose={() => setPicker((v) => ({ ...v, open: false }))}
       >
         <div style={AdminStyle.row}>
           <input
-            style={{ ...AdminStyle.input, flex: 1 }}
+            style={AdminDashboardStyle.inputFlex1}
             value={picker.q}
             onChange={(e) => setPicker((v) => ({ ...v, q: e.target.value }))}
-            placeholder="Search (optional)..."
+            placeholder={STRINGS.ADMIN.text.pickerSearchOptionalPlaceholder}
             disabled={busy}
             onKeyDown={(e) => {
               if (e.key === 'Enter') loadPicker({ q: picker.q, offset: 0, keepSelected: true });
@@ -1096,11 +1084,11 @@ export default function AdminDashboard({
             onClick={() => loadPicker({ q: picker.q, offset: 0, keepSelected: true })}
             disabled={busy}
           >
-            Search
+            {STRINGS.ADMIN.actions.search}
           </button>
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 10 }}>
+        <div style={AdminDashboardStyle.rowMt10}>
           <button
             type="button"
             className="tv-card tv-card--hover"
@@ -1113,7 +1101,7 @@ export default function AdminDashboard({
             }
             disabled={busy || picker.results.length === 0}
           >
-            Select page
+            {STRINGS.ADMIN.actions.selectPage}
           </button>
           <button
             type="button"
@@ -1122,7 +1110,7 @@ export default function AdminDashboard({
             onClick={() => setPicker((v) => ({ ...v, selected: [] }))}
             disabled={busy || picker.selected.length === 0}
           >
-            Clear
+            {STRINGS.ADMIN.actions.clear}
           </button>
           <button
             type="button"
@@ -1137,7 +1125,7 @@ export default function AdminDashboard({
             }
             disabled={busy || picker.offset <= 0}
           >
-            Prev
+            {STRINGS.ADMIN.actions.prev}
           </button>
           <button
             type="button"
@@ -1152,17 +1140,17 @@ export default function AdminDashboard({
             }
             disabled={busy || picker.results.length < picker.limit}
           >
-            Next
+            {STRINGS.ADMIN.actions.next}
           </button>
           <span style={AdminStyle.pill}>
-            Selected: {picker.selected.length}/{picker.maxSelect}
+            {STRINGS.ADMIN.pills.selected} {picker.selected.length}/{picker.maxSelect}
           </span>
         </div>
 
-        <div style={{ ...AdminStyle.list, marginTop: 12 }}>
+        <div style={AdminDashboardStyle.listMt12}>
           {picker.results.map((r) => (
             <div key={r.id} style={AdminStyle.listItem}>
-              <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <label style={AdminDashboardStyle.pickerLabel}>
                 <input
                   type="checkbox"
                   checked={picker.selected.includes(r.id)}
@@ -1173,13 +1161,16 @@ export default function AdminDashboard({
                     }))
                   }
                   disabled={busy}
-                  style={{ marginTop: 3 }}
+                  style={AdminDashboardStyle.checkboxMt3}
                 />
                 <div>
                   <div style={AdminStyle.listItemTitle}>{r.question_text}</div>
                   <div style={AdminStyle.listItemMeta}>
                     {r.difficulty_rating != null ? (
-                      <span style={AdminStyle.pill}>D{r.difficulty_rating}</span>
+                      <span style={AdminStyle.pill}>
+                        {STRINGS.ADMIN.pills.difficultyPrefix}
+                        {r.difficulty_rating}
+                      </span>
                     ) : null}
                     <span style={AdminStyle.pill}>{r.id}</span>
                   </div>
@@ -1188,36 +1179,38 @@ export default function AdminDashboard({
             </div>
           ))}
           {picker.results.length === 0 && (
-            <div style={{ fontWeight: 850, color: colors.neutral[700] }}>No results.</div>
+            <div style={AdminDashboardStyle.emptyText}>
+              {STRINGS.ADMIN.sections.noResults}
+            </div>
           )}
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 12 }}>
+        <div style={AdminDashboardStyle.rowMt12}>
           <button
             type="button"
             className="tv-card tv-card--hover"
-            style={{ ...AdminStyle.btn, ...AdminStyle.btnPrimary }}
+            style={AdminStyle.btnPrimaryFull}
             onClick={() => addPickerSelection({ replace: false })}
             disabled={busy || picker.selected.length === 0}
           >
-            Add selected
+            {STRINGS.ADMIN.actions.addSelected}
           </button>
         </div>
 
-        <details style={{ marginTop: 12 }}>
-          <summary style={{ cursor: 'pointer', fontWeight: 950, color: '#333' }}>
-            Danger zone
+        <details style={AdminDashboardStyle.detailsMt12}>
+          <summary style={AdminDashboardStyle.detailsSummary}>
+            {STRINGS.ADMIN.sections.dangerZone}
           </summary>
-          <div style={{ marginTop: 10, ...AdminStyle.row }}>
+          <div style={AdminDashboardStyle.detailsRowMt10}>
             <button
               type="button"
               className="tv-card tv-card--hover"
               style={AdminStyle.btn}
               onClick={() => addPickerSelection({ replace: true })}
               disabled={busy || picker.selected.length === 0}
-              title="Replace the entire pool with your selected questions"
+              title={STRINGS.ADMIN.hints.replacePoolTitle}
             >
-              Replace pool with selected
+              {STRINGS.ADMIN.actions.replacePoolWithSelected}
             </button>
           </div>
         </details>
@@ -1225,41 +1218,41 @@ export default function AdminDashboard({
 
       <AdminModal
         open={classicCategoriesOpen}
-        title="Classic categories"
+        title={STRINGS.ADMIN.modals.classicCategoriesTitle}
         onClose={() => setClassicCategoriesOpen(false)}
         maxWidth={980}
       >
         <div style={AdminStyle.sectionSub}>
-          Create categories for Classic mode, then assign global questions to each category.
+          {STRINGS.ADMIN.sections.classicCategoriesSubtitle}
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 12 }}>
+        <div style={AdminDashboardStyle.rowMt12}>
           <input
-            style={{ ...AdminStyle.input, flex: 1 }}
+            style={AdminDashboardStyle.inputFlex1}
             value={classicCategoryForm.name}
             onChange={(e) => setClassicCategoryForm((v) => ({ ...v, name: e.target.value }))}
-            placeholder="Category name (e.g. Geography)"
+            placeholder={STRINGS.ADMIN.text.classicCategoryNamePlaceholder}
             disabled={busy}
           />
           <input
-            style={{ ...AdminStyle.input, width: 160 }}
+            style={AdminDashboardStyle.inputW160}
             value={classicCategoryForm.icon}
             onChange={(e) => setClassicCategoryForm((v) => ({ ...v, icon: e.target.value }))}
-            placeholder="Icon (optional)"
+            placeholder={STRINGS.ADMIN.text.classicCategoryIconPlaceholder}
             disabled={busy}
           />
           <button
             type="button"
             className="tv-card tv-card--hover"
-            style={{ ...AdminStyle.btn, ...AdminStyle.btnPrimary }}
+            style={AdminStyle.btnPrimaryFull}
             onClick={createClassicCategory}
             disabled={busy || !String(classicCategoryForm.name || '').trim()}
           >
-            Create
+            {STRINGS.ADMIN.actions.create}
           </button>
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 12 }}>
+        <div style={AdminDashboardStyle.rowMt12}>
           <button
             type="button"
             className="tv-card tv-card--hover"
@@ -1267,28 +1260,31 @@ export default function AdminDashboard({
             onClick={loadClassicCategories}
             disabled={busy}
           >
-            Refresh list
+            {STRINGS.ADMIN.actions.refreshList}
           </button>
-          <span style={AdminStyle.pill}>Categories: {classicCategories.length}</span>
+          <span style={AdminStyle.pill}>
+            {STRINGS.ADMIN.pills.categories} {classicCategories.length}
+          </span>
         </div>
 
-        <div style={{ ...AdminStyle.list, marginTop: 12 }}>
+        <div style={AdminDashboardStyle.listMt12}>
           {classicCategories.map((c) => (
             <div key={c.id} style={AdminStyle.listItem}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                <div style={{ flex: 1 }}>
+              <div style={AdminDashboardStyle.modeHeader}>
+                <div style={AdminDashboardStyle.levelLeft}>
                   <div style={AdminStyle.listItemTitle}>
                     {c.icon ? `${c.icon} ` : ''}{c.name}
                   </div>
                   <div style={AdminStyle.listItemMeta}>
                     <span style={AdminStyle.pill}>
-                      Pool: {c.pool_count == null ? '—' : c.pool_count}
+                      {STRINGS.ADMIN.pills.pool}{' '}
+                      {c.pool_count == null ? STRINGS.COMMON.separators.emDash : c.pool_count}
                     </span>
                     <span style={AdminStyle.pill}>{c.id}</span>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={AdminDashboardStyle.actionCol}>
                   <button
                     type="button"
                     className="tv-card tv-card--hover"
@@ -1298,51 +1294,46 @@ export default function AdminDashboard({
                       loadPool({
                         kind: 'classic_category',
                         id: c.id,
-                        title: `Classic: ${c.name}`,
+                        title: STRINGS.ADMIN.format.classicCategoryPoolTitle(c.name),
                         offset: 0,
                       });
                     }}
                     disabled={busy}
                   >
-                    View pool
+                    {STRINGS.ADMIN.actions.viewPool}
                   </button>
                   <button
                     type="button"
                     className="tv-card tv-card--hover"
-                    style={{ ...AdminStyle.btn, ...AdminStyle.btnPrimary }}
+                    style={AdminStyle.btnPrimaryFull}
                     onClick={() => {
                       setClassicCategoriesOpen(false);
                       openPicker({
                         kind: 'classic_category',
                         id: c.id,
-                        title: `Classic: ${c.name}`,
+                        title: STRINGS.ADMIN.format.classicCategoryPoolTitle(c.name),
                       });
                     }}
                     disabled={busy}
                   >
-                    Add questions
+                    {STRINGS.ADMIN.actions.addQuestions}
                   </button>
                   <button
                     type="button"
                     className="tv-card tv-card--hover"
-                    style={{
-                      ...AdminStyle.btn,
-                      background: colors.accent.red,
-                      border: 'none',
-                      color: colors.neutral.white,
-                    }}
+                    style={AdminDashboardStyle.dangerBtn}
                     onClick={() => deleteClassicCategory(c.id, c.name)}
                     disabled={busy}
-                    title="Delete this category"
+                    title={STRINGS.ADMIN.hints.deleteCategoryTitle}
                   >
-                    Delete category
+                    {STRINGS.ADMIN.actions.deleteCategory}
                   </button>
                 </div>
               </div>
 
-              <div style={{ ...AdminStyle.row, marginTop: 10 }}>
+              <div style={AdminDashboardStyle.rowMt10}>
                 <input
-                  style={{ ...AdminStyle.input, width: 120 }}
+                  style={AdminDashboardStyle.inputW120}
                   type="number"
                   min={1}
                   max={100}
@@ -1361,17 +1352,17 @@ export default function AdminDashboard({
                   style={AdminStyle.btn}
                   onClick={() => seedClassicCategoryPool(c.id)}
                   disabled={busy}
-                  title="Auto-fill from Classic pool if available, otherwise random global questions"
+                  title={STRINGS.ADMIN.hints.seedClassicCategoryTitle}
                 >
-                  Auto-fill
+                  {STRINGS.ADMIN.actions.autoFill}
                 </button>
               </div>
             </div>
           ))}
 
           {classicCategories.length === 0 && (
-            <div style={{ fontWeight: 850, color: colors.neutral[700] }}>
-              No categories found. Create one above.
+            <div style={AdminDashboardStyle.emptyText}>
+              {STRINGS.ADMIN.sections.noCategoriesFound}
             </div>
           )}
         </div>

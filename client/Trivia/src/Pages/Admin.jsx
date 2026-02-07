@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import colors from '../constants/colors';
-import AdminStyle from '../Styles/ComponentStyles/AdminStyle';
-import AdminDashboard from '../Components/Admin/AdminDashboard';
+import { STRINGS } from '@/constants/strings';
+import AdminDashboard from '@/Components/Admin/AdminDashboard';
+import AdminStyle from '@/Styles/ComponentStyles/AdminStyle';
 
 function getAdminEmailSet() {
   const raw =
@@ -14,12 +14,7 @@ function getAdminEmailSet() {
   );
 }
 
-export default function Admin({
-  user,
-  onRequireAuth,
-  onNavigateHome,
-  onNavigateCreateQuiz,
-}) {
+export default function Admin({ user, onRequireAuth, onNavigateHome, onNavigateCreateQuiz }) {
   const admins = useMemo(() => getAdminEmailSet(), []);
   const isAdmin = useMemo(() => {
     if (!user?.email) return false;
@@ -32,20 +27,20 @@ export default function Admin({
       <div style={AdminStyle.page}>
         <div style={AdminStyle.container}>
           <div className="tv-card" style={AdminStyle.card}>
-            <h2 style={{ margin: 0, fontWeight: 950, color: colors.neutral[900] }}>
-              Admin login required
+            <h2 style={AdminStyle.simpleTitle}>
+              {STRINGS.ADMIN_PAGE.loginRequired.title}
             </h2>
-            <p style={{ marginTop: 10, fontWeight: 850, color: colors.neutral[700] }}>
-              Login with the admin email to access the dashboard.
+            <p style={AdminStyle.simpleText}>
+              {STRINGS.ADMIN_PAGE.loginRequired.subtitle}
             </p>
-            <div style={{ marginTop: 14, ...AdminStyle.row }}>
+            <div style={AdminStyle.rowMt14}>
               <button
                 type="button"
                 className="tv-card tv-card--hover"
-                style={{ ...AdminStyle.btn, ...AdminStyle.btnPrimary }}
+                style={AdminStyle.btnPrimaryFull}
                 onClick={() => onRequireAuth?.('admin')}
               >
-                Login
+                {STRINGS.AUTH.header.login}
               </button>
               <button
                 type="button"
@@ -53,7 +48,7 @@ export default function Admin({
                 style={AdminStyle.btn}
                 onClick={onNavigateHome}
               >
-                Home
+                {STRINGS.COMMON.buttons.home}
               </button>
             </div>
           </div>
@@ -67,20 +62,22 @@ export default function Admin({
       <div style={AdminStyle.page}>
         <div style={AdminStyle.container}>
           <div className="tv-card" style={AdminStyle.card}>
-            <h2 style={{ margin: 0, fontWeight: 950, color: colors.neutral[900] }}>
-              Admin is not configured
+            <h2 style={AdminStyle.simpleTitle}>
+              {STRINGS.ADMIN_PAGE.notConfigured.title}
             </h2>
-            <p style={{ marginTop: 10, fontWeight: 850, color: colors.neutral[700] }}>
-              Set <code>VITE_ADMIN_EMAILS</code> in the client and <code>ADMIN_EMAILS</code> in the
-              API.
+            <p style={AdminStyle.simpleText}>
+              {STRINGS.ADMIN_PAGE.notConfigured.prefix}{' '}
+              <code>{STRINGS.ADMIN_PAGE.env.client}</code>{' '}
+              {STRINGS.ADMIN_PAGE.notConfigured.middle}{' '}
+              <code>{STRINGS.ADMIN_PAGE.env.api}</code> {STRINGS.ADMIN_PAGE.notConfigured.suffix}
             </p>
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{ ...AdminStyle.btn, marginTop: 14 }}
+              style={AdminStyle.btnMt14}
               onClick={onNavigateHome}
             >
-              Home
+              {STRINGS.COMMON.buttons.home}
             </button>
           </div>
         </div>
@@ -93,19 +90,19 @@ export default function Admin({
       <div style={AdminStyle.page}>
         <div style={AdminStyle.container}>
           <div className="tv-card" style={AdminStyle.card}>
-            <h2 style={{ margin: 0, fontWeight: 950, color: colors.neutral[900] }}>
-              Forbidden
+            <h2 style={AdminStyle.simpleTitle}>
+              {STRINGS.ADMIN_PAGE.forbidden.title}
             </h2>
-            <p style={{ marginTop: 10, fontWeight: 850, color: colors.neutral[700] }}>
-              Your account is not in the admin allowlist.
+            <p style={AdminStyle.simpleText}>
+              {STRINGS.ADMIN_PAGE.forbidden.subtitle}
             </p>
             <button
               type="button"
               className="tv-card tv-card--hover"
-              style={{ ...AdminStyle.btn, marginTop: 14 }}
+              style={AdminStyle.btnMt14}
               onClick={onNavigateHome}
             >
-              Home
+              {STRINGS.COMMON.buttons.home}
             </button>
           </div>
         </div>

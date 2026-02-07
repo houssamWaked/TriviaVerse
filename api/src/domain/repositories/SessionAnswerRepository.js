@@ -6,6 +6,8 @@ import AppError from '../../utils/AppError.js';
 
 function toAppError(error) {
   if (!error) return null;
+  const code = String(error.code || '').trim();
+  if (code === '23505') return new AppError('Already answered', 409, 'CONFLICT');
   return new AppError(error.message || 'Database error', 500, 'DB_ERROR');
 }
 
@@ -48,4 +50,3 @@ export class SessionAnswerRepository {
     return data?.[0] || null;
   }
 }
-

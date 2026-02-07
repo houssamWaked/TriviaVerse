@@ -111,6 +111,30 @@ const DiscoverQuizzesStyle = {
     fontWeight: 950,
     boxShadow: '0 12px 26px rgba(0,0,0,0.10)',
   },
+  btnWhite: {
+    height: 46,
+    padding: '0 16px',
+    borderRadius: 16,
+    border: `1px solid ${colors.neutral[200]}`,
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 950,
+    boxShadow: '0 12px 26px rgba(0,0,0,0.10)',
+    background: colors.neutral.white,
+    color: colors.neutral[900],
+  },
+  btnPrimary: {
+    height: 46,
+    padding: '0 16px',
+    borderRadius: 16,
+    border: `1px solid ${colors.neutral[200]}`,
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 950,
+    boxShadow: '0 12px 26px rgba(0,0,0,0.10)',
+    background: colors.gradients.main,
+    color: colors.neutral.white,
+  },
   error: {
     marginTop: 12,
     padding: '10px 12px',
@@ -223,4 +247,3 @@ const DiscoverQuizzesStyle = {
 };
 
 export default DiscoverQuizzesStyle;
-

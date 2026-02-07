@@ -1,7 +1,8 @@
 import React from 'react';
-import colors from '../../constants/colors';
 import AdminStyle from '../../Styles/ComponentStyles/AdminStyle';
+import AdminStoryTabStyle from '../../Styles/ComponentStyles/AdminStoryTabStyle';
 import { SearchResults } from './AdminUi';
+import { STRINGS } from '@/constants/strings';
 
 export default function AdminStoryTab({
   busy,
@@ -30,38 +31,38 @@ export default function AdminStoryTab({
   return (
     <div style={AdminStyle.grid}>
       <div style={AdminStyle.section}>
-        <h3 style={AdminStyle.sectionTitle}>Create story level</h3>
+        <h3 style={AdminStyle.sectionTitle}>{STRINGS.ADMIN.sections.createStoryLevel}</h3>
         <div style={AdminStyle.sectionSub}>
-          Only title is required. Advanced settings are optional.
+          {STRINGS.ADMIN.text.onlyTitleAdvancedOptional}
         </div>
 
         <div style={AdminStyle.field}>
-          <span style={AdminStyle.label}>Title</span>
+          <span style={AdminStyle.label}>{STRINGS.ADMIN.labels.title}</span>
           <input
             style={AdminStyle.input}
             value={levelForm.title}
             onChange={(e) => setLevelForm((v) => ({ ...v, title: e.target.value }))}
-            placeholder="The Ancient Library"
+            placeholder={STRINGS.ADMIN.text.levelTitlePlaceholder}
             disabled={busy}
           />
         </div>
 
-        <label style={{ ...AdminStyle.smallHelp, cursor: 'pointer' }}>
+        <label style={AdminStoryTabStyle.toggleLabel}>
           <input
             type="checkbox"
             checked={!!levelForm.showAdvanced}
             onChange={(e) => setLevelForm((v) => ({ ...v, showAdvanced: e.target.checked }))}
             disabled={busy}
-            style={{ marginRight: 8 }}
+            style={AdminStoryTabStyle.checkboxMr8}
           />
-          Show advanced settings
+          {STRINGS.ADMIN.text.showAdvancedSettings}
         </label>
 
         {levelForm.showAdvanced && (
           <>
-            <div style={{ ...AdminStyle.row, marginTop: 10 }}>
-              <label style={{ ...AdminStyle.field, flex: 1, marginTop: 0 }}>
-                <span style={AdminStyle.label}>Difficulty min</span>
+            <div style={AdminStoryTabStyle.rowMt10}>
+              <label style={AdminStoryTabStyle.fieldFlex1NoMt}>
+                <span style={AdminStyle.label}>{STRINGS.ADMIN.labels.difficultyMin}</span>
                 <input
                   style={AdminStyle.input}
                   type="number"
@@ -74,8 +75,8 @@ export default function AdminStoryTab({
                   disabled={busy}
                 />
               </label>
-              <label style={{ ...AdminStyle.field, flex: 1, marginTop: 0 }}>
-                <span style={AdminStyle.label}>Difficulty max</span>
+              <label style={AdminStoryTabStyle.fieldFlex1NoMt}>
+                <span style={AdminStyle.label}>{STRINGS.ADMIN.labels.difficultyMax}</span>
                 <input
                   style={AdminStyle.input}
                   type="number"
@@ -90,9 +91,9 @@ export default function AdminStoryTab({
               </label>
             </div>
 
-            <div style={{ ...AdminStyle.row, marginTop: 10 }}>
-              <label style={{ ...AdminStyle.field, flex: 1, marginTop: 0 }}>
-                <span style={AdminStyle.label}>Pass score min</span>
+            <div style={AdminStoryTabStyle.rowMt10}>
+              <label style={AdminStoryTabStyle.fieldFlex1NoMt}>
+                <span style={AdminStyle.label}>{STRINGS.ADMIN.labels.passScoreMin}</span>
                 <input
                   style={AdminStyle.input}
                   type="number"
@@ -104,8 +105,8 @@ export default function AdminStoryTab({
                   disabled={busy}
                 />
               </label>
-              <label style={{ ...AdminStyle.field, flex: 1, marginTop: 0 }}>
-                <span style={AdminStyle.label}>XP reward</span>
+              <label style={AdminStoryTabStyle.fieldFlex1NoMt}>
+                <span style={AdminStyle.label}>{STRINGS.ADMIN.labels.xpReward}</span>
                 <input
                   style={AdminStyle.input}
                   type="number"
@@ -119,26 +120,28 @@ export default function AdminStoryTab({
           </>
         )}
 
-        <div style={{ ...AdminStyle.row, marginTop: 14 }}>
+        <div style={AdminStoryTabStyle.rowMt14}>
           <button
             type="button"
             className="tv-card tv-card--hover"
-            style={{ ...AdminStyle.btn, ...AdminStyle.btnPrimary }}
+            style={AdminStyle.btnPrimaryFull}
             onClick={onCreateLevel}
             disabled={busy || !String(levelForm.title || '').trim()}
           >
-            Create level
+            {STRINGS.ADMIN.text.createLevel}
           </button>
         </div>
       </div>
 
       <div style={AdminStyle.section}>
-        <h3 style={AdminStyle.sectionTitle}>Levels</h3>
-        <div style={AdminStyle.sectionSub}>Seed a level with random global questions.</div>
+        <h3 style={AdminStyle.sectionTitle}>{STRINGS.ADMIN.sections.levels}</h3>
+        <div style={AdminStyle.sectionSub}>{STRINGS.ADMIN.sections.seedLevelsHint}</div>
 
         <div style={AdminStyle.list}>
           {levels.length === 0 ? (
-            <div style={{ fontWeight: 850, color: colors.neutral[700] }}>No levels found.</div>
+            <div style={AdminStoryTabStyle.emptyText}>
+              {STRINGS.ADMIN.sections.noLevelsFound}
+            </div>
           ) : (
             levels.map((lvl) => (
               <div key={lvl.id} style={AdminStyle.listItem}>
@@ -146,16 +149,20 @@ export default function AdminStoryTab({
                   #{lvl.level_number} - {lvl.title}
                 </div>
                 <div style={AdminStyle.listItemMeta}>
-                  <span style={AdminStyle.pill}>Pool: {lvl.pool_count ?? '-'}</span>
                   <span style={AdminStyle.pill}>
-                    Diff {lvl.difficulty_min}-{lvl.difficulty_max}
+                    {STRINGS.ADMIN.pills.pool} {lvl.pool_count ?? '-'}
                   </span>
-                  <span style={AdminStyle.pill}>XP {lvl.xp_reward}</span>
+                  <span style={AdminStyle.pill}>
+                    {STRINGS.ADMIN.pills.diff} {lvl.difficulty_min}-{lvl.difficulty_max}
+                  </span>
+                  <span style={AdminStyle.pill}>
+                    {STRINGS.ADMIN.pills.xp} {lvl.xp_reward}
+                  </span>
                 </div>
 
-                <div style={{ ...AdminStyle.row, marginTop: 10 }}>
+                <div style={AdminStoryTabStyle.rowMt10}>
                   <input
-                    style={{ ...AdminStyle.input, width: 120 }}
+                    style={AdminStoryTabStyle.seedCountInput}
                     type="number"
                     min={1}
                     max={50}
@@ -168,11 +175,11 @@ export default function AdminStoryTab({
                   <button
                     type="button"
                     className="tv-card tv-card--hover"
-                    style={{ ...AdminStyle.btn, ...AdminStyle.btnPrimary }}
+                    style={AdminStyle.btnPrimaryFull}
                     onClick={() => onSeedLevel(lvl.id)}
                     disabled={busy}
                   >
-                    Seed random
+                    {STRINGS.ADMIN.text.seedRandom}
                   </button>
                 </div>
               </div>
@@ -182,19 +189,17 @@ export default function AdminStoryTab({
       </div>
 
       <div style={AdminStyle.section}>
-        <h3 style={AdminStyle.sectionTitle}>Add existing questions to a level</h3>
-        <div style={AdminStyle.sectionSub}>
-          Search global questions, select, then add to a story level.
-        </div>
+        <h3 style={AdminStyle.sectionTitle}>{STRINGS.ADMIN.sections.addExistingToLevel}</h3>
+        <div style={AdminStyle.sectionSub}>{STRINGS.ADMIN.text.addExistingQuestionsSubtitle}</div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 10 }}>
+        <div style={AdminStoryTabStyle.rowMt10}>
           <select
-            style={{ ...AdminStyle.select, flex: 1 }}
+            style={AdminStoryTabStyle.selectFlex1}
             value={storyPick.levelId}
             onChange={(e) => onChangeLevel?.(e.target.value)}
             disabled={busy}
           >
-            <option value="">Select level...</option>
+            <option value="">{STRINGS.ADMIN.sections.selectLevel}</option>
             {levels.map((lvl) => (
               <option key={lvl.id} value={lvl.id}>
                 #{lvl.level_number} - {lvl.title}
@@ -203,12 +208,12 @@ export default function AdminStoryTab({
           </select>
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 10 }}>
+        <div style={AdminStoryTabStyle.rowMt10}>
           <input
-            style={{ ...AdminStyle.input, flex: 1 }}
+            style={AdminStoryTabStyle.inputFlex1}
             value={storyPick.q}
             onChange={(e) => setStoryPick((v) => ({ ...v, q: e.target.value }))}
-            placeholder="Search questions (blank = browse all)..."
+            placeholder={STRINGS.ADMIN.text.searchQuestionsPlaceholder}
             disabled={busy}
             onKeyDown={(e) => {
               if (e.key === 'Enter') onSearch();
@@ -225,7 +230,7 @@ export default function AdminStoryTab({
           </button>
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 10 }}>
+        <div style={AdminStoryTabStyle.rowMt10}>
           <button
             type="button"
             className="tv-card tv-card--hover"
@@ -233,7 +238,7 @@ export default function AdminStoryTab({
             onClick={onSelectAll}
             disabled={busy || storyPick.results.length === 0}
           >
-            Select all
+            {STRINGS.ADMIN.actions.selectAll}
           </button>
           <button
             type="button"
@@ -242,7 +247,7 @@ export default function AdminStoryTab({
             onClick={onClearSelected}
             disabled={busy || storyPick.selected.length === 0}
           >
-            Clear
+            {STRINGS.ADMIN.actions.clear}
           </button>
           <button
             type="button"
@@ -255,7 +260,7 @@ export default function AdminStoryTab({
             }
             disabled={busy || (storyPick.offset || 0) <= 0}
           >
-            Prev
+            {STRINGS.ADMIN.actions.prev}
           </button>
           <button
             type="button"
@@ -264,11 +269,17 @@ export default function AdminStoryTab({
             onClick={() => onSearch?.((storyPick.offset || 0) + (storyPick.limit || 20))}
             disabled={busy || storyPick.results.length < (storyPick.limit || 20)}
           >
-            Next
+            {STRINGS.ADMIN.actions.next}
           </button>
-          <span style={AdminStyle.pill}>Selected: {storyPick.selected.length}</span>
-          <span style={AdminStyle.pill}>Max: {storyPick.maxSelect || 6}</span>
-          <span style={AdminStyle.pill}>Offset: {storyPick.offset || 0}</span>
+          <span style={AdminStyle.pill}>
+            {STRINGS.ADMIN.pills.selected} {storyPick.selected.length}
+          </span>
+          <span style={AdminStyle.pill}>
+            {STRINGS.ADMIN.pills.max} {storyPick.maxSelect || 6}
+          </span>
+          <span style={AdminStyle.pill}>
+            {STRINGS.ADMIN.pills.offset} {storyPick.offset || 0}
+          </span>
         </div>
 
         <SearchResults
@@ -278,11 +289,11 @@ export default function AdminStoryTab({
           busy={busy}
         />
 
-        <div style={{ ...AdminStyle.row, marginTop: 12 }}>
+        <div style={AdminStoryTabStyle.rowMt12}>
           <button
             type="button"
             className="tv-card tv-card--hover"
-            style={{ ...AdminStyle.btn, ...AdminStyle.btnPrimary }}
+            style={AdminStyle.btnPrimaryFull}
             onClick={onAddSelected}
             disabled={
               busy ||
@@ -290,7 +301,7 @@ export default function AdminStoryTab({
               storyPick.selected.length === 0
             }
           >
-            Add selected to level
+            {STRINGS.ADMIN.actions.addSelectedToLevel}
           </button>
           <button
             type="button"
@@ -302,20 +313,20 @@ export default function AdminStoryTab({
               !String(storyPick.levelId || '').trim() ||
               storyPick.selected.length === 0
             }
-            title="Replace the entire level pool with your selected questions"
+            title={STRINGS.ADMIN.hints.replaceLevelPoolTitle}
           >
-            Replace pool
+            {STRINGS.ADMIN.actions.replacePool}
           </button>
         </div>
       </div>
 
       <div style={AdminStyle.section}>
-        <h3 style={AdminStyle.sectionTitle}>Current level pool</h3>
+        <h3 style={AdminStyle.sectionTitle}>{STRINGS.ADMIN.sections.currentLevelPool}</h3>
         <div style={AdminStyle.sectionSub}>
-          View / remove questions currently assigned to the selected level.
+          {STRINGS.ADMIN.text.currentLevelPoolSubtitle}
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 10 }}>
+        <div style={AdminStoryTabStyle.rowMt10}>
           <button
             type="button"
             className="tv-card tv-card--hover"
@@ -323,7 +334,7 @@ export default function AdminStoryTab({
             onClick={onLoadPool}
             disabled={busy || !String(storyPick.levelId || '').trim()}
           >
-            Refresh pool
+            {STRINGS.ADMIN.actions.refreshPool}
           </button>
           <button
             type="button"
@@ -331,16 +342,16 @@ export default function AdminStoryTab({
             style={AdminStyle.btn}
             onClick={onClearPool}
             disabled={busy || !String(storyPick.levelId || '').trim()}
-            title="Remove all questions from this level pool"
+            title={STRINGS.ADMIN.hints.clearLevelPoolTitle}
           >
-            Clear pool
+            {STRINGS.ADMIN.actions.clearPool}
           </button>
           <span style={AdminStyle.pill}>
-            Showing {storyPick.poolQuestions?.length || 0}
+            {STRINGS.ADMIN.pills.showingBare} {storyPick.poolQuestions?.length || 0}
           </span>
         </div>
 
-        <div style={{ ...AdminStyle.row, marginTop: 10 }}>
+        <div style={AdminStoryTabStyle.rowMt10}>
           <button
             type="button"
             className="tv-card tv-card--hover"
@@ -348,7 +359,7 @@ export default function AdminStoryTab({
             onClick={onPrevPoolPage}
             disabled={busy || (storyPick.poolOffset ?? 0) <= 0}
           >
-            Prev
+            {STRINGS.ADMIN.actions.prev}
           </button>
           <button
             type="button"
@@ -360,9 +371,11 @@ export default function AdminStoryTab({
               (storyPick.poolQuestions?.length || 0) < (storyPick.poolLimit || 50)
             }
           >
-            Next
+            {STRINGS.ADMIN.actions.next}
           </button>
-          <span style={AdminStyle.pill}>Offset: {storyPick.poolOffset ?? 0}</span>
+          <span style={AdminStyle.pill}>
+            {STRINGS.ADMIN.pills.offset} {storyPick.poolOffset ?? 0}
+          </span>
         </div>
 
         <div style={AdminStyle.list}>
@@ -378,14 +391,14 @@ export default function AdminStoryTab({
                   onClick={() => onRemoveFromPool?.(q.id)}
                   disabled={busy}
                 >
-                  Remove
+                  {STRINGS.ADMIN.actions.remove}
                 </button>
               </div>
             </div>
           ))}
           {(storyPick.poolQuestions || []).length === 0 && (
-            <div style={{ fontWeight: 850, color: colors.neutral[700] }}>
-              Select a level, then click “Refresh pool”.
+            <div style={AdminStoryTabStyle.emptyText}>
+              {STRINGS.ADMIN.text.selectLevelThenRefreshPool}
             </div>
           )}
         </div>
