@@ -24,7 +24,10 @@ export const classicStartValidator = [
 ];
 
 export const blitzStartValidator = [
-  body('category_id').isUUID().withMessage('category_id must be a valid UUID'),
+  body('category_id')
+    .optional({ nullable: true })
+    .isUUID()
+    .withMessage('category_id must be a valid UUID'),
   body('difficulty')
     .isIn(['easy', 'medium', 'hard'])
     .withMessage('difficulty is invalid'),

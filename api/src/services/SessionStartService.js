@@ -8,6 +8,21 @@
  */
 import AppError from '../utils/AppError.js';
 
+function difficultyToRatingRange(difficulty) {
+  const d = String(difficulty || '').trim().toLowerCase();
+  if (d === 'easy') return { min: 1, max: 4 };
+  if (d === 'medium') return { min: 4, max: 7 };
+  if (d === 'hard') return { min: 8, max: 10 };
+  return null;
+}
+
+function inRatingRange(question, range) {
+  if (!range) return true;
+  const r = Number(question?.difficulty_rating);
+  if (!Number.isFinite(r)) return false;
+  return r >= range.min && r <= range.max;
+}
+
 export class SessionStartService {
   constructor({
     gameSessionRepository,
@@ -79,6 +94,89 @@ export class SessionStartService {
     // Back-compat fallback: when admin pools aren't configured, keep using the
     // existing global randomness (which may include custom quiz questions).
     return this.quizQuestionRepository.listRandom(count);
+  }
+
+  async listQuestionsForModeByDifficulty(mode, limit, difficulty) {
+    const count = Math.max(1, Number(limit) || 1);
+    const range = difficultyToRatingRange(difficulty);
+    if (!range) return this.listQuestionsForMode(mode, count);
+
+    const picked = [];
+    const pickedIds = new Set();
+    let poolConfigured = false;
+    let poolHadRows = false;
+
+    if (this.modeQuestionPoolRepository) {
+      try {
+        const ids = await this.modeQuestionPoolRepository.listQuestionIdsByMode(mode);
+        poolConfigured = true;
+        poolHadRows = ids.length > 0;
+        if (ids.length > 0) {
+          const shuffled = ids.slice();
+          for (let i = shuffled.length - 1; i > 0; i -= 1) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          }
+
+          const batchSize = 200;
+          for (let off = 0; off < shuffled.length && picked.length < count; off += batchSize) {
+            const batchIds = shuffled.slice(off, off + batchSize);
+            // eslint-disable-next-line no-await-in-loop
+            const rows = await this.quizQuestionRepository.listByIds(batchIds);
+            const map = new Map(rows.map((q) => [q.id, q]));
+            for (const id of batchIds) {
+              const q = map.get(id);
+              if (!q) continue;
+              if (!inRatingRange(q, range)) continue;
+              if (pickedIds.has(q.id)) continue;
+              pickedIds.add(q.id);
+              picked.push(q);
+              if (picked.length >= count) break;
+            }
+          }
+        }
+      } catch (err) {
+        if (err?.code !== 'NOT_CONFIGURED') throw err;
+      }
+    }
+
+    if (picked.length >= count) return picked.slice(0, count);
+
+    // If the admin mode pool is configured, do not mix in unrelated global questions.
+    if (poolConfigured) {
+      if (!poolHadRows) {
+        throw new AppError(
+          `No questions configured for ${mode} mode yet. Add questions to the ${mode} pool in Admin.`,
+          400,
+          'NO_POOL'
+        );
+      }
+      return picked.slice(0, count);
+    }
+
+    // Otherwise fill from global bank (difficulty-filtered). If difficulty column isn't configured,
+    // we fail loudly (user selected a difficulty).
+    const missing = Math.max(0, count - picked.length);
+    try {
+      const filler = await this.quizQuestionRepository.listRandomGlobalByDifficultyRange(missing, range);
+      for (const q of filler) {
+        if (!q?.id) continue;
+        if (pickedIds.has(q.id)) continue;
+        pickedIds.add(q.id);
+        picked.push(q);
+      }
+    } catch (err) {
+      if (err?.code === 'NOT_CONFIGURED') {
+        throw new AppError(
+          'Difficulty rating is not configured. Run `api/sql/quiz_questions_difficulty_rating.sql` in Supabase first.',
+          501,
+          'NOT_CONFIGURED'
+        );
+      }
+      throw err;
+    }
+
+    return picked.slice(0, count);
   }
 
   async listQuestionsForClassic({ category_id = null, limit }) {
@@ -351,15 +449,23 @@ export class SessionStartService {
   }
 
   async startBlitzSession(userId, { category_id, difficulty }) {
-    const questions = await this.listQuestionsForMode('blitz', 30);
+    const target = 200;
+    const questions = await this.listQuestionsForModeByDifficulty('blitz', target, difficulty);
+    if (questions.length < 30) {
+      throw new AppError(
+        `Not enough ${difficulty} blitz questions available (have ${questions.length}, need at least 30).`,
+        400,
+        'NOT_ENOUGH_QUESTIONS'
+      );
+    }
     if (questions.length === 0) {
       throw new AppError('No questions available for this mode', 400, 'NO_POOL');
     }
     const session = await this.gameSessionRepository.create({
       user_id: userId,
       mode: 'blitz',
-      category_id,
-      difficulty,
+      category_id: category_id ?? null,
+      difficulty: difficulty ?? null,
       total_questions: questions.length,
       status: 'in_progress',
     });

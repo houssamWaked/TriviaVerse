@@ -14,46 +14,35 @@ function getApiErrorMessage(err) {
 export default function Blitz({ user, onRequireAuth, onNavigateHome, onPlaySession }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [categories, setCategories] = useState([]);
   const [config, setConfig] = useState(null);
-
-  const [categoryId, setCategoryId] = useState('');
   const [difficulty, setDifficulty] = useState('easy');
 
   useEffect(() => {
     let cancelled = false;
-    Promise.allSettled([api.listCategories(), api.getBlitzConfig()])
-      .then((res) => {
+    api
+      .getBlitzConfig()
+      .then((cfg) => {
         if (cancelled) return;
-        const cats = res[0].status === 'fulfilled' ? res[0].value : [];
-        setCategories(Array.isArray(cats) ? cats : []);
-        if (!categoryId && Array.isArray(cats) && cats[0]?.id) setCategoryId(cats[0].id);
-
-        const cfg = res[1].status === 'fulfilled' ? res[1].value : null;
         if (cfg) setConfig(cfg);
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const selectedCategory = useMemo(
-    () => categories.find((c) => c.id === categoryId) || null,
-    [categories, categoryId]
-  );
+  const diffMeta = useMemo(() => {
+    if (difficulty === 'easy') return { label: 'Easy', range: '1–4' };
+    if (difficulty === 'medium') return { label: 'Medium', range: '4–7' };
+    return { label: 'Hard', range: '8–10' };
+  }, [difficulty]);
 
   const start = async () => {
     if (!user) return onRequireAuth?.('blitz');
-    if (!categoryId) return;
     setBusy(true);
     setError('');
     try {
-      const res = await api.startBlitzSession({
-        category_id: categoryId,
-        difficulty,
-      });
+      const res = await api.startBlitzSession({ difficulty });
       onPlaySession?.(res.session_id);
     } catch (err) {
       setError(getApiErrorMessage(err));
@@ -66,131 +55,229 @@ export default function Blitz({ user, onRequireAuth, onNavigateHome, onPlaySessi
     <div style={ModeStartStyle.page}>
       <div style={ModeStartStyle.container}>
         <div style={ModeStartStyle.hero}>
-          <div style={ModeStartStyle.badge}>
-            <span style={ModeStartStyle.badgeIcon}>⚡</span>
-            <span style={ModeStartStyle.badgeText}>Blitz</span>
-            <span style={ModeStartStyle.badgeDot}>✨</span>
+          <div
+            style={{
+              width: 74,
+              height: 74,
+              borderRadius: 999,
+              background: 'rgba(255,255,255,0.18)',
+              border: '1px solid rgba(255,255,255,0.26)',
+              margin: '0 auto 14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 18px 44px rgba(0,0,0,0.18)',
+              color: colors.neutral.white,
+              fontSize: 30,
+              fontWeight: 950,
+              backdropFilter: 'blur(10px)',
+            }}
+            aria-label="Lightning"
+          >
+            ⚡
           </div>
-          <h1 style={ModeStartStyle.title}>60s Blitz</h1>
+          <h1 style={ModeStartStyle.title}>60-Second Blitz</h1>
           <p style={ModeStartStyle.subtitle}>
-            One minute. No submit button. Tap answers fast and stack points.
+            Answer as many questions as you can in {config?.time_limit_sec ?? 60} seconds!
           </p>
         </div>
 
         <div className="tv-card" style={ModeStartStyle.card}>
-          <div style={{ ...ModeStartStyle.row, justifyContent: 'space-between' }}>
-            <div style={ModeStartStyle.row}>
-              <button
-                type="button"
-                className="tv-card tv-card--hover"
-                style={ModeStartStyle.btn}
-                onClick={onNavigateHome}
+          <div style={{ textAlign: 'center' }}>
+            {!!error && <div style={ModeStartStyle.error}>{error}</div>}
+
+            <div
+              className="tv-card"
+              style={{
+                ...ModeStartStyle.section,
+                maxWidth: 720,
+                margin: '18px auto 0',
+                background:
+                  'linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.12) 100%)',
+                border: '1px solid rgba(255,255,255,0.30)',
+                boxShadow: '0 18px 44px rgba(0,0,0,0.14)',
+                backdropFilter: 'blur(12px)',
+              }}
+            >
+              <h3
+                style={{
+                  ...ModeStartStyle.sectionTitle,
+                  textAlign: 'center',
+                  color: colors.neutral.white,
+                }}
               >
-                Home
-              </button>
-            </div>
-            {config?.time_limit_sec ? (
-              <span style={ModeStartStyle.pill}>⏱ {config.time_limit_sec}s total</span>
-            ) : (
-              <span style={ModeStartStyle.pill}>⏱ 60s total</span>
-            )}
-          </div>
+                How to Play
+              </h3>
 
-          {!!error && <div style={ModeStartStyle.error}>{error}</div>}
-
-          <div style={ModeStartStyle.grid}>
-            <div style={ModeStartStyle.section}>
-              <h3 style={ModeStartStyle.sectionTitle}>Settings</h3>
-              <div style={ModeStartStyle.sectionSub}>Pick category + difficulty, then go.</div>
-
-              <div style={ModeStartStyle.field}>
-                <span style={ModeStartStyle.label}>Category</span>
-                <select
-                  style={ModeStartStyle.select}
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  disabled={busy}
-                >
-                  {categories.length === 0 ? (
-                    <option value="">Loading…</option>
-                  ) : (
-                    categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.icon ? `${c.icon} ` : ''}{c.name}
-                      </option>
-                    ))
-                  )}
-                </select>
+              <div
+                style={{
+                  marginTop: 14,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10,
+                  color: 'rgba(255,255,255,0.94)',
+                  fontWeight: 850,
+                  lineHeight: 1.55,
+                }}
+              >
+                {[
+                  `You have ${config?.time_limit_sec ?? 60} seconds on the clock`,
+                  'Answer rapid-fire questions as fast as possible',
+                  'Each correct answer adds to your score',
+                  "Wrong answers don't penalize, just keep going!",
+                  'Speed and accuracy both matter',
+                ].map((t) => (
+                  <div key={t} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <span style={{ color: colors.accent.yellow, fontWeight: 950 }}>○</span>
+                    <span>{t}</span>
+                  </div>
+                ))}
               </div>
 
-              <div style={ModeStartStyle.field}>
-                <span style={ModeStartStyle.label}>Difficulty</span>
-                <div style={ModeStartStyle.row}>
-                  {['easy', 'medium', 'hard'].map((d) => (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontWeight: 950, color: 'rgba(255,255,255,0.92)' }}>
+                  Difficulty
+                </div>
+                <div style={{ ...ModeStartStyle.row, justifyContent: 'center', marginTop: 10 }}>
+                  {[
+                    { key: 'easy', label: 'Easy', range: '1–4' },
+                    { key: 'medium', label: 'Medium', range: '4–7' },
+                    { key: 'hard', label: 'Hard', range: '8–10' },
+                  ].map((d) => (
                     <button
-                      key={d}
+                      key={d.key}
                       type="button"
                       className="tv-card tv-card--hover"
                       style={{
                         ...ModeStartStyle.btn,
-                        ...(difficulty === d
-                          ? { background: colors.gradients.main, color: colors.neutral.white, border: 'none' }
-                          : null),
+                        background:
+                          difficulty === d.key ? 'rgba(0,0,0,0.32)' : 'rgba(255,255,255,0.10)',
+                        border: '1px solid rgba(255,255,255,0.22)',
+                        color: colors.neutral.white,
+                        minWidth: 160,
                       }}
-                      onClick={() => setDifficulty(d)}
+                      onClick={() => setDifficulty(d.key)}
                       disabled={busy}
                     >
-                      {d}
+                      {d.label} ({d.range})
                     </button>
                   ))}
                 </div>
-              </div>
 
-              <div style={{ ...ModeStartStyle.row, marginTop: 14 }}>
-                <button
-                  type="button"
-                  className="tv-card tv-card--hover"
-                  style={{ ...ModeStartStyle.btn, ...ModeStartStyle.btnPrimary }}
-                  onClick={start}
-                  disabled={busy || !categoryId}
+                <div
+                  style={{
+                    marginTop: 10,
+                    fontSize: 12,
+                    fontWeight: 850,
+                    color: 'rgba(255,255,255,0.86)',
+                  }}
                 >
-                  Start Blitz ▶
-                </button>
-                {!user && (
-                  <button
-                    type="button"
-                    className="tv-card tv-card--hover"
-                    style={ModeStartStyle.btn}
-                    onClick={() => onRequireAuth?.('blitz')}
-                    disabled={busy}
-                  >
-                    Login
-                  </button>
-                )}
+                  Selected: {diffMeta.label} (question level {diffMeta.range})
+                </div>
               </div>
             </div>
 
-            <div style={ModeStartStyle.section}>
-              <h3 style={ModeStartStyle.sectionTitle}>Rules</h3>
-              <div style={ModeStartStyle.sectionSub}>
-                {config?.rules || '60 seconds. Each correct answer = +1.'}
-              </div>
-              <div style={ModeStartStyle.pills}>
-                <span style={ModeStartStyle.pill}>Category: {selectedCategory?.name ?? '—'}</span>
-                <span style={ModeStartStyle.pill}>Difficulty: {difficulty}</span>
-                <span style={ModeStartStyle.pill}>Mode: blitz</span>
-              </div>
-              <div
+            <div
+              style={{
+                marginTop: 18,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 14,
+                maxWidth: 820,
+                marginLeft: 'auto',
+                marginRight: 'auto',
+              }}
+            >
+              {[
+                { title: `${config?.time_limit_sec ?? 60}s`, sub: 'Time Limit', icon: '⏱' },
+                { title: 'Fast', sub: 'Paced', icon: '⚡' },
+                { title: '15+', sub: 'Questions', icon: '✅' },
+              ].map((s) => (
+                <div
+                  key={s.sub}
+                  className="tv-card"
+                  style={{
+                    borderRadius: 18,
+                    padding: 16,
+                    background: 'rgba(255,255,255,0.14)',
+                    border: '1px solid rgba(255,255,255,0.20)',
+                    boxShadow: '0 18px 44px rgba(0,0,0,0.16)',
+                    backdropFilter: 'blur(12px)',
+                    color: colors.neutral.white,
+                    textAlign: 'center',
+                  }}
+                >
+                  <div style={{ fontSize: 20, fontWeight: 950, opacity: 0.95 }}>{s.icon}</div>
+                  <div style={{ marginTop: 10, fontSize: 28, fontWeight: 950 }}>{s.title}</div>
+                  <div style={{ marginTop: 6, fontSize: 12, fontWeight: 850, opacity: 0.9 }}>
+                    {s.sub}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div
+              style={{
+                marginTop: 18,
+                display: 'flex',
+                justifyContent: 'center',
+                gap: 12,
+                flexWrap: 'wrap',
+              }}
+            >
+              <button
+                type="button"
+                className="tv-card tv-card--hover"
                 style={{
-                  marginTop: 12,
-                  fontSize: 13,
-                  fontWeight: 850,
-                  color: colors.neutral[700],
-                  lineHeight: 1.6,
+                  ...ModeStartStyle.btn,
+                  height: 54,
+                  minWidth: 200,
+                  border: 'none',
+                  background: colors.accent.red,
+                  color: colors.neutral.white,
+                  boxShadow: '0 18px 44px rgba(0,0,0,0.18)',
                 }}
+                onClick={start}
+                disabled={busy || !user}
               >
-                Tip: keep tapping — every second counts.
-              </div>
+                ⚡ Start Blitz
+              </button>
+
+              <button
+                type="button"
+                className="tv-card tv-card--hover"
+                style={{
+                  ...ModeStartStyle.btn,
+                  height: 54,
+                  minWidth: 180,
+                  background: 'rgba(255,255,255,0.14)',
+                  border: '1px solid rgba(255,255,255,0.22)',
+                  color: colors.neutral.white,
+                }}
+                onClick={onNavigateHome}
+                disabled={busy}
+              >
+                Back to Home
+              </button>
+
+              {!user ? (
+                <button
+                  type="button"
+                  className="tv-card tv-card--hover"
+                  style={{
+                    ...ModeStartStyle.btn,
+                    height: 54,
+                    minWidth: 180,
+                    background: 'rgba(0,0,0,0.18)',
+                    border: '1px solid rgba(255,255,255,0.18)',
+                    color: colors.neutral.white,
+                  }}
+                  onClick={() => onRequireAuth?.('blitz')}
+                  disabled={busy}
+                >
+                  Join / Login
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
