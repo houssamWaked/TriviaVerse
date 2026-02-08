@@ -22,6 +22,7 @@ import AuthModal from './Components/Auth/AuthModal';
 import AppStyle from './Styles/AppStyle';
 import { getApiErrorMessage } from '@/utils/apiError';
 import { STRINGS } from '@/constants/strings';
+import { essentialCacheClearByPrefix } from '@/utils/webCache';
 import {
   api,
   clearAuthToken,
@@ -188,6 +189,7 @@ function App() {
     } catch {
       // ignore (network/offline)
     }
+    essentialCacheClearByPrefix('user:');
     clearAuthToken();
     clearCurrentUser();
     setUser(null);
@@ -199,6 +201,7 @@ function App() {
     setAuthErrorCode('');
     try {
       const result = await api.login(body);
+      essentialCacheClearByPrefix('user:');
       setAuthToken(result.token);
       setCurrentUser(result.user);
       setUser(result.user);
@@ -223,6 +226,7 @@ function App() {
     try {
       const result = await api.register(body);
       if (result?.token) {
+        essentialCacheClearByPrefix('user:');
         setAuthToken(result.token);
         setCurrentUser(result.user);
         setUser(result.user);

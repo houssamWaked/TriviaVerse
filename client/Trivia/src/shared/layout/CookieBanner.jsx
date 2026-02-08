@@ -19,8 +19,8 @@ export default function CookieBanner() {
         <div style={styles.left}>
           <div style={styles.title}>Cookies & storage</div>
           <div style={styles.text}>
-            We use essential storage to keep the app working. If you accept performance storage,
-            we’ll also cache some data to make playing and admin screens load faster.
+            We use essential storage to keep the app working (including caching some data so we don’t hit the API on every refresh). If you accept performance storage,
+            we’ll also keep additional cache data to make the app feel faster.
           </div>
         </div>
 
@@ -102,4 +102,3 @@ const styles = {
     background: 'rgba(255,255,255,0.75)',
   },
 };
-
