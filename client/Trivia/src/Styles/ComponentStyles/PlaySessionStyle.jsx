@@ -389,7 +389,7 @@ const PlaySessionStyle = {
     display: 'flex',
     flexDirection: 'column',
     gap: 16,
-    minWidth: 320,
+    minWidth: 'min(320px, 100%)',
   },
   millionaireCard: {
     borderRadius: 26,
@@ -408,7 +408,7 @@ const PlaySessionStyle = {
   },
   millionaireQuestion: {
     marginTop: 10,
-    fontSize: 34,
+    fontSize: 'clamp(22px, 4.6vw, 34px)',
     fontWeight: 950,
     letterSpacing: -0.8,
     lineHeight: 1.18,
@@ -509,7 +509,7 @@ const PlaySessionStyle = {
   millionaireLifelinesRow: {
     marginTop: 12,
     display: 'grid',
-    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(160px, 100%), 1fr))',
     gap: 12,
   },
   millionaireLifelineBtn: {
@@ -531,8 +531,8 @@ const PlaySessionStyle = {
   millionaireLifelineText: { fontSize: 12, opacity: 0.95 },
 
   millionaireLadderCard: {
-    flex: '0 0 340px',
-    minWidth: 300,
+    flex: '1 1 340px',
+    minWidth: 'min(300px, 100%)',
     borderRadius: 26,
     padding: 18,
     border: '1px solid rgba(255,255,255,0.22)',
@@ -686,7 +686,7 @@ const PlaySessionStyle = {
   storyQuestion: {
     margin: '6px auto 0',
     maxWidth: 760,
-    fontSize: 34,
+    fontSize: 'clamp(22px, 4.6vw, 34px)',
     fontWeight: 950,
     color: colors.neutral[900],
     letterSpacing: -0.8,
@@ -695,7 +695,7 @@ const PlaySessionStyle = {
   storyOptions: {
     marginTop: 22,
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))',
     gap: 14,
   },
   storyOptionBtn: {

@@ -36,7 +36,7 @@ const ModeStartStyle = {
   badgeDot: { fontSize: 16 },
   title: {
     margin: 0,
-    fontSize: 56,
+    fontSize: 'clamp(34px, 6vw, 56px)',
     fontWeight: 950,
     letterSpacing: -0.9,
     color: colors.neutral.white,
@@ -62,7 +62,7 @@ const ModeStartStyle = {
   grid: {
     marginTop: 16,
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))',
     gap: 14,
   },
   section: {
@@ -177,4 +177,3 @@ const ModeStartStyle = {
 };
 
 export default ModeStartStyle;
-

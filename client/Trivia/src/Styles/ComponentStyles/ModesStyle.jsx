@@ -39,7 +39,7 @@ const ModesStyle = {
   grid: {
     marginTop: 46,
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))',
     gap: 26,
     justifyItems: 'center',
   },

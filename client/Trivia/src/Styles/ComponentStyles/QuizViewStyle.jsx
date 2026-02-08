@@ -233,7 +233,7 @@ const QuizViewStyle = {
 
   title: {
     margin: '14px 0 0',
-    fontSize: 34,
+    fontSize: 'clamp(24px, 4.6vw, 34px)',
     fontWeight: 950,
     letterSpacing: -0.8,
     color: colors.neutral[900],
@@ -305,7 +305,7 @@ const QuizViewStyle = {
   questions: {
     marginTop: 4,
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(360px, 100%), 1fr))',
     gap: 16,
   },
   questionCard: {

@@ -51,7 +51,7 @@ const ClassicStyle = {
   badgeText: { fontSize: 13, letterSpacing: 0.2 },
   title: {
     margin: '18px 0 0',
-    fontSize: 56,
+    fontSize: 'clamp(34px, 6vw, 56px)',
     fontWeight: 950,
     letterSpacing: -0.9,
     color: colors.neutral.white,
@@ -79,7 +79,7 @@ const ClassicStyle = {
   categoriesGrid: {
     marginTop: 26,
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))',
     gap: 16,
   },
 
@@ -144,7 +144,7 @@ const ClassicStyle = {
   statsGrid: {
     marginTop: 26,
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))',
     gap: 16,
   },
   statsCard: { ...glassCard, padding: 18, textAlign: 'center' },
@@ -210,4 +210,3 @@ const ClassicStyle = {
 };
 
 export default ClassicStyle;
-

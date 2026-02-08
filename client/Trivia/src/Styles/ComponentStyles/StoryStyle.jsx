@@ -37,7 +37,7 @@ const StoryStyle = {
 
   title: {
     margin: 0,
-    fontSize: 56,
+    fontSize: 'clamp(34px, 6vw, 56px)',
     fontWeight: 950,
     letterSpacing: -0.9,
     color: colors.neutral.white,
@@ -139,7 +139,7 @@ const StoryStyle = {
   grid: {
     marginTop: 16,
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))',
     gap: 14,
   },
   levelCard: {

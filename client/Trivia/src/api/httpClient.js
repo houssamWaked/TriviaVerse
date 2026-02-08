@@ -4,8 +4,11 @@
 import axios from 'axios';
 import { getAuthToken } from './tokenStore';
 
-const baseURL =
-  import.meta.env.VITE_API_BASE_URL?.trim() || 'http://localhost:3001';
+const envBase = typeof import.meta.env.VITE_API_BASE_URL === 'string' ? import.meta.env.VITE_API_BASE_URL.trim() : '';
+// Defaults:
+// - dev: hit local API
+// - prod: use same-origin relative `/api/...` (works on Vercel when API is hosted on same domain)
+const baseURL = envBase || (import.meta.env.PROD ? '' : 'http://localhost:3001');
 
 export const http = axios.create({
   baseURL,
@@ -20,4 +23,3 @@ http.interceptors.request.use((config) => {
   }
   return config;
 });
-

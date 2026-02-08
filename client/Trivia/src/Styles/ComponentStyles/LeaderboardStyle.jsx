@@ -36,7 +36,7 @@ const LeaderboardStyle = {
   badgeDot: { fontSize: 16 },
   title: {
     margin: 0,
-    fontSize: 56,
+    fontSize: 'clamp(34px, 6vw, 56px)',
     fontWeight: 950,
     letterSpacing: -0.9,
     color: colors.neutral.white,

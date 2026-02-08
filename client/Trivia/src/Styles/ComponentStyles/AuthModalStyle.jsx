@@ -17,7 +17,9 @@ const AuthModalStyle = {
     width: '100%',
     maxWidth: 980,
     borderRadius: 26,
-    overflow: 'hidden',
+    maxHeight: 'calc(100vh - 44px)',
+    overflowX: 'hidden',
+    overflowY: 'auto',
     background: colors.neutral.white,
     boxShadow: '0 30px 90px rgba(0,0,0,0.35)',
     display: 'flex',
@@ -72,7 +74,7 @@ const AuthModalStyle = {
 
   leftTitle: {
     margin: 0,
-    fontSize: 34,
+    fontSize: 'clamp(26px, 4.6vw, 34px)',
     fontWeight: 950,
     letterSpacing: -0.7,
     textShadow: '0 10px 30px rgba(0,0,0,0.20)',

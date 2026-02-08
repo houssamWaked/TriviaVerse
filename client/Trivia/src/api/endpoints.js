@@ -13,42 +13,38 @@ export const endpoints = {
   publicQuizLeaderboard: (quizId) => `/api/public/quizzes/${quizId}/leaderboard`,
   publicQuizTop: () => '/api/public/quizzes/top',
 
+  // public gameplay/modes
+  storyLevels: () => '/api/public/story/levels',
+  storyStart: () => '/api/public/story/sessions/start',
+  millionaireConfig: () => '/api/public/millionaire/config',
+  millionaireStart: () => '/api/public/millionaire/sessions/start',
+  classicStart: () => '/api/public/classic/sessions/start',
+  blitzConfig: () => '/api/public/blitz/config',
+  blitzStart: () => '/api/public/blitz/sessions/start',
+  sessionCurrent: (sessionId) => `/api/public/sessions/${sessionId}/current`,
+  sessionAnswer: (sessionId) => `/api/public/sessions/${sessionId}/answer`,
+  sessionUseLifeline: (sessionId) => `/api/public/sessions/${sessionId}/lifelines/use`,
+  sessionFinish: (sessionId) => `/api/public/sessions/${sessionId}/finish`,
+  leaderboard: () => '/api/public/leaderboard',
+
+  // public categories (read-only)
+  publicCategories: () => '/api/public/categories',
+  publicCategoryById: (id) => `/api/public/categories/${id}`,
+  publicCategorySearch: () => '/api/public/categories/search',
+  publicCategoryStats: (id) => `/api/public/categories/${id}/stats`,
+
   // auth
   register: () => '/api/auth/register',
   login: () => '/api/auth/login',
   verifyEmail: () => '/api/auth/verify-email',
   resendVerification: () => '/api/auth/resend-verification',
 
-  // leaderboard
-  leaderboard: () => '/api/leaderboard',
-
-  // categories
+  // categories (protected write routes)
   categories: () => '/api/categories',
   categoryById: (id) => `/api/categories/${id}`,
-  categorySearch: () => '/api/categories/search',
-  categoryStats: (id) => `/api/categories/${id}/stats`,
 
-  // story
-  storyLevels: () => '/api/story/levels',
+  // story (protected)
   storyProgress: () => '/api/story/progress',
-  storyStart: () => '/api/story/sessions/start',
-
-  // millionaire
-  millionaireConfig: () => '/api/millionaire/config',
-  millionaireStart: () => '/api/millionaire/sessions/start',
-
-  // classic
-  classicStart: () => '/api/classic/sessions/start',
-
-  // blitz
-  blitzConfig: () => '/api/blitz/config',
-  blitzStart: () => '/api/blitz/sessions/start',
-
-  // sessions gameplay
-  sessionCurrent: (sessionId) => `/api/sessions/${sessionId}/current`,
-  sessionAnswer: (sessionId) => `/api/sessions/${sessionId}/answer`,
-  sessionUseLifeline: (sessionId) => `/api/sessions/${sessionId}/lifelines/use`,
-  sessionFinish: (sessionId) => `/api/sessions/${sessionId}/finish`,
 
   // quiz builder
   quizzes: () => '/api/quizzes',

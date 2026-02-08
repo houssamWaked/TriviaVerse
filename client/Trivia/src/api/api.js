@@ -81,12 +81,12 @@ export const api = {
 
   // categories
   listCategories: async () =>
-    cachedGet(endpoints.categories(), { ttlMs: 5 * 60_000, scope: 'public', prefer: 'localStorage' }),
+    cachedGet(endpoints.publicCategories(), { ttlMs: 5 * 60_000, scope: 'public', prefer: 'localStorage' }),
   searchCategories: async (q) =>
-    (await http.get(endpoints.categorySearch(), { params: { q } })).data,
-  getCategory: async (id) => (await http.get(endpoints.categoryById(id))).data,
+    (await http.get(endpoints.publicCategorySearch(), { params: { q } })).data,
+  getCategory: async (id) => (await http.get(endpoints.publicCategoryById(id))).data,
   getCategoryStats: async (id) =>
-    (await http.get(endpoints.categoryStats(id))).data,
+    (await http.get(endpoints.publicCategoryStats(id))).data,
   createCategory: async (body) =>
     (await http.post(endpoints.categories(), body)).data,
   updateCategory: async (id, body) =>

@@ -68,7 +68,7 @@ const BlitzStyle = {
   statsGrid: {
     marginTop: 18,
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))',
     gap: 14,
     maxWidth: 820,
     marginLeft: 'auto',
@@ -123,4 +123,3 @@ const BlitzStyle = {
 };
 
 export default BlitzStyle;
-

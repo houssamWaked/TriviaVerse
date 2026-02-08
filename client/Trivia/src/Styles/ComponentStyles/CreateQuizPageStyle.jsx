@@ -38,7 +38,7 @@ const CreateQuizPageStyle = {
 
   heroTitle: {
     margin: 0,
-    fontSize: 60,
+    fontSize: 'clamp(36px, 6.4vw, 60px)',
     fontWeight: 950,
     letterSpacing: -0.9,
     color: colors.neutral.white,
@@ -62,7 +62,7 @@ const CreateQuizPageStyle = {
   grid: {
     marginTop: 18,
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(420px, 100%), 1fr))',
     gap: 18,
   },
 
@@ -213,6 +213,7 @@ const CreateQuizPageStyle = {
     display: 'flex',
     gap: 10,
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
 
   myQuizList: {
@@ -472,7 +473,7 @@ const CreateQuizPageStyle = {
 
   questionsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(420px, 100%), 1fr))',
     gap: 16,
   },
 

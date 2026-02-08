@@ -37,7 +37,7 @@ const FriendsStyle = {
 
   title: {
     margin: 0,
-    fontSize: 56,
+    fontSize: 'clamp(34px, 6vw, 56px)',
     fontWeight: 950,
     letterSpacing: -0.9,
     color: colors.neutral.white,
@@ -68,13 +68,13 @@ const FriendsStyle = {
 
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(360px, 100%), 1fr))',
     gap: 16,
   },
   gridMt14: {
     marginTop: 14,
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(360px, 100%), 1fr))',
     gap: 16,
   },
 

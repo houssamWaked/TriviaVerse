@@ -37,7 +37,7 @@ const DiscoverQuizzesStyle = {
 
   title: {
     margin: 0,
-    fontSize: 56,
+    fontSize: 'clamp(34px, 6vw, 56px)',
     fontWeight: 950,
     letterSpacing: -0.9,
     color: colors.neutral.white,
@@ -149,7 +149,7 @@ const DiscoverQuizzesStyle = {
   grid: {
     marginTop: 18,
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))',
     gap: 16,
   },
 

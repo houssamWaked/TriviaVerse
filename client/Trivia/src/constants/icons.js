@@ -31,6 +31,7 @@ export const ICONS = {
     crown: '♛',
     circle: '○',
     dot: '●',
+    menu: '☰',
     close: '✕',
     diamond: '❖',
     wrench: '🛠️',

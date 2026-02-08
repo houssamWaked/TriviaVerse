@@ -124,7 +124,7 @@ const ProfileStyle = {
 
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))',
     gap: 12,
   },
   modeCard: {
@@ -163,7 +163,7 @@ const ProfileStyle = {
   modeMeta: {
     marginTop: 10,
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
     gap: 8,
   },
   stat: {
