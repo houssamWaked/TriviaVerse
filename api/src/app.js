@@ -279,6 +279,9 @@ app.use('/api/public/classic', createClassicRouter(classicController));
 app.use('/api/public/blitz', createBlitzRouter(blitzController));
 app.use('/api/public/sessions', createSessionsRouter(sessionsController));
 
+// Backwards-compatible public alias (canonical is `/api/public/leaderboard`).
+app.use('/api/leaderboard', createLeaderboardRouter(leaderboardController));
+
 app.use('/api/auth', createAuthRouter(authController));
 
 // Protect everything under `/api/*` except `/api/public/*` and `/api/auth/*`.
