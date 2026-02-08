@@ -20,10 +20,11 @@ export function createProtectApi({ requireAuth }) {
       path === '/public' ||
       path.startsWith('/public/') ||
       path === '/auth' ||
-      path.startsWith('/auth/');
+      path.startsWith('/auth/') ||
+      path === '/leaderboard' ||
+      path.startsWith('/leaderboard/');
 
     if (isPublic || path === '/') return next();
     return requireAuth(req, res, next);
   };
 }
-

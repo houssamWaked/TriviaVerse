@@ -7,7 +7,7 @@
 import bcrypt from 'bcryptjs';
 import AppError from '../utils/AppError.js';
 import UserDTO from '../domain/dto/UserDTO.js';
-import { signAccessToken } from '../utils/jwt.js';
+import { signAccessToken, verifyRefreshToken } from '../utils/jwt.js';
 import { supabasePublic } from '../config/supabase.js';
 import {
   buildEmailVerificationRedirectUrl,
@@ -114,6 +114,20 @@ export class AuthService {
             }
           : undefined
       );
+    }
+
+    const token = signAccessToken(user);
+    return { user: UserDTO.fromEntity(user), token };
+  }
+
+  async refresh(refreshToken) {
+    const decoded = verifyRefreshToken(refreshToken);
+    const userId = decoded.sub;
+
+    const user = await this.userRepository.findById(userId);
+    if (!user) throw new AppError('Invalid refresh token', 401, 'UNAUTHORIZED');
+    if (!user.email_verified_at) {
+      throw new AppError('Email not verified', 403, 'EMAIL_NOT_VERIFIED');
     }
 
     const token = signAccessToken(user);

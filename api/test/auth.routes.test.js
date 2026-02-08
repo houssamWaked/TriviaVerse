@@ -19,6 +19,8 @@ function createTestApp(controllerOverrides = {}) {
         user: { id: 'u1', username: 'x', email: req.body.email, avatar_url: null },
         token: 'token',
       }),
+    refresh: async (req, res) => res.status(200).json({ token: 'token' }),
+    logout: async (req, res) => res.status(200).json({ success: true }),
     ...controllerOverrides,
   };
 
@@ -44,3 +46,14 @@ test('POST /api/auth/login validates input', async () => {
   assert.equal(res.body.code, 'VALIDATION_ERROR');
 });
 
+test('POST /api/auth/refresh exists', async () => {
+  const app = createTestApp();
+  const res = await request(app).post('/api/auth/refresh').send({});
+  assert.equal(res.status, 200);
+});
+
+test('POST /api/auth/logout exists', async () => {
+  const app = createTestApp();
+  const res = await request(app).post('/api/auth/logout').send({});
+  assert.equal(res.status, 200);
+});

@@ -31,6 +31,9 @@ export default function createAuthRouter(authController) {
     asyncHandler(authController.login)
   );
 
+  router.post('/refresh', asyncHandler(authController.refresh));
+  router.post('/logout', asyncHandler(authController.logout));
+
   router.get(
     '/verify-email',
     verifyEmailGetValidator,

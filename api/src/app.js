@@ -13,11 +13,15 @@
  */
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 
 import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { requireAuth } from './middlewares/requireAuth.js';
 import { createProtectApi } from './middlewares/protectApi.js';
+import AppError from './utils/AppError.js';
 
 import createCategoryRouter from './routes/CategoryRoute.js';
 import createAuthRouter from './routes/AuthRoute.js';
@@ -98,8 +102,48 @@ import { DuelClaimRepository } from './domain/repositories/DuelClaimRepository.j
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+app.disable('x-powered-by');
+
+// Trust proxy headers on common PaaS deployments (Railway, Heroku, etc.) so
+// rate limiting and req.ip work as expected.
+app.set('trust proxy', Number(process.env.TRUST_PROXY ?? 1));
+
+app.use(
+  helmet({
+    // This API serves JSON, not HTML documents.
+    contentSecurityPolicy: false,
+  })
+);
+
+const isProd = process.env.NODE_ENV === 'production';
+const allowedOrigins = String(process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+if (isProd && allowedOrigins.length === 0) {
+  // Fail fast in prod rather than silently allowing any website to call your API.
+  throw new AppError('Missing CORS_ORIGINS in production', 500, 'CONFIG_ERROR');
+}
+
+app.use(
+  cors({
+    origin(origin, cb) {
+      // Allow non-browser clients (no Origin) and same-origin requests.
+      if (!origin) return cb(null, true);
+      if (allowedOrigins.length === 0) return cb(null, true);
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      return cb(new AppError('CORS origin not allowed', 403, 'CORS_FORBIDDEN'));
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    optionsSuccessStatus: 204,
+  })
+);
+
+app.use(cookieParser());
+app.use(express.json({ limit: process.env.JSON_LIMIT || '1mb' }));
 
 app.get('/health', (req, res) => res.status(200).json({ ok: true }));
 
@@ -270,6 +314,42 @@ const quizDiscoveryController = new QuizDiscoveryController(
   })
 );
 
+const authWindowMs = Number(process.env.RATE_LIMIT_AUTH_WINDOW_MS || 15 * 60_000);
+const authMax = Number(process.env.RATE_LIMIT_AUTH_MAX || 20);
+
+const apiWindowMs = Number(process.env.RATE_LIMIT_API_WINDOW_MS || 15 * 60_000);
+const apiMax = Number(process.env.RATE_LIMIT_API_MAX || 600);
+app.use(
+  '/api',
+  rateLimit({
+    windowMs: apiWindowMs,
+    limit: apiMax,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    handler(req, res, next) {
+      next(new AppError('Too many requests', 429, 'RATE_LIMITED'));
+    },
+  })
+);
+
+app.use(
+  '/api/auth',
+  rateLimit({
+    windowMs: authWindowMs,
+    limit: authMax,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    handler(req, res, next) {
+      next(new AppError('Too many auth requests', 429, 'RATE_LIMITED'));
+    },
+  }),
+  createAuthRouter(authController)
+);
+
+// Protect everything under `/api/*` except `/api/public/*`, `/api/auth/*`, and leaderboard routes.
+app.use('/api', createProtectApi({ requireAuth }));
+
+// Public routes
 app.use('/api/public', createPublicRouter(publicController, quizDiscoveryController));
 app.use('/api/public/categories', createPublicCategoryRouter(categoryController));
 app.use('/api/public/leaderboard', createLeaderboardRouter(leaderboardController));
@@ -281,11 +361,6 @@ app.use('/api/public/sessions', createSessionsRouter(sessionsController));
 
 // Backwards-compatible public alias (canonical is `/api/public/leaderboard`).
 app.use('/api/leaderboard', createLeaderboardRouter(leaderboardController));
-
-app.use('/api/auth', createAuthRouter(authController));
-
-// Protect everything under `/api/*` except `/api/public/*` and `/api/auth/*`.
-app.use('/api', createProtectApi({ requireAuth }));
 
 app.use('/api/categories', createCategoryRouter(categoryController));
 
