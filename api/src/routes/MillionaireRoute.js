@@ -1,7 +1,7 @@
 /**
  * Millionaire mode routes.
  *
- * Mounted at `/api/millionaire`.
+ * Mounted at `/api/public/millionaire`.
  */
 import { Router } from 'express';
 import asyncHandler from '../utils/asyncHandler.js';

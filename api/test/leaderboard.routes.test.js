@@ -14,16 +14,15 @@ function createTestApp() {
   };
 
   const app = express();
-  app.use('/api/leaderboard', createLeaderboardRouter(controller));
+  app.use('/api/public/leaderboard', createLeaderboardRouter(controller));
   app.use(notFound);
   app.use(errorHandler);
   return app;
 }
 
-test('GET /api/leaderboard validates period', async () => {
+test('GET /api/public/leaderboard validates period', async () => {
   const app = createTestApp();
-  const res = await request(app).get('/api/leaderboard?period=yearly');
+  const res = await request(app).get('/api/public/leaderboard?period=yearly');
   assert.equal(res.status, 400);
   assert.equal(res.body.code, 'VALIDATION_ERROR');
 });
-

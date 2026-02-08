@@ -16,16 +16,20 @@ import cors from 'cors';
 
 import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
+import { requireAuth } from './middlewares/requireAuth.js';
+import { createProtectApi } from './middlewares/protectApi.js';
 
 import createCategoryRouter from './routes/CategoryRoute.js';
 import createAuthRouter from './routes/AuthRoute.js';
 import createPublicRouter from './routes/PublicRoute.js';
 import createLeaderboardRouter from './routes/LeaderboardRoute.js';
+import createPublicCategoryRouter from './routes/PublicCategoryRoute.js';
 import createQuizBuilderRouter, {
   createOptionsRouter,
   createQuestionsRouter,
 } from './routes/QuizBuilderRoute.js';
 import createStoryRouter from './routes/StoryRoute.js';
+import createStoryPublicRouter from './routes/StoryPublicRoute.js';
 import createMillionaireRouter from './routes/MillionaireRoute.js';
 import createClassicRouter from './routes/ClassicRoute.js';
 import createBlitzRouter from './routes/BlitzRoute.js';
@@ -96,6 +100,8 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+app.get('/health', (req, res) => res.status(200).json({ ok: true }));
 
 // repositories
 const categoryRepository = new CategoryRepository();
@@ -264,20 +270,27 @@ const quizDiscoveryController = new QuizDiscoveryController(
   })
 );
 
-app.use('/api/categories', createCategoryRouter(categoryController));
 app.use('/api/public', createPublicRouter(publicController, quizDiscoveryController));
+app.use('/api/public/categories', createPublicCategoryRouter(categoryController));
+app.use('/api/public/leaderboard', createLeaderboardRouter(leaderboardController));
+app.use('/api/public/story', createStoryPublicRouter(storyController));
+app.use('/api/public/millionaire', createMillionaireRouter(millionaireController));
+app.use('/api/public/classic', createClassicRouter(classicController));
+app.use('/api/public/blitz', createBlitzRouter(blitzController));
+app.use('/api/public/sessions', createSessionsRouter(sessionsController));
+
 app.use('/api/auth', createAuthRouter(authController));
-app.use('/api/leaderboard', createLeaderboardRouter(leaderboardController));
+
+// Protect everything under `/api/*` except `/api/public/*` and `/api/auth/*`.
+app.use('/api', createProtectApi({ requireAuth }));
+
+app.use('/api/categories', createCategoryRouter(categoryController));
 
 app.use('/api/quizzes', createQuizBuilderRouter(quizBuilderController));
 app.use('/api/questions', createQuestionsRouter(quizBuilderController));
 app.use('/api/options', createOptionsRouter(quizBuilderController));
 
 app.use('/api/story', createStoryRouter(storyController));
-app.use('/api/millionaire', createMillionaireRouter(millionaireController));
-app.use('/api/classic', createClassicRouter(classicController));
-app.use('/api/blitz', createBlitzRouter(blitzController));
-app.use('/api/sessions', createSessionsRouter(sessionsController));
 app.use('/api/friends', createFriendsRouter(friendController));
 app.use('/api/admin', createAdminRouter(adminController));
 app.use('/api/me', createMeRouter(meController));

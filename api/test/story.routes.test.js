@@ -5,6 +5,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 
 import createStoryRouter from '../src/routes/StoryRoute.js';
+import createStoryPublicRouter from '../src/routes/StoryPublicRoute.js';
 import { errorHandler } from '../src/middlewares/errorHandler.js';
 import { notFound } from '../src/middlewares/notFound.js';
 
@@ -25,6 +26,7 @@ function createTestApp() {
   const app = express();
   app.use(express.json());
   app.use('/api/story', createStoryRouter(controller));
+  app.use('/api/public/story', createStoryPublicRouter(controller));
   app.use(notFound);
   app.use(errorHandler);
   return app;
@@ -36,13 +38,12 @@ test('GET /api/story/progress requires auth', async () => {
   assert.equal(res.status, 401);
 });
 
-test('POST /api/story/sessions/start validates body', async () => {
+test('POST /api/public/story/sessions/start validates body', async () => {
   const app = createTestApp();
   const res = await request(app)
-    .post('/api/story/sessions/start')
+    .post('/api/public/story/sessions/start')
     .set(authHeader())
     .send({});
   assert.equal(res.status, 400);
   assert.equal(res.body.code, 'VALIDATION_ERROR');
 });
-

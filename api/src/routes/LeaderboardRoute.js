@@ -1,7 +1,7 @@
 /**
  * Leaderboard routes.
  *
- * Mounted at `/api/leaderboard`.
+ * Mounted at `/api/public/leaderboard`.
  */
 import { Router } from 'express';
 import asyncHandler from '../utils/asyncHandler.js';
@@ -20,4 +20,3 @@ export default function createLeaderboardRouter(leaderboardController) {
 
   return router;
 }
-

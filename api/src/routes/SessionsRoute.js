@@ -1,7 +1,7 @@
 /**
  * Shared session gameplay routes.
  *
- * Mounted at `/api/sessions`.
+ * Mounted at `/api/public/sessions`.
  */
 import { Router } from 'express';
 import asyncHandler from '../utils/asyncHandler.js';

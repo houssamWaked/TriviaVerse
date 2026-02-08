@@ -1,7 +1,7 @@
 /**
  * Classic mode routes.
  *
- * Mounted at `/api/classic`.
+ * Mounted at `/api/public/classic`.
  */
 import { Router } from 'express';
 import asyncHandler from '../utils/asyncHandler.js';
