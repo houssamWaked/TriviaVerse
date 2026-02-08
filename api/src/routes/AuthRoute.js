@@ -6,7 +6,13 @@
 import { Router } from 'express';
 import asyncHandler from '../utils/asyncHandler.js';
 import { validateRequest } from '../middlewares/validateRequest.js';
-import { loginValidator, registerValidator } from '../validator/AuthValidator.js';
+import {
+  loginValidator,
+  registerValidator,
+  resendVerificationValidator,
+  verifyEmailGetValidator,
+  verifyEmailPostValidator,
+} from '../validator/AuthValidator.js';
 
 export default function createAuthRouter(authController) {
   const router = Router();
@@ -25,6 +31,26 @@ export default function createAuthRouter(authController) {
     asyncHandler(authController.login)
   );
 
+  router.get(
+    '/verify-email',
+    verifyEmailGetValidator,
+    validateRequest,
+    asyncHandler(authController.verifyEmail)
+  );
+
+  router.post(
+    '/verify-email',
+    verifyEmailPostValidator,
+    validateRequest,
+    asyncHandler(authController.verifyEmail)
+  );
+
+  router.post(
+    '/resend-verification',
+    resendVerificationValidator,
+    validateRequest,
+    asyncHandler(authController.resendVerification)
+  );
+
   return router;
 }
-

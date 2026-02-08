@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import asyncHandler from '../utils/asyncHandler.js';
 import { validateRequest } from '../middlewares/validateRequest.js';
-import { requireAuth } from '../middlewares/requireAuth.js';
+import { optionalAuth } from '../middlewares/optionalAuth.js';
 import { blitzStartValidator } from '../validator/ModeSessionValidator.js';
 
 export default function createBlitzRouter(blitzController) {
@@ -15,7 +15,7 @@ export default function createBlitzRouter(blitzController) {
   router.get('/config', asyncHandler(blitzController.config));
   router.post(
     '/sessions/start',
-    requireAuth,
+    optionalAuth,
     blitzStartValidator,
     validateRequest,
     asyncHandler(blitzController.start)
@@ -23,4 +23,3 @@ export default function createBlitzRouter(blitzController) {
 
   return router;
 }
-

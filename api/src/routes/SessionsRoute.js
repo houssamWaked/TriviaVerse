@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import asyncHandler from '../utils/asyncHandler.js';
 import { validateRequest } from '../middlewares/validateRequest.js';
-import { requireAuth } from '../middlewares/requireAuth.js';
+import { optionalAuth } from '../middlewares/optionalAuth.js';
 import {
   answerValidator,
   finishValidator,
@@ -19,7 +19,7 @@ export default function createSessionsRouter(sessionsController) {
 
   router.get(
     '/:session_id/current',
-    requireAuth,
+    optionalAuth,
     sessionIdParam,
     validateRequest,
     asyncHandler(sessionsController.current)
@@ -27,7 +27,7 @@ export default function createSessionsRouter(sessionsController) {
 
   router.post(
     '/:session_id/answer',
-    requireAuth,
+    optionalAuth,
     sessionIdParam,
     answerValidator,
     validateRequest,
@@ -36,7 +36,7 @@ export default function createSessionsRouter(sessionsController) {
 
   router.post(
     '/:session_id/lifelines/use',
-    requireAuth,
+    optionalAuth,
     sessionIdParam,
     lifelineValidator,
     validateRequest,
@@ -45,7 +45,7 @@ export default function createSessionsRouter(sessionsController) {
 
   router.post(
     '/:session_id/finish',
-    requireAuth,
+    optionalAuth,
     sessionIdParam,
     finishValidator,
     validateRequest,
@@ -54,4 +54,3 @@ export default function createSessionsRouter(sessionsController) {
 
   return router;
 }
-

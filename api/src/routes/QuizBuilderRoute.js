@@ -10,6 +10,7 @@ import { Router } from 'express';
 import asyncHandler from '../utils/asyncHandler.js';
 import { validateRequest } from '../middlewares/validateRequest.js';
 import { requireAuth } from '../middlewares/requireAuth.js';
+import { optionalAuth } from '../middlewares/optionalAuth.js';
 import {
   addOptionValidator,
   addQuestionValidator,
@@ -45,7 +46,7 @@ export default function createQuizBuilderRouter(quizBuilderController) {
 
   router.post(
     '/:quiz_id/sessions/start',
-    requireAuth,
+    optionalAuth,
     quizIdParam,
     validateRequest,
     asyncHandler(quizBuilderController.startCustomSession)

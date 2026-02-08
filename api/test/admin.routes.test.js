@@ -26,6 +26,7 @@ function createTestApp() {
     addStoryLevelPool: async (req, res) => res.status(200).json({}),
     seedStoryLevelPool: async (req, res) => res.status(200).json({}),
     listStoryLevelPoolQuestions: async (req, res) => res.status(200).json({ questions: [] }),
+    listStoryLevelPoolQuestionIds: async (req, res) => res.status(200).json({ ids: [], count: 0 }),
     listStoryAssignedQuestionIds: async (req, res) => res.status(200).json({ count: 0, ids: [] }),
     removeStoryLevelPoolQuestions: async (req, res) => res.status(200).json({}),
     replaceStoryLevelPool: async (req, res) => res.status(200).json({}),
@@ -35,6 +36,7 @@ function createTestApp() {
     deleteGlobalQuestion: async (req, res) =>
       res.status(200).json({ success: true, question_id: req.params.question_id }),
     modePoolSummary: async (req, res) => res.status(200).json({ count: 0 }),
+    modePoolQuestionIds: async (req, res) => res.status(200).json({ ids: [], count: 0 }),
     seedModePool: async (req, res) => res.status(200).json({}),
     listModePoolQuestions: async (req, res) => res.status(200).json({ questions: [] }),
     addModePool: async (req, res) => res.status(200).json({}),
@@ -44,6 +46,7 @@ function createTestApp() {
     createClassicCategory: async (req, res) => res.status(201).json({}),
     deleteClassicCategory: async (req, res) => res.status(200).json({ success: true }),
     listClassicCategoryPoolQuestions: async (req, res) => res.status(200).json({ questions: [] }),
+    listClassicCategoryPoolQuestionIds: async (req, res) => res.status(200).json({ ids: [], count: 0 }),
     addClassicCategoryPool: async (req, res) => res.status(200).json({}),
     removeClassicCategoryPool: async (req, res) => res.status(200).json({}),
     replaceClassicCategoryPool: async (req, res) => res.status(200).json({}),
@@ -79,6 +82,14 @@ test('DELETE /api/admin/story/levels/:level_id validates level_id', async () => 
 test('GET /api/admin/story/pool/assigned returns ids', async () => {
   const app = createTestApp();
   const res = await request(app).get('/api/admin/story/pool/assigned').set(adminHeader());
+  assert.equal(res.status, 200);
+  assert.ok(Array.isArray(res.body.ids));
+  assert.equal(res.body.count, 0);
+});
+
+test('GET /api/admin/modes/:mode/pool/ids returns ids', async () => {
+  const app = createTestApp();
+  const res = await request(app).get('/api/admin/modes/classic/pool/ids').set(adminHeader());
   assert.equal(res.status, 200);
   assert.ok(Array.isArray(res.body.ids));
   assert.equal(res.body.count, 0);

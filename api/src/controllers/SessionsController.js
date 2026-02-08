@@ -7,14 +7,14 @@ export class SessionsController {
   }
 
   current = async (req, res) => {
-    const data = await this.sessionService.getCurrent(req.params.session_id, req.user.id);
+    const data = await this.sessionService.getCurrent(req.params.session_id, req.user?.id || null);
     res.status(200).json(data);
   };
 
   answer = async (req, res) => {
     const data = await this.sessionService.submitAnswer(
       req.params.session_id,
-      req.user.id,
+      req.user?.id || null,
       req.body
     );
     res.status(200).json(data);
@@ -23,7 +23,7 @@ export class SessionsController {
   useLifeline = async (req, res) => {
     const data = await this.sessionService.useLifeline(
       req.params.session_id,
-      req.user.id,
+      req.user?.id || null,
       req.body
     );
     res.status(200).json(data);
@@ -32,10 +32,9 @@ export class SessionsController {
   finish = async (req, res) => {
     const data = await this.sessionService.finish(
       req.params.session_id,
-      req.user.id,
+      req.user?.id || null,
       req.body.status
     );
     res.status(200).json(data);
   };
 }
-

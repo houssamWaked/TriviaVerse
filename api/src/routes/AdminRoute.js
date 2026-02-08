@@ -68,6 +68,14 @@ export default function createAdminRouter(adminController) {
     asyncHandler(adminController.listStoryLevelPoolQuestions)
   );
 
+  router.get(
+    '/story/levels/:level_id/pool/ids',
+    requireAdmin,
+    levelIdParam,
+    validateRequest,
+    asyncHandler(adminController.listStoryLevelPoolQuestionIds)
+  );
+
   router.delete(
     '/story/levels/:level_id/pool',
     requireAdmin,
@@ -154,6 +162,14 @@ export default function createAdminRouter(adminController) {
     asyncHandler(adminController.listModePoolQuestions)
   );
 
+  router.get(
+    '/modes/:mode/pool/ids',
+    requireAdmin,
+    modeParam,
+    validateRequest,
+    asyncHandler(adminController.modePoolQuestionIds)
+  );
+
   router.post(
     '/modes/:mode/pool',
     requireAdmin,
@@ -211,6 +227,14 @@ export default function createAdminRouter(adminController) {
     listPoolQuery,
     validateRequest,
     asyncHandler(adminController.listClassicCategoryPoolQuestions)
+  );
+
+  router.get(
+    '/classic/categories/:category_id/pool/ids',
+    requireAdmin,
+    categoryIdParam,
+    validateRequest,
+    asyncHandler(adminController.listClassicCategoryPoolQuestionIds)
   );
 
   router.post(

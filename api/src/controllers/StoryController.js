@@ -19,10 +19,9 @@ export class StoryController {
 
   start = async (req, res) => {
     const data = await this.sessionStartService.startStorySession(
-      req.user.id,
+      req.user?.id || null,
       req.body.level_number
     );
     res.status(201).json(data);
   };
 }
-

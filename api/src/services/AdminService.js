@@ -231,6 +231,15 @@ export class AdminService {
     };
   }
 
+  async listStoryLevelPoolQuestionIds(levelId) {
+    const level = await this.storyLevelRepository.findById(levelId);
+    if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
+
+    const ids = await this.storyLevelPoolRepository.listQuestionIdsByLevelId(level.id);
+    const unique = Array.from(new Set((ids || []).filter(Boolean)));
+    return { level_id: level.id, count: unique.length, ids: unique };
+  }
+
   async listStoryAssignedQuestionIds() {
     const ids = await this.storyLevelPoolRepository.listAllQuestionIds();
     const unique = Array.from(new Set((ids || []).filter(Boolean)));
@@ -418,6 +427,15 @@ export class AdminService {
     return { mode: String(mode || '').trim().toLowerCase(), count: copy.length };
   }
 
+  async listModePoolQuestionIds(mode) {
+    const m = String(mode || '').trim().toLowerCase();
+    if (!m) throw new AppError('Mode is required', 400, 'VALIDATION_ERROR');
+
+    const ids = await this.modeQuestionPoolRepository.listQuestionIdsByMode(m);
+    const unique = Array.from(new Set((ids || []).filter(Boolean)));
+    return { mode: m, count: unique.length, ids: unique };
+  }
+
   async seedModePool(mode, { random_count = 10 } = {}) {
     const m = String(mode || '').trim().toLowerCase();
     if (!m) throw new AppError('Mode is required', 400, 'VALIDATION_ERROR');
@@ -526,6 +544,15 @@ export class AdminService {
           difficulty_rating: q.difficulty_rating ?? null,
         })),
     };
+  }
+
+  async listClassicCategoryPoolQuestionIds(categoryId) {
+    const cat = await this.categoryRepository.findById(categoryId);
+    if (!cat) throw new AppError('Category not found', 404, 'NOT_FOUND');
+
+    const ids = await this.classicCategoryPoolRepository.listQuestionIdsByCategoryId(cat.id);
+    const unique = Array.from(new Set((ids || []).filter(Boolean)));
+    return { category_id: cat.id, count: unique.length, ids: unique };
   }
 
   async addClassicCategoryPool(categoryId, questionIds = []) {

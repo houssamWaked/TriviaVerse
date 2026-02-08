@@ -21,7 +21,7 @@ export class UserRepository {
 
     const { data, error } = await supabase
       .from('users')
-      .select('id, username, email, password_hash, avatar_url, created_at')
+      .select('id, username, email, password_hash, avatar_url, email_verified_at, created_at')
       .in('id', unique);
 
     if (error) throw toAppError(error);
@@ -31,7 +31,7 @@ export class UserRepository {
   async findById(id) {
     const { data, error } = await supabase
       .from('users')
-      .select('id, username, email, password_hash, avatar_url, created_at')
+      .select('id, username, email, password_hash, avatar_url, email_verified_at, created_at')
       .eq('id', id)
       .limit(1);
 
@@ -42,7 +42,7 @@ export class UserRepository {
   async findByEmail(email) {
     const { data, error } = await supabase
       .from('users')
-      .select('id, username, email, password_hash, avatar_url, created_at')
+      .select('id, username, email, password_hash, avatar_url, email_verified_at, created_at')
       .eq('email', email)
       .limit(1);
 
@@ -55,7 +55,7 @@ export class UserRepository {
     if (!u) return null;
     const { data, error } = await supabase
       .from('users')
-      .select('id, username, email, password_hash, avatar_url, created_at')
+      .select('id, username, email, password_hash, avatar_url, email_verified_at, created_at')
       .eq('username', u)
       .limit(1);
 
@@ -68,11 +68,23 @@ export class UserRepository {
     const { data, error } = await supabase
       .from('users')
       .insert(payload)
-      .select('id, username, email, password_hash, avatar_url, created_at')
+      .select('id, username, email, password_hash, avatar_url, email_verified_at, created_at')
       .limit(1);
 
     if (error) throw toAppError(error);
     if (!data?.[0]) throw new AppError('Failed to create user', 500, 'DB_ERROR');
     return new User(data[0]);
+  }
+
+  async markEmailVerified(userId) {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ email_verified_at: new Date().toISOString() })
+      .eq('id', userId)
+      .select('id, username, email, password_hash, avatar_url, email_verified_at, created_at')
+      .limit(1);
+
+    if (error) throw toAppError(error);
+    return data?.[0] ? new User(data[0]) : null;
   }
 }

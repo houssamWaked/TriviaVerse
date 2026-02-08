@@ -31,10 +31,10 @@ function createTestApp() {
   return app;
 }
 
-test('GET /api/sessions/:id/current requires auth', async () => {
+test('GET /api/sessions/:id/current allows guest access (router level)', async () => {
   const app = createTestApp();
   const res = await request(app).get('/api/sessions/00000000-0000-0000-0000-000000000000/current');
-  assert.equal(res.status, 401);
+  assert.equal(res.status, 200);
 });
 
 test('GET /api/sessions/:id/current validates session_id', async () => {
@@ -45,4 +45,3 @@ test('GET /api/sessions/:id/current validates session_id', async () => {
   assert.equal(res.status, 400);
   assert.equal(res.body.code, 'VALIDATION_ERROR');
 });
-

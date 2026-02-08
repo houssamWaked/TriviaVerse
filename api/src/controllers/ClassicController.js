@@ -7,8 +7,7 @@ export class ClassicController {
   }
 
   start = async (req, res) => {
-    const data = await this.sessionStartService.startClassicSession(req.user.id, req.body);
+    const data = await this.sessionStartService.startClassicSession(req.user?.id || null, req.body);
     res.status(201).json(data);
   };
 }
-

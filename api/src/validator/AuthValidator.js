@@ -1,7 +1,7 @@
 /**
  * Auth validators.
  */
-import { body } from 'express-validator';
+import { body, query } from 'express-validator';
 
 export const registerValidator = [
   body('username')
@@ -36,3 +36,17 @@ export const loginValidator = [
     .withMessage('password is required'),
 ];
 
+export const verifyEmailPostValidator = [
+  body('token').isString().trim().notEmpty().withMessage('token is required'),
+];
+
+export const verifyEmailGetValidator = [
+  query('token').isString().trim().notEmpty().withMessage('token is required'),
+];
+
+export const resendVerificationValidator = [
+  body('email')
+    .isEmail()
+    .withMessage('email must be a valid email')
+    .normalizeEmail(),
+];

@@ -39,6 +39,11 @@ export class AdminController {
     res.status(200).json(data);
   };
 
+  listStoryLevelPoolQuestionIds = async (req, res) => {
+    const data = await this.adminService.listStoryLevelPoolQuestionIds(req.params.level_id);
+    res.status(200).json(data);
+  };
+
   listStoryAssignedQuestionIds = async (req, res) => {
     const data = await this.adminService.listStoryAssignedQuestionIds();
     res.status(200).json(data);
@@ -93,6 +98,11 @@ export class AdminController {
     res.status(200).json(data);
   };
 
+  modePoolQuestionIds = async (req, res) => {
+    const data = await this.adminService.listModePoolQuestionIds(req.params.mode);
+    res.status(200).json(data);
+  };
+
   seedModePool = async (req, res) => {
     const data = await this.adminService.seedModePool(req.params.mode, req.body);
     res.status(200).json(data);
@@ -137,6 +147,11 @@ export class AdminController {
       req.params.category_id,
       req.query
     );
+    res.status(200).json(data);
+  };
+
+  listClassicCategoryPoolQuestionIds = async (req, res) => {
+    const data = await this.adminService.listClassicCategoryPoolQuestionIds(req.params.category_id);
     res.status(200).json(data);
   };
 

@@ -14,8 +14,7 @@ export class BlitzController {
   };
 
   start = async (req, res) => {
-    const data = await this.sessionStartService.startBlitzSession(req.user.id, req.body);
+    const data = await this.sessionStartService.startBlitzSession(req.user?.id || null, req.body);
     res.status(201).json(data);
   };
 }
-

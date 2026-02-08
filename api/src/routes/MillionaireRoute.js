@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import asyncHandler from '../utils/asyncHandler.js';
 import { validateRequest } from '../middlewares/validateRequest.js';
-import { requireAuth } from '../middlewares/requireAuth.js';
+import { optionalAuth } from '../middlewares/optionalAuth.js';
 import { millionaireStartValidator } from '../validator/ModeSessionValidator.js';
 
 export default function createMillionaireRouter(millionaireController) {
@@ -15,7 +15,7 @@ export default function createMillionaireRouter(millionaireController) {
   router.get('/config', asyncHandler(millionaireController.config));
   router.post(
     '/sessions/start',
-    requireAuth,
+    optionalAuth,
     millionaireStartValidator,
     validateRequest,
     asyncHandler(millionaireController.start)
@@ -23,4 +23,3 @@ export default function createMillionaireRouter(millionaireController) {
 
   return router;
 }
-

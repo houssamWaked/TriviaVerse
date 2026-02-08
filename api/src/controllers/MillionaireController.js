@@ -20,7 +20,7 @@ export class MillionaireController {
 
   start = async (req, res) => {
     const data = await this.sessionStartService.startMillionaireSession(
-      req.user.id,
+      req.user?.id || null,
       req.body.ladder_id || null
     );
     res.status(201).json(data);
