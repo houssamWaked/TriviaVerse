@@ -4,6 +4,7 @@ import { STRINGS } from '@/constants/strings';
 import { api } from '@/api';
 import StoryStyle from '@/Styles/ComponentStyles/StoryStyle';
 import { getApiErrorMessage } from '@/utils/apiError';
+import { computeGuestStoryUnlockedMax, loadGuestStoryProgress } from '@/utils/guestStoryProgress';
 
 function toDifficultyLabel(raw) {
   const d = String(raw || '').toLowerCase();
@@ -37,6 +38,8 @@ export default function Story({ user, onRequireAuth, onNavigateHome, onPlaySessi
         setLevels(Array.isArray(p?.levels) ? p.levels : []);
       } else {
         const list = await api.getStoryLevels();
+        const guest = loadGuestStoryProgress();
+        const unlockedMax = computeGuestStoryUnlockedMax(list);
         setCompletedLevels(0);
         setTotalLevels(Array.isArray(list) ? list.length : 0);
         setLevels(
@@ -50,10 +53,10 @@ export default function Story({ user, onRequireAuth, onNavigateHome, onPlaySessi
                 : (Number(lvl.difficulty_max) || 0) <= 6
                   ? STRINGS.STORY.difficulty.medium
                   : STRINGS.STORY.difficulty.hard,
-            best_score: 0,
+            best_score: Number(guest?.bestScore?.[String(lvl.level_number)] || 0) || 0,
             stars_earned: 0,
-            is_unlocked: false,
-            is_completed: false,
+            is_unlocked: Number(lvl.level_number) <= unlockedMax,
+            is_completed: !!guest?.completed?.[String(lvl.level_number)],
           }))
         );
       }
@@ -70,7 +73,7 @@ export default function Story({ user, onRequireAuth, onNavigateHome, onPlaySessi
   }, [!!user]);
 
   const progressPill = useMemo(() => {
-    if (!user) return STRINGS.STORY.progress.loggedOut;
+    if (!user) return 'Playing as guest (saved locally)';
     return STRINGS.STORY.progress.loggedIn(completedLevels, totalLevels);
   }, [user, completedLevels, totalLevels]);
 
@@ -80,7 +83,6 @@ export default function Story({ user, onRequireAuth, onNavigateHome, onPlaySessi
   }, [user, levels]);
 
   const startLevel = async (levelNumber, isUnlocked) => {
-    if (!user) return onRequireAuth?.('story');
     if (!isUnlocked) return;
 
     setBusy(true);
@@ -155,14 +157,10 @@ export default function Story({ user, onRequireAuth, onNavigateHome, onPlaySessi
                   type="button"
                   className="tv-card tv-card--hover"
                   style={unlocked ? StoryStyle.levelCard : StoryStyle.levelCardLocked}
-                  disabled={busy || (!unlocked && !!user)}
+                  disabled={busy || !unlocked}
                   onClick={() => startLevel(lvl.level_number, unlocked)}
                   title={
-                    !user
-                      ? STRINGS.STORY.tooltips.loginToPlay
-                      : unlocked
-                        ? STRINGS.STORY.tooltips.play
-                        : STRINGS.STORY.tooltips.locked
+                    unlocked ? STRINGS.STORY.tooltips.play : STRINGS.STORY.tooltips.locked
                   }
                 >
                   <div style={StoryStyle.levelTop}>
@@ -184,14 +182,9 @@ export default function Story({ user, onRequireAuth, onNavigateHome, onPlaySessi
                     <span style={StoryStyle.metaItem}>
                       {ICONS.common.slider} {label}
                     </span>
-                    {user && (
-                      <>
-                        <span style={StoryStyle.metaItem}>{starsText(lvl.stars_earned)}</span>
-                        <span style={StoryStyle.metaItem}>
-                          {ICONS.common.trophy} {lvl.best_score ?? 0}
-                        </span>
-                      </>
-                    )}
+                    <span style={StoryStyle.metaItem}>
+                      {ICONS.common.trophy} {lvl.best_score ?? 0}
+                    </span>
                   </div>
                 </button>
               );

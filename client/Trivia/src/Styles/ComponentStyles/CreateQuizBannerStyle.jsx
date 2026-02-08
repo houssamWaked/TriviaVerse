@@ -11,20 +11,22 @@ const CreateQuizBannerStyle = {
     width: '100%',
     maxWidth: 1180,
     background: colors.neutral.white,
-    borderRadius: 22,
-    padding: '36px 44px',
+    borderRadius: 'var(--tv-radius-xl)',
+    padding: 'clamp(22px, 4vw, 36px) clamp(18px, 4vw, 44px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 24,
+    flexWrap: 'wrap',
     position: 'relative',
-    boxShadow: '0 20px 50px rgba(0,0,0,0.18)',
+    boxShadow: 'var(--tv-shadow-lg)',
   },
 
   left: {
     display: 'flex',
     alignItems: 'center',
     gap: 20,
+    flex: '1 1 420px',
   },
 
   iconWrap: {
@@ -40,7 +42,7 @@ const CreateQuizBannerStyle = {
 
   title: {
     margin: 0,
-    fontSize: 34,
+    fontSize: 'clamp(22px, 3vw, 34px)',
     fontWeight: 900,
     color: colors.primary[600],
     letterSpacing: -0.6,
@@ -48,7 +50,7 @@ const CreateQuizBannerStyle = {
 
   subtitle: {
     marginTop: 6,
-    fontSize: 16,
+    fontSize: 'clamp(14px, 1.8vw, 16px)',
     fontWeight: 700,
     color: colors.neutral[600],
   },

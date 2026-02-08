@@ -7,7 +7,7 @@ const HomeHeroStyle = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '64px 18px 54px',
+    padding: 'clamp(44px, 6vw, 64px) 18px 54px',
   },
 
   container: {
@@ -45,7 +45,7 @@ const HomeHeroStyle = {
   },
   titleTop: {
     display: 'block',
-    fontSize: 84,
+    fontSize: 'clamp(44px, 7vw, 84px)',
     fontWeight: 900,
     color: colors.neutral.white,
   },
@@ -53,7 +53,7 @@ const HomeHeroStyle = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 12,
-    fontSize: 92,
+    fontSize: 'clamp(48px, 7.5vw, 92px)',
     fontWeight: 900,
   },
   triviaWord: {
@@ -65,7 +65,7 @@ const HomeHeroStyle = {
     color: colors.neutral.white,
   },
   party: {
-    fontSize: 64,
+    fontSize: 'clamp(38px, 5.5vw, 64px)',
     transform: 'translateY(8px)',
   },
 
@@ -73,7 +73,7 @@ const HomeHeroStyle = {
   subtitle: {
     margin: '18px auto 0',
     maxWidth: 760,
-    fontSize: 26,
+    fontSize: 'clamp(18px, 2.6vw, 26px)',
     fontWeight: 800,
     color: 'rgba(255,255,255,0.95)',
     textShadow: '0 8px 18px rgba(0,0,0,0.10)',

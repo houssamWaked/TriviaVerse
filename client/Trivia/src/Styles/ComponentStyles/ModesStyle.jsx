@@ -16,7 +16,7 @@ const ModesStyle = {
 
   title: {
     margin: 0,
-    fontSize: 58,
+    fontSize: 'clamp(34px, 4.8vw, 58px)',
     fontWeight: 900,
     color: colors.neutral.white,
     textShadow: '0 10px 30px rgba(0,0,0,0.18)',
@@ -24,13 +24,13 @@ const ModesStyle = {
   },
   titleIcon: {
     marginLeft: 10,
-    fontSize: 44,
+    fontSize: 'clamp(28px, 3.8vw, 44px)',
     verticalAlign: 'middle',
   },
 
   subtitle: {
     margin: '12px 0 0',
-    fontSize: 20,
+    fontSize: 'clamp(16px, 2.2vw, 20px)',
     fontWeight: 800,
     color: 'rgba(255,255,255,0.92)',
     textShadow: '0 8px 18px rgba(0,0,0,0.12)',
@@ -39,7 +39,7 @@ const ModesStyle = {
   grid: {
     marginTop: 46,
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
     gap: 26,
     justifyItems: 'center',
   },

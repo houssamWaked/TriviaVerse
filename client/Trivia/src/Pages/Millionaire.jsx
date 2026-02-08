@@ -41,7 +41,6 @@ export default function Millionaire({
   );
 
   const start = async () => {
-    if (!user) return onRequireAuth?.('millionaire');
     setBusy(true);
     setError('');
     try {
@@ -154,7 +153,7 @@ export default function Millionaire({
               className="tv-card tv-card--hover"
               style={MillionaireStyle.startBtn}
               onClick={start}
-              disabled={busy || !user}
+              disabled={busy}
             >
               {STRINGS.MILLIONAIRE.buttons.startGame}
             </button>
@@ -167,7 +166,7 @@ export default function Millionaire({
                 onClick={() => onRequireAuth?.('millionaire')}
                 disabled={busy}
               >
-                {STRINGS.COMMON.joinLogin}
+                Login to save progress
               </button>
             ) : (
               <button

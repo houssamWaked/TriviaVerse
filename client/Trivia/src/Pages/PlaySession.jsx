@@ -4,6 +4,7 @@ import { STRINGS } from '@/constants/strings';
 import { api } from '@/api';
 import PlaySessionStyle, { getStoryOptionTheme } from '@/Styles/ComponentStyles/PlaySessionStyle';
 import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
+import { saveGuestStoryResult } from '@/utils/guestStoryProgress';
 
 function clampPct(n) {
   const x = Number(n);
@@ -23,6 +24,7 @@ export default function PlaySession({
   onBack,
   backLabel = STRINGS.COMMON.buttons.back,
   variant = 'default', // 'default' | 'story'
+  storyLevelNumber = null,
 }) {
   const isStory = variant === 'story';
   // Keep answer->next transitions snappy. Any intentional pause here is felt as lag.
@@ -88,7 +90,6 @@ export default function PlaySession({
   };
 
   useEffect(() => {
-    if (!user) return;
     setFinished(false);
     setScoreTotal(0);
     setAnsweredCount(0);
@@ -103,7 +104,7 @@ export default function PlaySession({
     timeUpRef.current = false;
     loadCurrent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, !!user]);
+  }, [sessionId]);
 
   useEffect(() => {
     if (sessionMode !== 'blitz') return undefined;
@@ -255,6 +256,12 @@ export default function PlaySession({
     setError('');
     try {
       await api.finishSession(sessionId, { status: 'completed' });
+      if (isStory && !user) {
+        const a = Number(answeredCount) || 0;
+        const c = Number(correctCount) || 0;
+        const passed = a > 0 ? c / a >= 0.5 : false;
+        saveGuestStoryResult(storyLevelNumber, { scoreTotal, passed });
+      }
       setFinished(true);
       setQuestion(null);
     } catch (err) {
@@ -311,39 +318,6 @@ export default function PlaySession({
       setBusy(false);
     }
   };
-
-  if (!user) {
-    return (
-      <div style={PlaySessionStyle.page}>
-        <div style={PlaySessionStyle.container}>
-          <div className="tv-card" style={PlaySessionStyle.lockCard}>
-            <h2 style={PlaySessionStyle.lockTitle}>
-              {STRINGS.PLAY_SESSION.locked.title}
-            </h2>
-            <p style={PlaySessionStyle.lockText}>
-              {STRINGS.PLAY_SESSION.locked.subtitle}
-            </p>
-            <button
-              type="button"
-              className="tv-card tv-card--hover"
-              style={PlaySessionStyle.primaryBtnMain}
-              onClick={() => onRequireAuth?.('play')}
-            >
-              {STRINGS.COMMON.joinLogin} {ICONS.common.rocket}
-            </button>
-            <button
-              type="button"
-              className="tv-card tv-card--hover"
-              style={PlaySessionStyle.secondaryBtnWhite}
-              onClick={onBack}
-            >
-              {STRINGS.COMMON.buttons.back}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div style={PlaySessionStyle.page}>

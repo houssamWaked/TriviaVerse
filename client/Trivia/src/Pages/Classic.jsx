@@ -86,7 +86,6 @@ export default function Classic({
   );
 
   const startWithCategory = async (id) => {
-    if (!user) return onRequireAuth?.('classic');
     const cid = String(id || '').trim();
     if (!cid) return;
     setBusy(true);
@@ -264,7 +263,7 @@ export default function Classic({
           <div style={ClassicStyle.statusText}>
             {user
               ? STRINGS.CLASSIC.status.loggedInAs(user.username)
-              : STRINGS.CLASSIC.status.loginRequired}
+              : 'Playing as guest (not saved to your profile)'}
           </div>
         </div>
       </div>

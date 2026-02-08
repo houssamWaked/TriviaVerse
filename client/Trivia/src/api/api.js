@@ -7,16 +7,42 @@
  */
 import { http } from './httpClient';
 import { endpoints } from './endpoints';
+import { cacheGet, cacheSet } from '@/utils/webCache';
+import { getCurrentUser } from './userStore';
+
+function stableParamsString(params) {
+  if (!params) return '';
+  const entries = Object.entries(params)
+    .filter(([, v]) => v !== undefined)
+    .map(([k, v]) => [String(k), v == null ? '' : String(v)]);
+  entries.sort((a, b) => a[0].localeCompare(b[0]));
+  return entries.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+}
+
+async function cachedGet(url, { params, ttlMs = 60_000, scope = 'public', prefer = 'localStorage' } = {}) {
+  const u = String(url || '');
+  const userId = scope === 'user' ? String(getCurrentUser()?.id || 'anon') : 'public';
+  const key = `${scope}:${userId}:${u}?${stableParamsString(params)}`;
+
+  const hit = cacheGet(key);
+  if (hit !== null) return hit;
+
+  const res = await http.get(u, params ? { params } : undefined);
+  cacheSet(key, res.data, { ttlMs, prefer });
+  return res.data;
+}
 
 export const api = {
   // public
-  getHomeMetrics: async () => (await http.get(endpoints.homeMetrics())).data,
+  getHomeMetrics: async () =>
+    cachedGet(endpoints.homeMetrics(), { ttlMs: 30_000, scope: 'public', prefer: 'localStorage' }),
   getTopQuizzes: async (limit = 20) =>
-    (
-      await http.get(endpoints.publicQuizTop(), {
-        params: { limit },
-      })
-    ).data,
+    cachedGet(endpoints.publicQuizTop(), {
+      params: { limit },
+      ttlMs: 45_000,
+      scope: 'public',
+      prefer: 'localStorage',
+    }),
   searchQuizzes: async (q, limit = 30) =>
     (
       await http.get(endpoints.publicQuizSearch(), {
@@ -24,26 +50,38 @@ export const api = {
       })
     ).data,
   getPublicQuiz: async (quizId) =>
-    (await http.get(endpoints.publicQuizById(quizId))).data,
+    cachedGet(endpoints.publicQuizById(quizId), {
+      ttlMs: 60_000,
+      scope: 'public',
+      prefer: 'localStorage',
+    }),
   getPublicQuizRatings: async (quizId) =>
-    (await http.get(endpoints.publicQuizRatings(quizId))).data,
+    cachedGet(endpoints.publicQuizRatings(quizId), {
+      ttlMs: 30_000,
+      scope: 'public',
+      prefer: 'localStorage',
+    }),
   getPublicQuizLeaderboard: async (quizId, limit = 20) =>
-    (
-      await http.get(endpoints.publicQuizLeaderboard(quizId), {
-        params: { limit },
-      })
-    ).data,
+    cachedGet(endpoints.publicQuizLeaderboard(quizId), {
+      params: { limit },
+      ttlMs: 20_000,
+      scope: 'public',
+      prefer: 'localStorage',
+    }),
 
   // auth
   register: async (body) => (await http.post(endpoints.register(), body)).data,
   login: async (body) => (await http.post(endpoints.login(), body)).data,
+  verifyEmail: async (body) => (await http.post(endpoints.verifyEmail(), body)).data,
+  resendVerification: async (body) => (await http.post(endpoints.resendVerification(), body)).data,
 
   // leaderboard
   getLeaderboard: async (params) =>
-    (await http.get(endpoints.leaderboard(), { params })).data,
+    cachedGet(endpoints.leaderboard(), { params, ttlMs: 20_000, scope: 'public', prefer: 'localStorage' }),
 
   // categories
-  listCategories: async () => (await http.get(endpoints.categories())).data,
+  listCategories: async () =>
+    cachedGet(endpoints.categories(), { ttlMs: 5 * 60_000, scope: 'public', prefer: 'localStorage' }),
   searchCategories: async (q) =>
     (await http.get(endpoints.categorySearch(), { params: { q } })).data,
   getCategory: async (id) => (await http.get(endpoints.categoryById(id))).data,
@@ -57,14 +95,20 @@ export const api = {
     (await http.delete(endpoints.categoryById(id))).data,
 
   // story
-  getStoryLevels: async () => (await http.get(endpoints.storyLevels())).data,
-  getStoryProgress: async () => (await http.get(endpoints.storyProgress())).data,
+  getStoryLevels: async () =>
+    cachedGet(endpoints.storyLevels(), { ttlMs: 5 * 60_000, scope: 'user', prefer: 'localStorage' }),
+  getStoryProgress: async () =>
+    cachedGet(endpoints.storyProgress(), { ttlMs: 15_000, scope: 'user', prefer: 'localStorage' }),
   startStorySession: async (body) =>
     (await http.post(endpoints.storyStart(), body)).data,
 
   // millionaire
   getMillionaireConfig: async () =>
-    (await http.get(endpoints.millionaireConfig())).data,
+    cachedGet(endpoints.millionaireConfig(), {
+      ttlMs: 60 * 60_000,
+      scope: 'public',
+      prefer: 'localStorage',
+    }),
   startMillionaireSession: async (body) =>
     (await http.post(endpoints.millionaireStart(), body)).data,
 
@@ -73,7 +117,8 @@ export const api = {
     (await http.post(endpoints.classicStart(), body)).data,
 
   // blitz
-  getBlitzConfig: async () => (await http.get(endpoints.blitzConfig())).data,
+  getBlitzConfig: async () =>
+    cachedGet(endpoints.blitzConfig(), { ttlMs: 60 * 60_000, scope: 'public', prefer: 'localStorage' }),
   startBlitzSession: async (body) =>
     (await http.post(endpoints.blitzStart(), body)).data,
 
@@ -88,10 +133,13 @@ export const api = {
     (await http.post(endpoints.sessionFinish(sessionId), body)).data,
 
   // quiz builder
-  listMyQuizzes: async () => (await http.get(endpoints.quizzes())).data,
-  listMyPlayedQuizzes: async () => (await http.get(endpoints.myPlayedQuizzes())).data,
+  listMyQuizzes: async () =>
+    cachedGet(endpoints.quizzes(), { ttlMs: 15_000, scope: 'user', prefer: 'localStorage' }),
+  listMyPlayedQuizzes: async () =>
+    cachedGet(endpoints.myPlayedQuizzes(), { ttlMs: 15_000, scope: 'user', prefer: 'localStorage' }),
   createQuiz: async (body) => (await http.post(endpoints.quizzes(), body)).data,
-  getQuiz: async (quizId) => (await http.get(endpoints.quizById(quizId))).data,
+  getQuiz: async (quizId) =>
+    cachedGet(endpoints.quizById(quizId), { ttlMs: 30_000, scope: 'user', prefer: 'localStorage' }),
   patchQuiz: async (quizId, body) =>
     (await http.patch(endpoints.quizById(quizId), body)).data,
   publishQuiz: async (quizId) =>
@@ -101,7 +149,7 @@ export const api = {
   rateQuiz: async (quizId, body) =>
     (await http.post(endpoints.quizRatings(quizId), body)).data,
   listQuizAccess: async (quizId) =>
-    (await http.get(endpoints.quizAccess(quizId))).data,
+    cachedGet(endpoints.quizAccess(quizId), { ttlMs: 20_000, scope: 'user', prefer: 'localStorage' }),
   addQuizAccess: async (quizId, body) =>
     (await http.post(endpoints.quizAccess(quizId), body)).data,
   removeQuizAccess: async (quizId, userId) =>
@@ -110,7 +158,7 @@ export const api = {
     (await http.post(endpoints.customQuizStart(quizId), {})).data,
 
   listQuizQuestions: async (quizId) =>
-    (await http.get(endpoints.quizQuestions(quizId))).data,
+    cachedGet(endpoints.quizQuestions(quizId), { ttlMs: 30_000, scope: 'user', prefer: 'localStorage' }),
   addQuizQuestion: async (quizId, body) =>
     (await http.post(endpoints.quizQuestions(quizId), body)).data,
 
@@ -127,8 +175,10 @@ export const api = {
     (await http.delete(endpoints.optionById(optionId))).data,
 
   // friends
-  listFriends: async () => (await http.get(endpoints.friends())).data,
-  listFriendRequests: async () => (await http.get(endpoints.friendRequests())).data,
+  listFriends: async () =>
+    cachedGet(endpoints.friends(), { ttlMs: 15_000, scope: 'user', prefer: 'localStorage' }),
+  listFriendRequests: async () =>
+    cachedGet(endpoints.friendRequests(), { ttlMs: 10_000, scope: 'user', prefer: 'localStorage' }),
   sendFriendRequest: async (body) =>
     (await http.post(endpoints.friendRequests(), body)).data,
   acceptFriendRequest: async (requestId) =>
@@ -138,30 +188,43 @@ export const api = {
   cancelFriendRequest: async (requestId) =>
     (await http.delete(endpoints.friendRequestCancel(requestId))).data,
   getFriendStats: async (friendUserId) =>
-    (await http.get(endpoints.friendStats(friendUserId))).data,
+    cachedGet(endpoints.friendStats(friendUserId), { ttlMs: 20_000, scope: 'user', prefer: 'localStorage' }),
   getFriendProfile: async (friendUserId) =>
-    (await http.get(endpoints.friendProfile(friendUserId))).data,
+    cachedGet(endpoints.friendProfile(friendUserId), {
+      ttlMs: 20_000,
+      scope: 'user',
+      prefer: 'localStorage',
+    }),
 
   // me
-  getMyProfile: async () => (await http.get(endpoints.meProfile())).data,
+  getMyProfile: async () =>
+    cachedGet(endpoints.meProfile(), { ttlMs: 20_000, scope: 'user', prefer: 'localStorage' }),
 
   // duels
-  listDuels: async () => (await http.get(endpoints.duels())).data,
+  listDuels: async () =>
+    cachedGet(endpoints.duels(), { ttlMs: 10_000, scope: 'user', prefer: 'localStorage' }),
   createDuel: async (body) => (await http.post(endpoints.duels(), body)).data,
-  getDuel: async (duelId) => (await http.get(endpoints.duelById(duelId))).data,
+  getDuel: async (duelId) =>
+    cachedGet(endpoints.duelById(duelId), { ttlMs: 10_000, scope: 'user', prefer: 'localStorage' }),
   acceptDuel: async (duelId) => (await http.post(endpoints.duelAccept(duelId), {})).data,
   declineDuel: async (duelId) => (await http.post(endpoints.duelDecline(duelId), {})).data,
   cancelDuel: async (duelId) => (await http.post(endpoints.duelCancel(duelId), {})).data,
-  getDuelState: async (duelId) => (await http.get(endpoints.duelState(duelId))).data,
+  getDuelState: async (duelId) =>
+    cachedGet(endpoints.duelState(duelId), { ttlMs: 3_000, scope: 'user', prefer: 'localStorage' }),
   duelAnswer: async (duelId, body) => (await http.post(endpoints.duelAnswer(duelId), body)).data,
 
   // quiz delete
   deleteQuiz: async (quizId) => (await http.delete(endpoints.quizById(quizId))).data,
 
   // admin
-  adminListStoryLevels: async () => (await http.get(endpoints.adminStoryLevels())).data,
+  adminListStoryLevels: async () =>
+    cachedGet(endpoints.adminStoryLevels(), { ttlMs: 10_000, scope: 'user', prefer: 'localStorage' }),
   adminStoryAssignedQuestionIds: async () =>
-    (await http.get(endpoints.adminStoryAssignedQuestionIds())).data,
+    cachedGet(endpoints.adminStoryAssignedQuestionIds(), {
+      ttlMs: 10_000,
+      scope: 'user',
+      prefer: 'localStorage',
+    }),
   adminCreateStoryLevel: async (body) =>
     (await http.post(endpoints.adminCreateStoryLevel(), body)).data,
   adminDeleteStoryLevel: async (levelId) =>
@@ -183,7 +246,9 @@ export const api = {
   adminDeleteGlobalQuestion: async (questionId) =>
     (await http.delete(endpoints.adminDeleteGlobalQuestion(questionId))).data,
   adminModePoolSummary: async (mode) =>
-    (await http.get(endpoints.adminModePoolSummary(mode))).data,
+    cachedGet(endpoints.adminModePoolSummary(mode), { ttlMs: 10_000, scope: 'user', prefer: 'localStorage' }),
+  adminModePoolIds: async (mode) =>
+    cachedGet(endpoints.adminModePoolIds(mode), { ttlMs: 15_000, scope: 'user', prefer: 'localStorage' }),
   adminSeedModePool: async (mode, body) =>
     (await http.post(endpoints.adminSeedModePool(mode), body)).data,
   adminListModePoolQuestions: async (mode, params) =>
@@ -196,6 +261,8 @@ export const api = {
     (await http.put(endpoints.adminReplaceModePool(mode), body)).data,
   adminListStoryLevelPoolQuestions: async (levelId, params) =>
     (await http.get(endpoints.adminStoryLevelPoolQuestions(levelId), { params })).data,
+  adminStoryLevelPoolIds: async (levelId) =>
+    cachedGet(endpoints.adminStoryLevelPoolIds(levelId), { ttlMs: 15_000, scope: 'user', prefer: 'localStorage' }),
   adminRemoveStoryLevelPool: async (levelId, body) =>
     (await http.delete(endpoints.adminRemoveStoryLevelPool(levelId), { data: body })).data,
   adminReplaceStoryLevelPool: async (levelId, body) =>
@@ -203,13 +270,15 @@ export const api = {
 
   // classic categories
   adminListClassicCategories: async () =>
-    (await http.get(endpoints.adminClassicCategories())).data,
+    cachedGet(endpoints.adminClassicCategories(), { ttlMs: 20_000, scope: 'user', prefer: 'localStorage' }),
   adminCreateClassicCategory: async (body) =>
     (await http.post(endpoints.adminCreateClassicCategory(), body)).data,
   adminDeleteClassicCategory: async (categoryId) =>
     (await http.delete(endpoints.adminDeleteClassicCategory(categoryId))).data,
   adminListClassicCategoryPoolQuestions: async (categoryId, params) =>
     (await http.get(endpoints.adminClassicCategoryPoolQuestions(categoryId), { params })).data,
+  adminClassicCategoryPoolIds: async (categoryId) =>
+    cachedGet(endpoints.adminClassicCategoryPoolIds(categoryId), { ttlMs: 15_000, scope: 'user', prefer: 'localStorage' }),
   adminAddClassicCategoryPool: async (categoryId, body) =>
     (await http.post(endpoints.adminAddClassicCategoryPool(categoryId), body)).data,
   adminRemoveClassicCategoryPool: async (categoryId, body) =>

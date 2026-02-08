@@ -7,6 +7,26 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color-scheme: light;
+
+  /* ===== TriviaVerse theme tokens (CSS vars) ===== */
+  --tv-bg: #f9fafb;
+  --tv-surface: rgba(255, 255, 255, 0.92);
+  --tv-text: #111827;
+  --tv-muted: #4b5563;
+  --tv-border: rgba(17, 24, 39, 0.10);
+
+  --tv-radius-sm: 14px;
+  --tv-radius-md: 18px;
+  --tv-radius-lg: 24px;
+  --tv-radius-xl: 28px;
+
+  --tv-shadow-sm: 0 10px 22px rgba(0, 0, 0, 0.10);
+  --tv-shadow-md: 0 16px 38px rgba(0, 0, 0, 0.14);
+  --tv-shadow-lg: 0 26px 70px rgba(0, 0, 0, 0.18);
+
+  --tv-focus: rgba(139, 44, 255, 0.40);
+  --tv-focus-strong: rgba(255, 44, 128, 0.42);
 }
 
 *,
@@ -22,6 +42,68 @@ body {
 
 body {
   margin: 0;
+  background: var(--tv-bg);
+  color: var(--tv-text);
+  overflow-x: hidden;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 120ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+:focus-visible {
+  outline: 3px solid var(--tv-focus);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(139, 44, 255, 0.22);
+}
+
+/* ===== Navbar hover polish ===== */
+.tv-btn-reset {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.tv-nav-link:hover {
+  background: rgba(139, 44, 255, 0.08);
+  color: #111827;
+}
+
+.tv-nav-logo:hover {
+  filter: saturate(1.05);
+}
+
+.tv-nav-user:hover {
+  filter: brightness(0.98) saturate(1.05);
+}
+
+.tv-nav-logout:hover {
+  filter: brightness(0.98);
+}
+
+.tv-nav-cta:hover {
+  filter: brightness(1.05) saturate(1.05);
+  box-shadow: 0 14px 34px rgba(139, 44, 255, 0.28);
 }
 
 /* =========================
@@ -36,18 +118,24 @@ body {
   transition:
     transform 220ms ease,
     box-shadow 220ms ease,
-    filter 220ms ease;
+    filter 220ms ease,
+    border-color 220ms ease,
+    background-color 220ms ease;
+  border: 1px solid var(--tv-border);
+  border-radius: var(--tv-radius-xl);
+  background: var(--tv-surface);
+  box-shadow: var(--tv-shadow-sm);
 }
 
 .tv-card::before {
   content: '';
   position: absolute;
   inset: -12px;
-  border-radius: 28px;
+  border-radius: calc(var(--tv-radius-xl) + 8px);
   background: linear-gradient(
     135deg,
-    rgba(255, 44, 128, 0.55) 0%,
-    rgba(139, 44, 255, 0.55) 100%
+    rgba(255, 44, 128, 0.40) 0%,
+    rgba(139, 44, 255, 0.40) 100%
   );
   filter: blur(22px);
   opacity: 0;
@@ -57,16 +145,10 @@ body {
 }
 
 .tv-card--hover:hover {
-  transform: perspective(900px) translateY(-10px) rotateX(4deg) rotateY(-4deg)
-    scale(1.03);
-  filter: saturate(1.05)
-    drop-shadow(0 18px 34px rgba(255, 44, 128, 0.18))
-    drop-shadow(0 16px 38px rgba(139, 44, 255, 0.22));
-}
-
-.tv-card--hover:nth-child(even):hover {
-  transform: perspective(900px) translateY(-10px) rotateX(4deg) rotateY(4deg)
-    scale(1.03);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: var(--tv-shadow-lg);
+  border-color: rgba(139, 44, 255, 0.22);
+  filter: saturate(1.04);
 }
 
 .tv-card--hover:hover::before {
@@ -80,7 +162,7 @@ body {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-10px);
+    transform: translateY(-6px);
   }
 }
 
@@ -109,6 +191,7 @@ body {
   }
   .tv-card--hover:hover {
     transform: none;
+    box-shadow: var(--tv-shadow-sm);
   }
   .tv-card--hover:hover::before {
     opacity: 0;

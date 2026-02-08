@@ -53,7 +53,6 @@ export default function Blitz({
   }, [difficulty]);
 
   const start = async () => {
-    if (!user) return onRequireAuth?.('blitz');
     setBusy(true);
     setError('');
     try {
@@ -188,7 +187,7 @@ export default function Blitz({
                 className="tv-card tv-card--hover"
                 style={BlitzStyle.startBtn}
                 onClick={start}
-                disabled={busy || !user}
+                disabled={busy}
               >
                 {ICONS.common.bolt} {STRINGS.BLITZ.buttons.start}
               </button>
@@ -211,7 +210,7 @@ export default function Blitz({
                   onClick={() => onRequireAuth?.('blitz')}
                   disabled={busy}
                 >
-                  {STRINGS.COMMON.joinLogin}
+                  Login to save progress
                 </button>
               ) : null}
             </div>

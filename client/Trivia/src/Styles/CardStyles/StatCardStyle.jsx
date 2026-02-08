@@ -4,16 +4,17 @@ const statCardStyle = {
   cardsGrid: {
     marginTop: 56,
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
     gap: 18,
   },
 
   card: {
     background: colors.neutral.white,
-    borderRadius: 18,
+    borderRadius: 'var(--tv-radius-lg)',
     padding: '22px 18px',
     textAlign: 'left',
-    boxShadow: '0 14px 30px rgba(0,0,0,0.16)',
+    boxShadow: 'var(--tv-shadow-md)',
+    border: '1px solid rgba(17,24,39,0.08)',
     minHeight: 120,
   },
   cardIcon: {

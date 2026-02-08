@@ -10,8 +10,10 @@ export default function AuthModal({
   onClose,
   onLogin,
   onSignup,
+  onResendVerification,
   loading = false,
   error = '',
+  errorCode = '',
 }) {
   const emailRef = useRef(null);
   const [values, setValues] = useState({
@@ -20,6 +22,8 @@ export default function AuthModal({
     password: '',
     confirmPassword: '',
   });
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendMessage, setResendMessage] = useState('');
 
   useEffect(() => {
     if (!open) return undefined;
@@ -36,6 +40,8 @@ export default function AuthModal({
         password: '',
         confirmPassword: '',
       });
+      setResendBusy(false);
+      setResendMessage('');
       onClose?.();
     };
     window.addEventListener('keydown', onKeyDown);
@@ -52,17 +58,18 @@ export default function AuthModal({
 
   const isLogin = mode === 'login';
 
-  const reset = () =>
-    setValues({
+  const reset = ({ keepEmail = false } = {}) =>
+    setValues((v) => ({
       username: '',
-      email: '',
+      email: keepEmail ? v.email : '',
       password: '',
       confirmPassword: '',
-    });
+    }));
 
   const close = () => {
-    if (loading) return;
-    reset();
+    if (loading || resendBusy) return;
+    reset({ keepEmail: false });
+    setResendMessage('');
     onClose?.();
   };
 
@@ -79,6 +86,29 @@ export default function AuthModal({
         email: values.email,
         password: values.password,
       });
+    }
+  };
+
+  const canResend = !!String(values.email || '').trim();
+  const showResend = isLogin && (!!errorCode || canResend);
+
+  const resend = async () => {
+    if (loading || resendBusy) return;
+    if (!canResend) {
+      setResendMessage('Enter your email above first.');
+      return;
+    }
+    setResendBusy(true);
+    setResendMessage('');
+    try {
+      await onResendVerification?.(String(values.email || '').trim());
+      setResendMessage('If an account exists, a verification email was sent.');
+    } catch (err) {
+      setResendMessage(
+        err?.response?.data?.message || err?.message || 'Failed to resend verification email.'
+      );
+    } finally {
+      setResendBusy(false);
     }
   };
 
@@ -161,10 +191,11 @@ export default function AuthModal({
               type="button"
               style={AuthModalStyle.tabBtnState(mode === 'signup')}
               onClick={() => {
-                reset();
+                setResendMessage('');
+                reset({ keepEmail: true });
                 onModeChange?.('signup');
               }}
-              disabled={loading}
+              disabled={loading || resendBusy}
             >
               {STRINGS.AUTH.header.signup}
             </button>
@@ -172,10 +203,11 @@ export default function AuthModal({
               type="button"
               style={AuthModalStyle.tabBtnState(mode === 'login')}
               onClick={() => {
-                reset();
+                setResendMessage('');
+                reset({ keepEmail: true });
                 onModeChange?.('login');
               }}
-              disabled={loading}
+              disabled={loading || resendBusy}
             >
               {STRINGS.AUTH.header.login}
             </button>
@@ -207,11 +239,14 @@ export default function AuthModal({
                 ref={emailRef}
                 style={AuthModalStyle.input}
                 value={values.email}
-                onChange={(e) => setValues((v) => ({ ...v, email: e.target.value }))}
+                onChange={(e) => {
+                  setResendMessage('');
+                  setValues((v) => ({ ...v, email: e.target.value }));
+                }}
                 placeholder={STRINGS.AUTH.placeholders.email}
                 autoComplete="email"
                 inputMode="email"
-                disabled={loading}
+                disabled={loading || resendBusy}
                 required
               />
             </label>
@@ -228,7 +263,7 @@ export default function AuthModal({
                 type="password"
                 autoComplete={isLogin ? 'current-password' : 'new-password'}
                 minLength={isLogin ? 1 : 8}
-                disabled={loading}
+                disabled={loading || resendBusy}
                 required
               />
             </label>
@@ -266,7 +301,7 @@ export default function AuthModal({
               type="submit"
               className="tv-card"
               style={AuthModalStyle.submitBtnMain}
-              disabled={loading}
+              disabled={loading || resendBusy}
             >
               {loading
                 ? STRINGS.AUTH.submit.working
@@ -276,6 +311,24 @@ export default function AuthModal({
               {ICONS.common.rocket}
             </button>
 
+            {showResend && (
+              <div style={AuthModalStyle.resendRow}>
+                <button
+                  type="button"
+                  style={AuthModalStyle.resendBtn}
+                  onClick={resend}
+                  disabled={loading || resendBusy || !canResend}
+                  title={!canResend ? 'Enter your email first' : undefined}
+                >
+                  {resendBusy ? 'Resending...' : 'Resend verification email'}
+                </button>
+                <span style={AuthModalStyle.resendHint}>
+                  {errorCode === 'EMAIL_NOT_VERIFIED' ? 'Email not verified.' : 'Need to verify?'}
+                </span>
+              </div>
+            )}
+            {!!resendMessage && <p style={AuthModalStyle.resendMsg}>{resendMessage}</p>}
+
             <div style={AuthModalStyle.altRow}>
               <span style={AuthModalStyle.altText}>
                 {isLogin ? STRINGS.AUTH.alt.dontHave : STRINGS.AUTH.alt.alreadyHave}
@@ -284,10 +337,11 @@ export default function AuthModal({
                 type="button"
                 style={AuthModalStyle.altLink}
                 onClick={() => {
-                  reset();
+                  setResendMessage('');
+                  reset({ keepEmail: true });
                   onModeChange?.(isLogin ? 'signup' : 'login');
                 }}
-                disabled={loading}
+                disabled={loading || resendBusy}
               >
                 {isLogin ? STRINGS.AUTH.header.signup : STRINGS.AUTH.header.login}
               </button>

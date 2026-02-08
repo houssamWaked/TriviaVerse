@@ -14,8 +14,10 @@ import Blitz from './Pages/Blitz';
 import Millionaire from './Pages/Millionaire';
 import Leaderboard from './Pages/Leaderboard';
 import Admin from './Pages/Admin';
+import VerifyEmail from './Pages/VerifyEmail';
 import Navbar from './shared/layout/Navbar';
 import Footer from './shared/layout/Footer';
+import CookieBanner from './shared/layout/CookieBanner';
 import AuthModal from './Components/Auth/AuthModal';
 import AppStyle from './Styles/AppStyle';
 import { getApiErrorMessage } from '@/utils/apiError';
@@ -43,7 +45,12 @@ function getRoute() {
   if (parts[0] === 'millionaire') return { name: 'millionaire' };
   if (parts[0] === 'leaderboard') return { name: 'leaderboard' };
   if (parts[0] === 'play' && parts[1]) {
-    return { name: 'play', sessionId: parts[1], from: query.get('from') || '' };
+    return {
+      name: 'play',
+      sessionId: parts[1],
+      from: query.get('from') || '',
+      levelNumber: query.get('level') ? Number(query.get('level')) : null,
+    };
   }
   if (parts[0] === 'quizzes' && parts[1]) return { name: 'quiz', quizId: parts[1] };
   if (parts[0] === 'quizzes') return { name: 'quizzes' };
@@ -55,6 +62,9 @@ function getRoute() {
   }
   if (parts[0] === 'story') {
     return { name: 'story' };
+  }
+  if (parts[0] === 'verify-email') {
+    return { name: 'verify-email', token: query.get('token') || '' };
   }
   return { name: 'home' };
 }
@@ -94,7 +104,10 @@ function navigate(route, params = {}) {
     return;
   }
   if (route === 'play') {
-    const q = params.from ? `?from=${encodeURIComponent(params.from)}` : '';
+    const qs = new URLSearchParams();
+    if (params.from) qs.set('from', String(params.from));
+    if (params.level != null) qs.set('level', String(params.level));
+    const q = qs.toString() ? `?${qs.toString()}` : '';
     window.location.hash = `#/play/${encodeURIComponent(params.sessionId)}${q}`;
     return;
   }
@@ -140,9 +153,22 @@ function App() {
   const [authMode, setAuthMode] = React.useState('signup');
   const [authBusy, setAuthBusy] = React.useState(false);
   const [authError, setAuthError] = React.useState('');
+  const [authErrorCode, setAuthErrorCode] = React.useState('');
   const [postAuthRoute, setPostAuthRoute] = React.useState(null);
 
   React.useEffect(() => {
+    // Supabase magic links append auth params in the URL fragment, which
+    // conflicts with our hash router. To keep things simple, we rely on a
+    // query param (`verify_email_token`) and then rewrite to our hash route.
+    const search = new URLSearchParams(window.location.search || '');
+    const token = search.get('verify_email_token');
+    if (token) {
+      window.location.hash = `#/verify-email?token=${encodeURIComponent(token)}`;
+      window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+      setRoute(getRoute());
+      return;
+    }
+
     const onHash = () => setRoute(getRoute());
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
@@ -150,6 +176,7 @@ function App() {
 
   const openAuth = (mode = 'signup', nextRoute = null) => {
     setAuthError('');
+    setAuthErrorCode('');
     setAuthMode(mode);
     setPostAuthRoute(nextRoute);
     setAuthOpen(true);
@@ -164,6 +191,7 @@ function App() {
   const handleLogin = async (body) => {
     setAuthBusy(true);
     setAuthError('');
+    setAuthErrorCode('');
     try {
       const result = await api.login(body);
       setAuthToken(result.token);
@@ -177,6 +205,7 @@ function App() {
       setPostAuthRoute(null);
     } catch (err) {
       setAuthError(getApiErrorMessage(err));
+      setAuthErrorCode(err?.response?.data?.code || '');
     } finally {
       setAuthBusy(false);
     }
@@ -185,22 +214,38 @@ function App() {
   const handleSignup = async (body) => {
     setAuthBusy(true);
     setAuthError('');
+    setAuthErrorCode('');
     try {
       const result = await api.register(body);
-      setAuthToken(result.token);
-      setCurrentUser(result.user);
-      setUser(result.user);
-      setAuthOpen(false);
-      if (postAuthRoute) {
-        if (typeof postAuthRoute === 'string') navigate(postAuthRoute);
-        else navigate(postAuthRoute.name, postAuthRoute.params);
+      if (result?.token) {
+        setAuthToken(result.token);
+        setCurrentUser(result.user);
+        setUser(result.user);
+        setAuthOpen(false);
+        if (postAuthRoute) {
+          if (typeof postAuthRoute === 'string') navigate(postAuthRoute);
+          else navigate(postAuthRoute.name, postAuthRoute.params);
+        }
+        setPostAuthRoute(null);
+      } else {
+        setAuthError(
+          result?.needs_email_verification
+            ? 'Check your email to verify your account, then log in.'
+            : STRINGS.COMMON.errors.generic
+        );
+        setAuthErrorCode(result?.needs_email_verification ? 'EMAIL_NOT_VERIFIED' : '');
+        setAuthMode('login');
       }
-      setPostAuthRoute(null);
     } catch (err) {
       setAuthError(getApiErrorMessage(err));
+      setAuthErrorCode(err?.response?.data?.code || '');
     } finally {
       setAuthBusy(false);
     }
+  };
+
+  const handleResendVerification = async (email) => {
+    await api.resendVerification({ email });
   };
 
   const isAdmin = React.useMemo(() => {
@@ -281,6 +326,7 @@ function App() {
           sessionId={route.sessionId}
           user={user}
           variant={route.from === 'story' ? 'story' : 'default'}
+          storyLevelNumber={route.from === 'story' ? route.levelNumber : null}
           backLabel={
             route.from === 'story' ? STRINGS.PLAY.backToStory : STRINGS.PLAY.backToQuizzes
           }
@@ -332,7 +378,15 @@ function App() {
           user={user}
           onRequireAuth={() => openAuth('login', 'story')}
           onNavigateHome={() => navigate('home')}
-          onPlaySession={(sessionId) => navigate('play', { sessionId, from: 'story' })}
+          onPlaySession={(sessionId, levelNumber) =>
+            navigate('play', { sessionId, from: 'story', level: levelNumber })
+          }
+        />
+      ) : route.name === 'verify-email' ? (
+        <VerifyEmail
+          token={route.token}
+          onOpenLogin={() => openAuth('login', 'home')}
+          onNavigateHome={() => navigate('home')}
         />
       ) : route.name === 'classic' ? (
         <Classic
@@ -377,6 +431,7 @@ function App() {
       )}
 
       <Footer />
+      <CookieBanner />
 
       <AuthModal
         open={authOpen}
@@ -385,8 +440,10 @@ function App() {
         onClose={() => setAuthOpen(false)}
         onLogin={handleLogin}
         onSignup={handleSignup}
+        onResendVerification={handleResendVerification}
         loading={authBusy}
         error={authError}
+        errorCode={authErrorCode}
       />
     </div>
   );

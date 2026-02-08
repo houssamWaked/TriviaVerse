@@ -2,10 +2,11 @@ import colors from '../../constants/colors';
 const FeatureCardStyle = {
   card: {
     background: colors.neutral.white,
-    borderRadius: 22,
-    padding: '34px 28px',
+    borderRadius: 'var(--tv-radius-xl)',
+    padding: '32px 26px',
     textAlign: 'center',
-    boxShadow: '0 18px 40px rgba(0,0,0,0.18)',
+    boxShadow: 'var(--tv-shadow-md)',
+    border: '1px solid rgba(17,24,39,0.08)',
   },
 
   icon: {

@@ -16,6 +16,15 @@ export default function Footer() {
         <p style={styles.tagline}>
           {STRINGS.FOOTER.tagline} {ICONS.common.party}
         </p>
+
+        <button
+          type="button"
+          className="tv-btn-reset"
+          style={styles.cookieBtn}
+          onClick={() => window.dispatchEvent(new Event('tv:open-consent'))}
+        >
+          Cookie settings
+        </button>
       </div>
     </footer>
   );
@@ -60,5 +69,17 @@ const styles = {
     fontWeight: 600,
     color: colors.primary[500],
   },
-};
 
+  cookieBtn: {
+    margin: '6px auto 0',
+    padding: '8px 12px',
+    borderRadius: 999,
+    border: `1px solid ${colors.neutral[200]}`,
+    background: colors.neutral.white,
+    color: colors.neutral[700],
+    fontSize: 13,
+    fontWeight: 800,
+    cursor: 'pointer',
+    width: 'fit-content',
+  },
+};

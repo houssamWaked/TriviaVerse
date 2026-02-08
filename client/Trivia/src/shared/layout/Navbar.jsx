@@ -18,7 +18,12 @@ export default function Navbar({
   return (
     <nav style={styles.nav}>
       <div style={styles.container}>
-        <button type="button" style={styles.logoWrapBtn} onClick={onHome}>
+        <button
+          type="button"
+          className="tv-btn-reset tv-nav-logo"
+          style={styles.logoWrapBtn}
+          onClick={onHome}
+        >
           <div style={styles.logoIcon}>{ICONS.brand.sparkles}</div>
           <span style={styles.logoText}>{STRINGS.COMMON.appName}</span>
         </button>
@@ -60,6 +65,7 @@ export default function Navbar({
             <>
               <button
                 type="button"
+                className="tv-btn-reset tv-nav-user"
                 style={styles.userPillBtn}
                 onClick={onProfile}
                 title={STRINGS.NAV.profile}
@@ -69,12 +75,22 @@ export default function Navbar({
                   {user.username || STRINGS.COMMON.playerFallback}
                 </span>
               </button>
-              <button type="button" style={styles.logout} onClick={onLogout}>
+              <button
+                type="button"
+                className="tv-btn-reset tv-nav-logout"
+                style={styles.logout}
+                onClick={onLogout}
+              >
                 {STRINGS.COMMON.logout}
               </button>
             </>
           ) : (
-            <button type="button" style={styles.cta} onClick={onJoin}>
+            <button
+              type="button"
+              className="tv-btn-reset tv-nav-cta"
+              style={styles.cta}
+              onClick={onJoin}
+            >
               {STRINGS.COMMON.joinNow} {ICONS.common.rocket}
             </button>
           )}
@@ -86,7 +102,12 @@ export default function Navbar({
 
 function NavItem({ icon, label, onClick }) {
   return (
-    <button type="button" style={styles.link} onClick={onClick}>
+    <button
+      type="button"
+      className="tv-btn-reset tv-nav-link"
+      style={styles.link}
+      onClick={onClick}
+    >
       <span style={styles.linkIcon}>{icon}</span>
       {label}
     </button>
@@ -96,26 +117,33 @@ function NavItem({ icon, label, onClick }) {
 const styles = {
   nav: {
     width: '100%',
-    background: colors.neutral.white,
+    position: 'sticky',
+    top: 0,
+    zIndex: 50,
+    background: 'rgba(255,255,255,0.78)',
+    WebkitBackdropFilter: 'blur(12px)',
+    backdropFilter: 'blur(12px)',
     borderBottom: `1px solid ${colors.neutral[200]}`,
   },
 
   container: {
-    height: 72,
+    minHeight: 72,
     width: '100%',
     maxWidth: 1180,
     margin: '0 auto',
-    padding: '0 32px',
+    padding: '12px 18px',
     display: 'flex',
     alignItems: 'center',
-    gap: 18,
+    justifyContent: 'space-between',
+    gap: 14,
+    flexWrap: 'wrap',
   },
 
   logoWrapBtn: {
     display: 'flex',
     alignItems: 'center',
     gap: 12,
-    flex: 1,
+    flex: '0 0 auto',
     background: 'transparent',
     border: 'none',
     cursor: 'pointer',
@@ -151,8 +179,10 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 28,
-    flex: 1,
+    gap: 10,
+    rowGap: 10,
+    flex: '1 1 520px',
+    flexWrap: 'wrap',
   },
   link: {
     display: 'flex',
@@ -164,6 +194,8 @@ const styles = {
     background: 'transparent',
     border: 'none',
     cursor: 'pointer',
+    padding: '10px 12px',
+    borderRadius: 999,
   },
   linkIcon: {
     fontSize: 16,
@@ -174,7 +206,7 @@ const styles = {
     justifyContent: 'flex-end',
     alignItems: 'center',
     gap: 10,
-    flex: 1,
+    flex: '0 0 auto',
   },
   cta: {
     padding: '10px 22px',

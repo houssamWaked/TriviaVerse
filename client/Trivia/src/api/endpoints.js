@@ -16,6 +16,8 @@ export const endpoints = {
   // auth
   register: () => '/api/auth/register',
   login: () => '/api/auth/login',
+  verifyEmail: () => '/api/auth/verify-email',
+  resendVerification: () => '/api/auth/resend-verification',
 
   // leaderboard
   leaderboard: () => '/api/leaderboard',
@@ -96,11 +98,13 @@ export const endpoints = {
   adminSearchGlobalQuestions: () => '/api/admin/questions/search',
   adminDeleteGlobalQuestion: (questionId) => `/api/admin/questions/${questionId}`,
   adminModePoolSummary: (mode) => `/api/admin/modes/${mode}/pool`,
+  adminModePoolIds: (mode) => `/api/admin/modes/${mode}/pool/ids`,
   adminSeedModePool: (mode) => `/api/admin/modes/${mode}/pool/seed`,
   adminModePoolQuestions: (mode) => `/api/admin/modes/${mode}/pool/questions`,
   adminRemoveModePool: (mode) => `/api/admin/modes/${mode}/pool`,
   adminReplaceModePool: (mode) => `/api/admin/modes/${mode}/pool`,
   adminStoryLevelPoolQuestions: (levelId) => `/api/admin/story/levels/${levelId}/pool/questions`,
+  adminStoryLevelPoolIds: (levelId) => `/api/admin/story/levels/${levelId}/pool/ids`,
   adminRemoveStoryLevelPool: (levelId) => `/api/admin/story/levels/${levelId}/pool`,
   adminReplaceStoryLevelPool: (levelId) => `/api/admin/story/levels/${levelId}/pool`,
 
@@ -110,6 +114,8 @@ export const endpoints = {
   adminDeleteClassicCategory: (categoryId) => `/api/admin/classic/categories/${categoryId}`,
   adminClassicCategoryPoolQuestions: (categoryId) =>
     `/api/admin/classic/categories/${categoryId}/pool/questions`,
+  adminClassicCategoryPoolIds: (categoryId) =>
+    `/api/admin/classic/categories/${categoryId}/pool/ids`,
   adminAddClassicCategoryPool: (categoryId) =>
     `/api/admin/classic/categories/${categoryId}/pool`,
   adminRemoveClassicCategoryPool: (categoryId) =>

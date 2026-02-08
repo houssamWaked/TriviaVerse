@@ -105,7 +105,6 @@ export default function QuizView({
             style={QuizViewStyle.btnPrimary}
             disabled={busy}
             onClick={async () => {
-              if (!user) return onRequireAuth?.('quiz');
               setBusy(true);
               setError('');
               try {

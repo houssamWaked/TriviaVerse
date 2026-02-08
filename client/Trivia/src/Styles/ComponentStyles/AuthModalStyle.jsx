@@ -299,6 +299,36 @@ const AuthModalStyle = {
     color: colors.primary[600],
     padding: 0,
   },
+
+  resendRow: {
+    marginTop: 4,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  resendBtn: {
+    border: 'none',
+    background: 'transparent',
+    cursor: 'pointer',
+    fontSize: 13,
+    fontWeight: 950,
+    color: colors.primary[600],
+    padding: 0,
+    textAlign: 'left',
+  },
+  resendHint: {
+    fontSize: 12,
+    fontWeight: 800,
+    color: colors.neutral[600],
+    lineHeight: 1.35,
+  },
+  resendMsg: {
+    margin: 0,
+    fontSize: 12,
+    fontWeight: 850,
+    color: colors.neutral[700],
+  },
 };
 
 export default AuthModalStyle;

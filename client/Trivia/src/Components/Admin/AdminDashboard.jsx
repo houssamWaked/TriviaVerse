@@ -461,27 +461,16 @@ export default function AdminDashboard({
     const targetId = String(id || '').trim();
     if (!k || !targetId) return [];
 
-    const limit = 100;
-    const maxPages = 25; // 2500 questions max (admin UX helper)
-    const ids = [];
+    const res =
+      k === 'mode'
+        ? await api.adminModePoolIds(targetId)
+        : k === 'level'
+          ? await api.adminStoryLevelPoolIds(targetId)
+          : k === 'classic_category'
+            ? await api.adminClassicCategoryPoolIds(targetId)
+            : null;
 
-    for (let p = 0; p < maxPages; p += 1) {
-      const offset = p * limit;
-      // eslint-disable-next-line no-await-in-loop
-      const res =
-        k === 'mode'
-          ? await api.adminListModePoolQuestions(targetId, { limit, offset })
-          : k === 'level'
-            ? await api.adminListStoryLevelPoolQuestions(targetId, { limit, offset })
-            : k === 'classic_category'
-              ? await api.adminListClassicCategoryPoolQuestions(targetId, { limit, offset })
-              : null;
-
-      const qs = Array.isArray(res?.questions) ? res.questions : [];
-      for (const q of qs) ids.push(q.id);
-      if (qs.length < limit) break;
-    }
-
+    const ids = Array.isArray(res?.ids) ? res.ids : [];
     return Array.from(new Set(ids.filter(Boolean)));
   };
 
