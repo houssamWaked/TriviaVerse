@@ -4,50 +4,38 @@
  * The API client reads this token and sends it as:
  * `Authorization: Bearer <token>`
  *
- * You can swap this implementation later (cookies, secure storage, etc.)
- * without changing the rest of the API layer.
+ * Security note:
+ * - We intentionally keep the access token in-memory (not in localStorage) to
+ *   reduce persistence if an XSS bug exists.
+ * - Long-lived refresh tokens are handled server-side via httpOnly cookies.
  */
 
-import { deleteCookie, getCookie, setCookie } from '@/utils/cookies';
-import { hasPerformanceConsent } from '@/utils/consent';
+let memoryToken = null;
+let bootstrapped = false;
 
-const TOKEN_KEY = 'token';
-const TOKEN_COOKIE = 'tv_token';
+function bootstrapLegacyToken() {
+  if (bootstrapped) return;
+  bootstrapped = true;
 
-export function getAuthToken() {
   try {
-    const local = window.localStorage.getItem(TOKEN_KEY);
-    if (hasPerformanceConsent()) {
-      const fromCookie = getCookie(TOKEN_COOKIE);
-      if (fromCookie) return fromCookie;
-      if (local) {
-        setCookie(TOKEN_COOKIE, local, { maxAgeSec: 60 * 60 * 24 * 30, sameSite: 'Strict' });
-      }
-    } else {
-      deleteCookie(TOKEN_COOKIE);
+    const legacy = window.localStorage.getItem('token');
+    if (legacy) {
+      memoryToken = String(legacy);
+      window.localStorage.removeItem('token');
     }
-    return local;
   } catch {
-    return null;
+    // ignore
   }
 }
 
-export function setAuthToken(token) {
-  try {
-    if (!token) window.localStorage.removeItem(TOKEN_KEY);
-    else window.localStorage.setItem(TOKEN_KEY, token);
+export function getAuthToken() {
+  bootstrapLegacyToken();
+  return memoryToken;
+}
 
-    if (!token || !hasPerformanceConsent()) deleteCookie(TOKEN_COOKIE);
-    else setCookie(TOKEN_COOKIE, token, { maxAgeSec: 60 * 60 * 24 * 30, sameSite: 'Strict' });
-  } catch {
-    // ignore (e.g. privacy mode)
-    try {
-      if (!token || !hasPerformanceConsent()) deleteCookie(TOKEN_COOKIE);
-      else setCookie(TOKEN_COOKIE, token, { maxAgeSec: 60 * 60 * 24 * 30, sameSite: 'Strict' });
-    } catch {
-      // ignore
-    }
-  }
+export function setAuthToken(token) {
+  bootstrapLegacyToken();
+  memoryToken = token ? String(token) : null;
 }
 
 export function clearAuthToken() {

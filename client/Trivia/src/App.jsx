@@ -182,7 +182,12 @@ function App() {
     setAuthOpen(true);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await api.logout();
+    } catch {
+      // ignore (network/offline)
+    }
     clearAuthToken();
     clearCurrentUser();
     setUser(null);

@@ -36,6 +36,8 @@ export const endpoints = {
   // auth
   register: () => '/api/auth/register',
   login: () => '/api/auth/login',
+  refresh: () => '/api/auth/refresh',
+  logout: () => '/api/auth/logout',
   verifyEmail: () => '/api/auth/verify-email',
   resendVerification: () => '/api/auth/resend-verification',
 
