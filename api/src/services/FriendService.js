@@ -3,6 +3,52 @@
  */
 import AppError from '../utils/AppError.js';
 
+function isoMax(a, b) {
+  if (!a) return b || null;
+  if (!b) return a || null;
+  const ta = new Date(a).getTime();
+  const tb = new Date(b).getTime();
+  if (!Number.isFinite(ta)) return b;
+  if (!Number.isFinite(tb)) return a;
+  return tb > ta ? b : a;
+}
+
+function buildModeSummary(sessions = []) {
+  const modes = ['story', 'classic', 'blitz', 'millionaire', 'custom'];
+  const byMode = Object.fromEntries(
+    modes.map((m) => [
+      m,
+      { mode: m, played: 0, completed: 0, best_score: 0, last_played_at: null },
+    ])
+  );
+
+  for (const s of sessions || []) {
+    const mode = s?.mode;
+    if (!mode || !byMode[mode]) continue;
+    byMode[mode].played += 1;
+
+    const endedAt = s?.ended_at || s?.started_at || null;
+    byMode[mode].last_played_at = isoMax(byMode[mode].last_played_at, endedAt);
+
+    if (s?.status === 'completed') {
+      byMode[mode].completed += 1;
+      byMode[mode].best_score = Math.max(byMode[mode].best_score, Number(s?.score_total) || 0);
+    }
+  }
+
+  const all = modes.reduce(
+    (acc, m) => {
+      acc.played += byMode[m].played;
+      acc.completed += byMode[m].completed;
+      acc.last_played_at = isoMax(acc.last_played_at, byMode[m].last_played_at);
+      return acc;
+    },
+    { mode: 'all', played: 0, completed: 0, last_played_at: null }
+  );
+
+  return { all, by_mode: byMode };
+}
+
 export class FriendService {
   constructor({
     friendRepository,
@@ -10,12 +56,16 @@ export class FriendService {
     userStatsRepository,
     quizScoreRepository,
     quizRepository,
+    gameSessionRepository,
+    storyService,
   }) {
     this.friendRepository = friendRepository;
     this.userRepository = userRepository;
     this.userStatsRepository = userStatsRepository;
     this.quizScoreRepository = quizScoreRepository;
     this.quizRepository = quizRepository;
+    this.gameSessionRepository = gameSessionRepository;
+    this.storyService = storyService;
   }
 
   async sendRequest(userId, username) {
@@ -223,6 +273,81 @@ export class FriendService {
     return {
       user: { id: friend.id, username: friend.username, avatar_url: friend.avatar_url },
       user_stats: stats,
+      custom_quiz_best,
+    };
+  }
+
+  async getFriendProfile(userId, friendUserId) {
+    let ok = false;
+    ok = await this.friendRepository.areFriends(userId, friendUserId);
+    if (!ok) throw new AppError('Forbidden', 403, 'FORBIDDEN');
+
+    const friend = await this.userRepository.findById(friendUserId);
+    if (!friend) throw new AppError('User not found', 404, 'NOT_FOUND');
+
+    const [stats, sessions] = await Promise.all([
+      this.userStatsRepository.findByUserId(friendUserId),
+      this.gameSessionRepository.listByUserId(friendUserId, 500),
+    ]);
+
+    const mode_summary = buildModeSummary(sessions);
+
+    let story_progress = null;
+    try {
+      story_progress = await this.storyService.getUserProgress(friendUserId);
+    } catch {
+      story_progress = null;
+    }
+
+    let scoreRows = [];
+    try {
+      scoreRows = await this.quizScoreRepository.listByUserId(friendUserId, 100);
+    } catch (err) {
+      if (err?.code === 'NOT_CONFIGURED') {
+        return {
+          user: { id: friend.id, username: friend.username, avatar_url: friend.avatar_url },
+          user_stats: stats,
+          mode_summary,
+          story_progress,
+          custom_quiz_best: [],
+        };
+      }
+      throw err;
+    }
+
+    const quizIds = scoreRows.map((r) => r.quiz_id).filter(Boolean);
+    const quizzes = await this.quizRepository.findByIds(quizIds);
+    const quizMap = new Map(quizzes.map((q) => [q.id, q]));
+
+    const custom_quiz_best = scoreRows
+      .map((r) => {
+        const q = quizMap.get(r.quiz_id);
+        return {
+          quiz_id: r.quiz_id,
+          title: q?.title ?? null,
+          visibility: q?.visibility ?? null,
+          owner_user_id: q?.owner_user_id ?? null,
+          best_score: r.best_score ?? 0,
+          updated_at: r.updated_at ?? null,
+        };
+      })
+      .filter((x) => {
+        if (!x.title) return false;
+        if (x.visibility !== 'private') return true;
+        // Avoid leaking titles of third-party private quizzes.
+        // Viewer can safely see:
+        // - friend-owned private quizzes (friends-of-owner access)
+        // - viewer-owned private quizzes
+        return x.owner_user_id === friendUserId || x.owner_user_id === userId;
+      })
+      .map(({ owner_user_id, visibility, ...rest }) => rest)
+      .slice(0, 50);
+
+    return {
+      user: { id: friend.id, username: friend.username, avatar_url: friend.avatar_url },
+      user_stats: stats,
+      mode_summary,
+      story_progress,
       custom_quiz_best,
     };
   }

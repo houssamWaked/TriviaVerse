@@ -50,6 +50,7 @@ export const STRINGS = {
     myPlays: 'My Plays',
     friends: 'Friends',
     profile: 'Profile',
+    duels: 'Duels',
     admin: 'Admin',
     leaderboard: 'Leaderboard',
     createQuiz: 'Create Quiz',
@@ -91,6 +92,29 @@ export const STRINGS = {
       subtitle: 'Your best scores per quiz.',
       updatedPrefix: 'Updated',
       empty: 'No custom quiz scores yet.',
+    },
+    plays: {
+      title: 'Played Quizzes',
+      subtitle: 'Your recent custom quiz performance.',
+      searchPlaceholder: 'Search played quizzesâ€¦',
+      empty: 'No played quizzes yet.',
+    },
+    duels: {
+      title: 'Duels',
+      subtitle: 'Your 1v1 custom quiz history.',
+      vsPrefix: 'vs',
+      empty: 'No duels yet â€” start one from a quiz page.',
+      buttons: {
+        open: 'Open',
+        accept: 'Accept',
+        decline: 'Decline',
+        cancel: 'Cancel',
+      },
+      result: {
+        youWon: 'You won',
+        youLost: 'You lost',
+        tie: 'Tie',
+      },
     },
   },
 
@@ -266,6 +290,66 @@ export const STRINGS = {
   PLAY: {
     backToStory: 'Back to story',
     backToQuizzes: 'Back to quizzes',
+    backToDuels: 'Back to duels',
+  },
+
+  DUELS: {
+    title: 'Duels',
+    subtitle: 'Challenge a friend on a custom quiz. Winner = correct answers, then speed.',
+    locked: {
+      title: 'Duels are locked',
+      subtitle: 'Log in to challenge your friends in 1v1 custom quiz duels.',
+    },
+    create: {
+      title: 'Create a Challenge',
+      subtitle: 'Pick a friend and one of your published quizzes.',
+      friendPlaceholder: 'Select friend…',
+      quizPlaceholder: 'Select published quiz…',
+      needPublished: 'Publish a quiz first to start duels.',
+      button: 'Send challenge',
+    },
+    list: {
+      title: 'Your Duels',
+      subtitle: 'Pending, active, and completed challenges.',
+      empty: 'No duels yet — send a challenge above.',
+    },
+    quizFallback: 'Custom Quiz',
+    vs: (name) => `vs ${name}`,
+    status: (s) => {
+      if (s === 'pending') return 'pending';
+      if (s === 'active') return 'active';
+      if (s === 'completed') return 'completed';
+      if (s === 'declined') return 'declined';
+      if (s === 'canceled') return 'canceled';
+      return s || 'unknown';
+    },
+    actions: {
+      accept: 'Accept',
+      decline: 'Decline',
+      cancel: 'Cancel',
+      play: 'Play',
+    },
+    result: {
+      tie: 'Tie',
+      challengerWon: 'Challenger won',
+      opponentWon: 'Opponent won',
+    },
+    perf: (correct, seconds, total) => `${correct}/${total} correct · ${seconds}s`,
+  },
+
+  DUEL_PLAY: {
+    locked: 'Login required to play duels.',
+    waiting: 'Waiting for the duel to start…',
+    title: (pct) => `Duel · ${pct}%`,
+    pills: {
+      score: 'Score',
+      q: 'Q',
+      startsIn: 'Starts in',
+      finished: 'Finished',
+    },
+    pointClaimed: 'Point claimed',
+    youWonPoint: 'You got the point!',
+    opponentWonPoint: 'Opponent got the point',
   },
 
   LEADERBOARD: {
@@ -457,8 +541,17 @@ export const STRINGS = {
     buttons: {
       back: 'Back',
       play: 'Play',
+      duel: 'Duel',
       edit: 'Edit',
       loginToView: 'Login to view',
+    },
+    duel: {
+      title: 'Challenge a friend',
+      subtitle: 'Winner is based on correct answers + speed.',
+      needPublished: 'This quiz must be published to start a duel.',
+      friendPlaceholder: 'Select a friend',
+      send: 'Send challenge',
+      noFriends: 'No friends found â€” add friends first.',
     },
     states: {
       loading: 'Loading…',
@@ -813,6 +906,8 @@ export const STRINGS = {
       autoFill: 'Auto-fill',
       clearPool: 'Clear pool',
       remove: 'Remove',
+      deleteQuestion: 'Delete question',
+      deleteLevel: 'Delete level',
       create: 'Create',
       deleteCategory: 'Delete category',
       customQuizBuilder: 'Custom Quiz Builder',
@@ -864,12 +959,18 @@ export const STRINGS = {
       clearModePool: (modeTitle) =>
         `Clear the entire ${modeTitle} pool? This cannot be undone.`,
       clearPoolGeneric: 'Clear this pool? This cannot be undone.',
+      deleteGlobalQuestion:
+        'Delete this global question?\n\nThis removes it from all pools and cannot be undone.',
+      deleteStoryLevel: (levelNumber, title) =>
+        `Delete Level #${levelNumber}: \"${title}\"?\n\nThis removes the level pool and player progress for that level. This cannot be undone.`,
       deleteClassicCategory: (name) =>
         `Delete \"${name}\"?\n\nThis also removes all Classic pool assignments for this category.`,
     },
     toasts: {
       createdLevel: (levelNumber, title) => `Created level #${levelNumber}: ${title}`,
       createdQuestion: (questionId) => `Created question ${questionId}`,
+      questionDeleted: 'Question deleted.',
+      levelDeleted: 'Level deleted.',
       categoryCreated: 'Category created.',
       categoryDeleted: 'Category deleted.',
       autoFilledCategory: (addedCount) => `Auto-filled category (+${addedCount || 0}).`,

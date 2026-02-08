@@ -24,6 +24,18 @@ function toAppError(error) {
 }
 
 export class ModeQuestionPoolRepository {
+  async listAssignmentsByQuestionIds(questionIds = []) {
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (ids.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('mode_question_pool')
+      .select('mode, quiz_question_id')
+      .in('quiz_question_id', ids);
+    if (error) throw toAppError(error);
+    return data || [];
+  }
+
   async listQuestionIdsByMode(mode) {
     const m = String(mode || '').trim().toLowerCase();
     if (!m) return [];
@@ -87,6 +99,15 @@ export class ModeQuestionPoolRepository {
     if (!m) return true;
 
     const { error } = await supabase.from('mode_question_pool').delete().eq('mode', m);
+    if (error) throw toAppError(error);
+    return true;
+  }
+
+  async deleteByQuizQuestionIds(questionIds = []) {
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (ids.length === 0) return true;
+
+    const { error } = await supabase.from('mode_question_pool').delete().in('quiz_question_id', ids);
     if (error) throw toAppError(error);
     return true;
   }

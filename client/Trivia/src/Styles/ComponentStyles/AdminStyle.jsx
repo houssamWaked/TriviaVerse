@@ -218,6 +218,18 @@ const AdminStyle = {
     background: colors.gradients.main,
     color: colors.neutral.white,
   },
+  btnDanger: {
+    height: 46,
+    padding: '0 16px',
+    borderRadius: 16,
+    border: `1px solid ${colors.secondary[100]}`,
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 950,
+    boxShadow: '0 12px 26px rgba(0,0,0,0.10)',
+    background: colors.secondary[50],
+    color: colors.secondary[700],
+  },
 
   error: {
     marginTop: 12,

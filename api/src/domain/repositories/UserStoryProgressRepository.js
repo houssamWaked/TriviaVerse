@@ -90,4 +90,13 @@ export class UserStoryProgressRepository {
     if (error) throw toAppError(error);
     return data?.[0] || null;
   }
+
+  async deleteByLevelId(levelId) {
+    const lid = String(levelId || '').trim();
+    if (!lid) return true;
+
+    const { error } = await supabase.from('user_story_progress').delete().eq('level_id', lid);
+    if (error) throw toAppError(error);
+    return true;
+  }
 }

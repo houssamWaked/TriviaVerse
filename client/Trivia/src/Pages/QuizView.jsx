@@ -20,6 +20,7 @@ export default function QuizView({
   onBack,
   onEditQuiz,
   onPlaySession,
+  onOpenDuel,
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -27,6 +28,10 @@ export default function QuizView({
   const [data, setData] = useState(null);
   const [ratings, setRatings] = useState(null);
   const [leaderboard, setLeaderboard] = useState(null);
+
+  const [duelOpen, setDuelOpen] = useState(false);
+  const [duelFriends, setDuelFriends] = useState([]);
+  const [duelFriendId, setDuelFriendId] = useState('');
 
   const load = async () => {
     setBusy(true);
@@ -57,6 +62,7 @@ export default function QuizView({
   const quiz = data?.quiz;
   const questions = data?.questions || [];
   const canEdit = !!data?.can_edit;
+  const duelAllowed = quiz?.status === 'published';
 
   const ratingText = useMemo(() => {
     if (!ratings) return STRINGS.QUIZ_VIEW.rating.zero;
@@ -116,6 +122,33 @@ export default function QuizView({
             {STRINGS.QUIZ_VIEW.buttons.play} {ICONS.common.play}
           </button>
 
+          <button
+            type="button"
+            className="tv-card tv-card--hover"
+            style={QuizViewStyle.btnWhite}
+            disabled={busy}
+            onClick={async () => {
+              if (!user) return onRequireAuth?.('quiz');
+              const next = !duelOpen;
+              setDuelOpen(next);
+              if (next && duelFriends.length === 0) {
+                setBusy(true);
+                setError('');
+                try {
+                  const res = await api.listFriends();
+                  setDuelFriends(Array.isArray(res?.friends) ? res.friends : []);
+                } catch (err) {
+                  if (isUnauthorized(err)) return onRequireAuth?.('quiz');
+                  setError(getApiErrorMessage(err));
+                } finally {
+                  setBusy(false);
+                }
+              }
+            }}
+          >
+            {STRINGS.QUIZ_VIEW.buttons.duel} {ICONS.common.bolt}
+          </button>
+
           {canEdit && (
             <button
               type="button"
@@ -151,6 +184,79 @@ export default function QuizView({
           </div>
         ) : (
           <>
+            {duelOpen && (
+              <div className="tv-card" style={QuizViewStyle.duelCard}>
+                <div style={QuizViewStyle.duelTop}>
+                  <div>
+                    <h2 style={QuizViewStyle.duelTitle}>{STRINGS.QUIZ_VIEW.duel.title}</h2>
+                    <div style={QuizViewStyle.duelSub}>
+                      {duelAllowed
+                        ? STRINGS.QUIZ_VIEW.duel.subtitle
+                        : STRINGS.QUIZ_VIEW.duel.needPublished}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="tv-card tv-card--hover"
+                    style={QuizViewStyle.btnWhite}
+                    disabled={busy}
+                    onClick={() => setDuelOpen(false)}
+                  >
+                    {STRINGS.COMMON.buttons.close}
+                  </button>
+                </div>
+
+                <div style={QuizViewStyle.duelRow}>
+                  <select
+                    style={QuizViewStyle.select}
+                    value={duelFriendId}
+                    onChange={(e) => setDuelFriendId(e.target.value)}
+                    disabled={busy || !duelAllowed}
+                  >
+                    <option value="">{STRINGS.QUIZ_VIEW.duel.friendPlaceholder}</option>
+                    {(duelFriends || []).map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.username}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    className="tv-card tv-card--hover"
+                    style={QuizViewStyle.btnPrimary}
+                    disabled={busy || !duelAllowed || !duelFriendId || !onOpenDuel}
+                    onClick={async () => {
+                      if (!user) return onRequireAuth?.('quiz');
+                      if (!duelFriendId) return;
+                      setBusy(true);
+                      setError('');
+                      try {
+                        const created = await api.createDuel({
+                          friend_user_id: duelFriendId,
+                          quiz_id: quizId,
+                        });
+                        setDuelOpen(false);
+                        setDuelFriendId('');
+                        onOpenDuel?.(created?.id);
+                      } catch (err) {
+                        if (isUnauthorized(err)) return onRequireAuth?.('quiz');
+                        setError(getApiErrorMessage(err));
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    {STRINGS.QUIZ_VIEW.duel.send} {ICONS.common.rocket}
+                  </button>
+                </div>
+
+                {!busy && duelFriends.length === 0 && (
+                  <div style={QuizViewStyle.duelHint}>{STRINGS.QUIZ_VIEW.duel.noFriends}</div>
+                )}
+              </div>
+            )}
+
             <div className="tv-card" style={QuizViewStyle.headerCard}>
               <div style={QuizViewStyle.headerTop}>
                 <div>

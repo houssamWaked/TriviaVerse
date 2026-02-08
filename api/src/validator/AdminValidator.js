@@ -17,6 +17,10 @@ export const categoryIdParam = [
   param('category_id').isUUID().withMessage('category_id must be a uuid'),
 ];
 
+export const questionIdParam = [
+  param('question_id').isUUID().withMessage('question_id must be a uuid'),
+];
+
 export const seedPoolBody = [body('random_count').optional().isInt({ min: 1, max: 50 })];
 
 export const addPoolBody = [

@@ -14,6 +14,24 @@ function toAppError(error) {
 }
 
 export class StoryLevelPoolRepository {
+  async listAllQuestionIds() {
+    const { data, error } = await supabase.from('story_level_pool').select('quiz_question_id');
+    if (error) throw toAppError(error);
+    return (data || []).map((r) => r.quiz_question_id).filter(Boolean);
+  }
+
+  async listAssignmentsByQuestionIds(questionIds = []) {
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (ids.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('story_level_pool')
+      .select('level_id, quiz_question_id')
+      .in('quiz_question_id', ids);
+    if (error) throw toAppError(error);
+    return data || [];
+  }
+
   async listQuestionIdsByLevelId(levelId) {
     const { data, error } = await supabase
       .from('story_level_pool')

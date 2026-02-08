@@ -60,6 +60,13 @@ export default function createFriendsRouter(friendController) {
     asyncHandler(friendController.friendStats)
   );
 
+  router.get(
+    '/:friend_user_id/profile',
+    requireAuth,
+    friendUserIdParam,
+    validateRequest,
+    asyncHandler(friendController.friendProfile)
+  );
+
   return router;
 }
-

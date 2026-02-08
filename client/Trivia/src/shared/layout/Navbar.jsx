@@ -7,29 +7,23 @@ export default function Navbar({
   onJoin,
   onLogout,
   onCreateQuiz,
-  onStory,
   onDiscoverQuizzes,
-  onMyPlays,
   onFriends,
   onProfile,
   showAdmin = false,
   onAdmin,
   onLeaderboard,
+  onHome,
 }) {
   return (
     <nav style={styles.nav}>
       <div style={styles.container}>
-        <div style={styles.logoWrap}>
+        <button type="button" style={styles.logoWrapBtn} onClick={onHome}>
           <div style={styles.logoIcon}>{ICONS.brand.sparkles}</div>
           <span style={styles.logoText}>{STRINGS.COMMON.appName}</span>
-        </div>
+        </button>
 
         <div style={styles.links}>
-          <NavItem
-            icon={ICONS.common.book}
-            label={STRINGS.NAV.story}
-            onClick={onStory}
-          />
           <NavItem
             icon={ICONS.common.search}
             label={STRINGS.NAV.quizzes}
@@ -37,23 +31,9 @@ export default function Navbar({
           />
           {user && (
             <NavItem
-              icon={ICONS.common.gamepad}
-              label={STRINGS.NAV.myPlays}
-              onClick={onMyPlays}
-            />
-          )}
-          {user && (
-            <NavItem
               icon={ICONS.common.handshake}
               label={STRINGS.NAV.friends}
               onClick={onFriends}
-            />
-          )}
-          {user && (
-            <NavItem
-              icon={ICONS.common.user}
-              label={STRINGS.NAV.profile}
-              onClick={onProfile}
             />
           )}
           {showAdmin && (
@@ -78,12 +58,17 @@ export default function Navbar({
         <div style={styles.right}>
           {user ? (
             <>
-              <div style={styles.userPill}>
+              <button
+                type="button"
+                style={styles.userPillBtn}
+                onClick={onProfile}
+                title={STRINGS.NAV.profile}
+              >
                 <span style={styles.userIcon}>{ICONS.common.wave}</span>
                 <span style={styles.userName}>
                   {user.username || STRINGS.COMMON.playerFallback}
                 </span>
-              </div>
+              </button>
               <button type="button" style={styles.logout} onClick={onLogout}>
                 {STRINGS.COMMON.logout}
               </button>
@@ -126,6 +111,17 @@ const styles = {
     gap: 18,
   },
 
+  logoWrapBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    padding: 0,
+    textAlign: 'left',
+  },
   logoWrap: {
     display: 'flex',
     alignItems: 'center',
@@ -192,7 +188,7 @@ const styles = {
     boxShadow: '0 8px 20px rgba(139,44,255,0.25)',
   },
 
-  userPill: {
+  userPillBtn: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 10,
@@ -203,6 +199,7 @@ const styles = {
     color: colors.neutral[800],
     fontSize: 14,
     fontWeight: 900,
+    cursor: 'pointer',
   },
   userIcon: { fontSize: 16 },
   userName: { lineHeight: 1 },

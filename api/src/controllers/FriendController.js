@@ -40,5 +40,12 @@ export class FriendController {
     const data = await this.friendService.getFriendStats(req.user.id, req.params.friend_user_id);
     res.status(200).json(data);
   };
-}
 
+  friendProfile = async (req, res) => {
+    const data = await this.friendService.getFriendProfile(
+      req.user.id,
+      req.params.friend_user_id
+    );
+    res.status(200).json(data);
+  };
+}

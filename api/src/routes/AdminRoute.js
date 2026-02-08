@@ -15,6 +15,7 @@ import {
   createClassicCategoryBody,
   levelIdParam,
   categoryIdParam,
+  questionIdParam,
   modeParam,
   searchQuestionsQuery,
   listQuestionsQuery,
@@ -27,6 +28,11 @@ export default function createAdminRouter(adminController) {
 
   // story levels
   router.get('/story/levels', requireAdmin, asyncHandler(adminController.listStoryLevels));
+  router.get(
+    '/story/pool/assigned',
+    requireAdmin,
+    asyncHandler(adminController.listStoryAssignedQuestionIds)
+  );
 
   router.post(
     '/story/levels',
@@ -34,6 +40,14 @@ export default function createAdminRouter(adminController) {
     createStoryLevelBody,
     validateRequest,
     asyncHandler(adminController.createStoryLevel)
+  );
+
+  router.delete(
+    '/story/levels/:level_id',
+    requireAdmin,
+    levelIdParam,
+    validateRequest,
+    asyncHandler(adminController.deleteStoryLevel)
   );
 
   router.post(
@@ -104,6 +118,14 @@ export default function createAdminRouter(adminController) {
     searchQuestionsQuery,
     validateRequest,
     asyncHandler(adminController.searchGlobalQuestions)
+  );
+
+  router.delete(
+    '/questions/:question_id',
+    requireAdmin,
+    questionIdParam,
+    validateRequest,
+    asyncHandler(adminController.deleteGlobalQuestion)
   );
 
   router.get(

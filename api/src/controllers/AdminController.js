@@ -16,6 +16,11 @@ export class AdminController {
     res.status(201).json(data);
   };
 
+  deleteStoryLevel = async (req, res) => {
+    const data = await this.adminService.deleteStoryLevel(req.params.level_id);
+    res.status(200).json(data);
+  };
+
   addStoryLevelPool = async (req, res) => {
     const data = await this.adminService.addStoryLevelPool(
       req.params.level_id,
@@ -31,6 +36,11 @@ export class AdminController {
 
   listStoryLevelPoolQuestions = async (req, res) => {
     const data = await this.adminService.listStoryLevelPoolQuestions(req.params.level_id, req.query);
+    res.status(200).json(data);
+  };
+
+  listStoryAssignedQuestionIds = async (req, res) => {
+    const data = await this.adminService.listStoryAssignedQuestionIds();
     res.status(200).json(data);
   };
 
@@ -70,6 +80,11 @@ export class AdminController {
 
   searchGlobalQuestions = async (req, res) => {
     const data = await this.adminService.searchGlobalQuestions(req.query);
+    res.status(200).json(data);
+  };
+
+  deleteGlobalQuestion = async (req, res) => {
+    const data = await this.adminService.deleteGlobalQuestion(req.params.question_id);
     res.status(200).json(data);
   };
 

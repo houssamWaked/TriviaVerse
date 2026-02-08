@@ -114,4 +114,18 @@ export class GameSessionRepository {
     if (error) throw toAppError(error);
     return data || [];
   }
+
+  async listByIds(ids = []) {
+    const unique = Array.from(new Set((ids || []).filter(Boolean)));
+    if (unique.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('game_sessions')
+      .select(
+        'id, user_id, mode, quiz_id, category_id, difficulty, total_questions, started_at, ended_at, score_total, status'
+      )
+      .in('id', unique);
+    if (error) throw toAppError(error);
+    return data || [];
+  }
 }

@@ -41,5 +41,13 @@ export class StorySessionRepository {
     if (error) throw toAppError(error);
     return data?.[0] || null;
   }
-}
 
+  async deleteByLevelId(levelId) {
+    const lid = String(levelId || '').trim();
+    if (!lid) return true;
+
+    const { error } = await supabase.from('story_sessions').delete().eq('level_id', lid);
+    if (error) throw toAppError(error);
+    return true;
+  }
+}

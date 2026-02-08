@@ -102,6 +102,7 @@ export default function AdminDashboard({
     q: '',
     results: [],
     selected: [],
+    exclude_ids: [],
     maxSelect: 50,
     limit: 30,
     offset: 0,
@@ -235,6 +236,31 @@ export default function AdminDashboard({
         options: DEFAULT_GLOBAL_QUESTION_OPTIONS,
         explanation: '',
       }));
+      await loadDashboard();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteLevel = async (lvl) => {
+    if (!lvl?.id) return;
+    const levelId = String(lvl.id || '').trim();
+    if (!levelId) return;
+
+    // eslint-disable-next-line no-alert
+    const ok = window.confirm(STRINGS.ADMIN.confirm.deleteStoryLevel(lvl.level_number, lvl.title));
+    if (!ok) return;
+
+    setBusy(true);
+    clearMessages();
+    try {
+      await api.adminDeleteStoryLevel(levelId);
+      setSuccess(STRINGS.ADMIN.toasts.levelDeleted);
+      if (pool.open && pool.kind === 'level' && pool.id === levelId) {
+        setPool((v) => ({ ...v, open: false }));
+      }
       await loadDashboard();
     } catch (err) {
       setError(getApiErrorMessage(err));
@@ -403,7 +429,7 @@ export default function AdminDashboard({
     }
   };
 
-  const loadPicker = async ({ q, offset, keepSelected }) => {
+  const loadPicker = async ({ q, offset, keepSelected, excludeIds } = {}) => {
     setBusy(true);
     clearMessages();
     try {
@@ -411,18 +437,52 @@ export default function AdminDashboard({
       const off = Math.max(0, Number(offset) || 0);
       const lim = picker.limit || 30;
       const res = await api.adminListGlobalQuestions({ q: query, limit: lim, offset: off });
+
+      const excludeSet = new Set(((excludeIds ?? picker.exclude_ids) || []).filter(Boolean));
+      const filteredResults = Array.isArray(res?.results)
+        ? res.results.filter((r) => !excludeSet.has(r.id))
+        : [];
       setPicker((v) => ({
         ...v,
         q: query,
-        results: Array.isArray(res?.results) ? res.results : [],
+        results: filteredResults,
         offset: off,
-        selected: keepSelected ? v.selected : [],
+        selected: keepSelected ? (v.selected || []).filter((id) => !excludeSet.has(id)) : [],
       }));
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {
       setBusy(false);
     }
+  };
+
+  const listAllPoolQuestionIds = async ({ kind, id }) => {
+    const k = String(kind || '').trim();
+    const targetId = String(id || '').trim();
+    if (!k || !targetId) return [];
+
+    const limit = 100;
+    const maxPages = 25; // 2500 questions max (admin UX helper)
+    const ids = [];
+
+    for (let p = 0; p < maxPages; p += 1) {
+      const offset = p * limit;
+      // eslint-disable-next-line no-await-in-loop
+      const res =
+        k === 'mode'
+          ? await api.adminListModePoolQuestions(targetId, { limit, offset })
+          : k === 'level'
+            ? await api.adminListStoryLevelPoolQuestions(targetId, { limit, offset })
+            : k === 'classic_category'
+              ? await api.adminListClassicCategoryPoolQuestions(targetId, { limit, offset })
+              : null;
+
+      const qs = Array.isArray(res?.questions) ? res.questions : [];
+      for (const q of qs) ids.push(q.id);
+      if (qs.length < limit) break;
+    }
+
+    return Array.from(new Set(ids.filter(Boolean)));
   };
 
   const openPicker = async ({ kind, id, title }) => {
@@ -433,9 +493,29 @@ export default function AdminDashboard({
       q: '',
       results: [],
       selected: [],
+      exclude_ids: [],
       offset: 0,
     }));
-    await loadPicker({ q: '', offset: 0, keepSelected: false });
+
+    let exclude_ids = [];
+    try {
+      const targetPoolIds = await listAllPoolQuestionIds({ kind, id });
+      exclude_ids = Array.isArray(targetPoolIds) ? targetPoolIds : [];
+    } catch {
+      // ignore
+    }
+
+    try {
+      const storyAssigned = await api.adminStoryAssignedQuestionIds();
+      const storyIds = Array.isArray(storyAssigned?.ids) ? storyAssigned.ids : [];
+      exclude_ids = Array.from(new Set([...(exclude_ids || []), ...storyIds].filter(Boolean)));
+    } catch {
+      // ignore
+    }
+
+    setPicker((v) => ({ ...v, exclude_ids }));
+
+    await loadPicker({ q: '', offset: 0, keepSelected: false, excludeIds: exclude_ids });
   };
 
   const addPickerSelection = async ({ replace = false } = {}) => {
@@ -924,6 +1004,15 @@ export default function AdminDashboard({
                               >
                                 {STRINGS.ADMIN.actions.autoFill}
                               </button>
+                              <button
+                                type="button"
+                                className="tv-card tv-card--hover"
+                                style={AdminStyle.btnDanger}
+                                onClick={() => deleteLevel(lvl)}
+                                disabled={busy}
+                              >
+                                {STRINGS.ADMIN.actions.deleteLevel}
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -1020,15 +1109,48 @@ export default function AdminDashboard({
                   ) : null}
                   <span style={AdminStyle.pill}>{q.id}</span>
                 </div>
-                <button
-                  type="button"
-                  className="tv-card tv-card--hover"
-                  style={AdminStyle.btn}
-                  onClick={() => removeFromPool(q.id)}
-                  disabled={busy}
-                >
-                  {STRINGS.ADMIN.actions.remove}
-                </button>
+                <div style={AdminStyle.row}>
+                  <button
+                    type="button"
+                    className="tv-card tv-card--hover"
+                    style={AdminStyle.btn}
+                    onClick={() => removeFromPool(q.id)}
+                    disabled={busy}
+                  >
+                    {STRINGS.ADMIN.actions.remove}
+                  </button>
+                  <button
+                    type="button"
+                    className="tv-card tv-card--hover"
+                    style={AdminStyle.btnDanger}
+                    onClick={async () => {
+                      // eslint-disable-next-line no-alert
+                      const ok = window.confirm(STRINGS.ADMIN.confirm.deleteGlobalQuestion);
+                      if (!ok) return;
+
+                      setBusy(true);
+                      clearMessages();
+                      try {
+                        await api.adminDeleteGlobalQuestion(q.id);
+                        await loadPool({
+                          kind: pool.kind,
+                          id: pool.id,
+                          title: pool.title,
+                          offset: pool.offset,
+                        });
+                        await loadDashboard();
+                        setSuccess(STRINGS.ADMIN.toasts.questionDeleted);
+                      } catch (err) {
+                        setError(getApiErrorMessage(err));
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                    disabled={busy}
+                  >
+                    {STRINGS.ADMIN.actions.deleteQuestion}
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -1150,32 +1272,73 @@ export default function AdminDashboard({
         <div style={AdminDashboardStyle.listMt12}>
           {picker.results.map((r) => (
             <div key={r.id} style={AdminStyle.listItem}>
-              <label style={AdminDashboardStyle.pickerLabel}>
-                <input
-                  type="checkbox"
-                  checked={picker.selected.includes(r.id)}
-                  onChange={() =>
-                    setPicker((v) => ({
-                      ...v,
-                      selected: toggleIdLimited(v.selected, r.id, v.maxSelect),
-                    }))
-                  }
-                  disabled={busy}
-                  style={AdminDashboardStyle.checkboxMt3}
-                />
-                <div>
-                  <div style={AdminStyle.listItemTitle}>{r.question_text}</div>
-                  <div style={AdminStyle.listItemMeta}>
-                    {r.difficulty_rating != null ? (
-                      <span style={AdminStyle.pill}>
-                        {STRINGS.ADMIN.pills.difficultyPrefix}
-                        {r.difficulty_rating}
-                      </span>
-                    ) : null}
-                    <span style={AdminStyle.pill}>{r.id}</span>
+              <div style={AdminDashboardStyle.listItemMetaBetween}>
+                <label style={AdminDashboardStyle.pickerLabel}>
+                  <input
+                    type="checkbox"
+                    checked={picker.selected.includes(r.id)}
+                    onChange={() =>
+                      setPicker((v) => ({
+                        ...v,
+                        selected: toggleIdLimited(v.selected, r.id, v.maxSelect),
+                      }))
+                    }
+                    disabled={busy}
+                    style={AdminDashboardStyle.checkboxMt3}
+                  />
+                  <div>
+                    <div style={AdminStyle.listItemTitle}>{r.question_text}</div>
+                    <div style={AdminStyle.listItemMeta}>
+                      {r.difficulty_rating != null ? (
+                        <span style={AdminStyle.pill}>
+                          {STRINGS.ADMIN.pills.difficultyPrefix}
+                          {r.difficulty_rating}
+                        </span>
+                      ) : null}
+                      <span style={AdminStyle.pill}>{r.id}</span>
+                    </div>
                   </div>
-                </div>
-              </label>
+                </label>
+
+                <button
+                  type="button"
+                  className="tv-card tv-card--hover"
+                  style={AdminStyle.btnDanger}
+                  disabled={busy}
+                  onClick={async () => {
+                    // eslint-disable-next-line no-alert
+                    const ok = window.confirm(STRINGS.ADMIN.confirm.deleteGlobalQuestion);
+                    if (!ok) return;
+
+                    setBusy(true);
+                    clearMessages();
+                    try {
+                      await api.adminDeleteGlobalQuestion(r.id);
+                      setPicker((v) => ({
+                        ...v,
+                        selected: (v.selected || []).filter((id) => id !== r.id),
+                      }));
+                      await loadDashboard();
+                      if (pool.open && pool.kind && pool.id) {
+                        await loadPool({
+                          kind: pool.kind,
+                          id: pool.id,
+                          title: pool.title,
+                          offset: pool.offset,
+                        });
+                      }
+                      await loadPicker({ q: picker.q, offset: picker.offset, keepSelected: true });
+                      setSuccess(STRINGS.ADMIN.toasts.questionDeleted);
+                    } catch (err) {
+                      setError(getApiErrorMessage(err));
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  {STRINGS.ADMIN.actions.deleteQuestion}
+                </button>
+              </div>
             </div>
           ))}
           {picker.results.length === 0 && (

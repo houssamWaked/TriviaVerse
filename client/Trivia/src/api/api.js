@@ -139,17 +139,33 @@ export const api = {
     (await http.delete(endpoints.friendRequestCancel(requestId))).data,
   getFriendStats: async (friendUserId) =>
     (await http.get(endpoints.friendStats(friendUserId))).data,
+  getFriendProfile: async (friendUserId) =>
+    (await http.get(endpoints.friendProfile(friendUserId))).data,
 
   // me
   getMyProfile: async () => (await http.get(endpoints.meProfile())).data,
+
+  // duels
+  listDuels: async () => (await http.get(endpoints.duels())).data,
+  createDuel: async (body) => (await http.post(endpoints.duels(), body)).data,
+  getDuel: async (duelId) => (await http.get(endpoints.duelById(duelId))).data,
+  acceptDuel: async (duelId) => (await http.post(endpoints.duelAccept(duelId), {})).data,
+  declineDuel: async (duelId) => (await http.post(endpoints.duelDecline(duelId), {})).data,
+  cancelDuel: async (duelId) => (await http.post(endpoints.duelCancel(duelId), {})).data,
+  getDuelState: async (duelId) => (await http.get(endpoints.duelState(duelId))).data,
+  duelAnswer: async (duelId, body) => (await http.post(endpoints.duelAnswer(duelId), body)).data,
 
   // quiz delete
   deleteQuiz: async (quizId) => (await http.delete(endpoints.quizById(quizId))).data,
 
   // admin
   adminListStoryLevels: async () => (await http.get(endpoints.adminStoryLevels())).data,
+  adminStoryAssignedQuestionIds: async () =>
+    (await http.get(endpoints.adminStoryAssignedQuestionIds())).data,
   adminCreateStoryLevel: async (body) =>
     (await http.post(endpoints.adminCreateStoryLevel(), body)).data,
+  adminDeleteStoryLevel: async (levelId) =>
+    (await http.delete(endpoints.adminDeleteStoryLevel(levelId))).data,
   adminAddStoryLevelPool: async (levelId, body) =>
     (await http.post(endpoints.adminAddStoryLevelPool(levelId), body)).data,
   adminSeedStoryLevelPool: async (levelId, body) =>
@@ -164,6 +180,8 @@ export const api = {
         params: { q, limit },
       })
     ).data,
+  adminDeleteGlobalQuestion: async (questionId) =>
+    (await http.delete(endpoints.adminDeleteGlobalQuestion(questionId))).data,
   adminModePoolSummary: async (mode) =>
     (await http.get(endpoints.adminModePoolSummary(mode))).data,
   adminSeedModePool: async (mode, body) =>

@@ -5,10 +5,9 @@ import CreateQuiz from './Pages/CreateQuiz';
 import DiscoverQuizzes from './Pages/DiscoverQuizzes';
 import QuizView from './Pages/QuizView';
 import PlaySession from './Pages/PlaySession';
-import MyPlays from './Pages/MyPlays';
 import Friends from './Pages/Friends';
-import FriendProfile from './Pages/FriendProfile';
 import Profile from './Pages/Profile';
+import DuelPlay from './Pages/DuelPlay';
 import Story from './Pages/Story';
 import Classic from './Pages/Classic';
 import Blitz from './Pages/Blitz';
@@ -48,10 +47,12 @@ function getRoute() {
   }
   if (parts[0] === 'quizzes' && parts[1]) return { name: 'quiz', quizId: parts[1] };
   if (parts[0] === 'quizzes') return { name: 'quizzes' };
-  if (parts[0] === 'my-plays') return { name: 'my-plays' };
   if (parts[0] === 'friends' && parts[1]) return { name: 'friend', friendUserId: parts[1] };
   if (parts[0] === 'friends') return { name: 'friends' };
   if (parts[0] === 'profile') return { name: 'profile' };
+  if (parts[0] === 'duels' && parts[1] && parts[2] === 'play') {
+    return { name: 'duel-play', duelId: parts[1] };
+  }
   if (parts[0] === 'story') {
     return { name: 'story' };
   }
@@ -97,10 +98,6 @@ function navigate(route, params = {}) {
     window.location.hash = `#/play/${encodeURIComponent(params.sessionId)}${q}`;
     return;
   }
-  if (route === 'my-plays') {
-    window.location.hash = '#/my-plays';
-    return;
-  }
   if (route === 'friends') {
     window.location.hash = '#/friends';
     return;
@@ -111,6 +108,10 @@ function navigate(route, params = {}) {
   }
   if (route === 'profile') {
     window.location.hash = '#/profile';
+    return;
+  }
+  if (route === 'duel-play') {
+    window.location.hash = `#/duels/${encodeURIComponent(params.duelId)}/play`;
     return;
   }
   if (route === 'story') {
@@ -223,6 +224,12 @@ function App() {
               params: { sessionId: route.sessionId, from: route.from || '' },
             });
           }
+          if (route.name === 'duel-play') {
+            return openAuth('signup', {
+              name: 'duel-play',
+              params: { duelId: route.duelId },
+            });
+          }
           if (route.name === 'friend') {
             return openAuth('signup', {
               name: 'friend',
@@ -236,14 +243,13 @@ function App() {
           if (!user) return openAuth('signup', 'create-quiz');
           return navigate('create-quiz');
         }}
-        onStory={() => navigate('story')}
         onDiscoverQuizzes={() => navigate('quizzes')}
-        onMyPlays={() => navigate('my-plays')}
         onFriends={() => navigate('friends')}
-        onProfile={() => navigate('profile')}
         showAdmin={isAdmin}
         onAdmin={() => navigate('admin')}
         onLeaderboard={() => navigate('leaderboard')}
+        onHome={() => navigate('home')}
+        onProfile={() => navigate('profile')}
       />
 
       {route.name === 'create-quiz' ? (
@@ -268,6 +274,7 @@ function App() {
           onBack={() => navigate('quizzes')}
           onEditQuiz={(quizId) => navigate('create-quiz', { quizId })}
           onPlaySession={(sessionId) => navigate('play', { sessionId })}
+          onOpenDuel={(duelId) => navigate('duel-play', { duelId })}
         />
       ) : route.name === 'play' ? (
         <PlaySession
@@ -285,13 +292,6 @@ function App() {
           }
           onBack={() => (route.from === 'story' ? navigate('story') : navigate('quizzes'))}
         />
-      ) : route.name === 'my-plays' ? (
-        <MyPlays
-          user={user}
-          onRequireAuth={() => openAuth('login', 'my-plays')}
-          onOpenQuiz={(quizId) => navigate('quiz', { quizId })}
-          onNavigateHome={() => navigate('home')}
-        />
       ) : route.name === 'friends' ? (
         <Friends
           user={user}
@@ -300,7 +300,7 @@ function App() {
           onOpenFriend={(friendUserId) => navigate('friend', { friendUserId })}
         />
       ) : route.name === 'friend' ? (
-        <FriendProfile
+        <Profile
           user={user}
           friendUserId={route.friendUserId}
           onRequireAuth={() =>
@@ -316,6 +316,16 @@ function App() {
           onRequireAuth={() => openAuth('login', 'profile')}
           onNavigateHome={() => navigate('home')}
           onOpenQuiz={(quizId) => navigate('quiz', { quizId })}
+          onOpenDuel={(duelId) => navigate('duel-play', { duelId })}
+        />
+      ) : route.name === 'duel-play' ? (
+        <DuelPlay
+          user={user}
+          duelId={route.duelId}
+          onRequireAuth={() =>
+            openAuth('login', { name: 'duel-play', params: { duelId: route.duelId } })
+          }
+          onBack={() => navigate('profile')}
         />
       ) : route.name === 'story' ? (
         <Story

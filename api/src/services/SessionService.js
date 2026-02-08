@@ -82,6 +82,7 @@ export class SessionService {
     leaderboardRepository,
     userStatsRepository,
     quizScoreRepository,
+    quizRatingRepository,
     storyLevelRepository,
     userStoryProgressRepository,
     storySessionRepository,
@@ -94,6 +95,7 @@ export class SessionService {
     this.leaderboardRepository = leaderboardRepository;
     this.userStatsRepository = userStatsRepository;
     this.quizScoreRepository = quizScoreRepository;
+    this.quizRatingRepository = quizRatingRepository;
     this.storyLevelRepository = storyLevelRepository;
     this.userStoryProgressRepository = userStoryProgressRepository;
     this.storySessionRepository = storySessionRepository;
@@ -543,6 +545,9 @@ export class SessionService {
     const updated = await this.gameSessionRepository.updateStatus(sessionId, status);
     if (!updated) throw new AppError('Session not found', 404, 'NOT_FOUND');
 
+    let storyXpEligible = false;
+    let storyXpValue = 0;
+
     if (session.mode === 'story' && status === 'completed') {
       if (
         this.storySessionRepository &&
@@ -554,6 +559,10 @@ export class SessionService {
           if (meta?.level_id) {
             const level = await this.storyLevelRepository.findById(meta.level_id);
             if (level?.id) {
+              const existing = await this.userStoryProgressRepository.findByUserAndLevelId(
+                session.user_id,
+                level.id
+              );
               const questions = await this.sessionQuestionRepository.listBySessionId(sessionId);
               const maxScore = questions.reduce(
                 (acc, q) => acc + (Number(q.points_snapshot) || 0),
@@ -565,6 +574,11 @@ export class SessionService {
                 maxScore,
                 passScoreMin: level.pass_score_min ?? null,
               });
+
+              const noStrike = maxScore > 0 ? scoreTotal >= maxScore : passed;
+              const alreadyPerfect = maxScore > 0 ? (existing?.best_score ?? 0) >= maxScore : false;
+              storyXpEligible = Boolean(passed && noStrike && !alreadyPerfect);
+              storyXpValue = scoreTotal;
 
               await this.userStoryProgressRepository.upsertResult(session.user_id, level.id, {
                 score_total: scoreTotal,
@@ -612,7 +626,34 @@ export class SessionService {
       score_value: updated.score_total ?? 0,
     });
 
-    await this.userStatsRepository.addXp(session.user_id, updated.score_total ?? 0);
+    let xpDelta = 0;
+
+    if (status === 'completed') {
+      if (session.mode === 'classic') {
+        xpDelta = Number(updated.score_total) || 0;
+      } else if (session.mode === 'story') {
+        xpDelta = storyXpEligible ? Number(storyXpValue) || 0 : 0;
+      } else if (session.mode === 'custom' && session.quiz_id) {
+        const score = Number(updated.score_total) || 0;
+        if (score > 0 && this.quizRatingRepository?.listByQuizId) {
+          try {
+            const rows = await this.quizRatingRepository.listByQuizId(session.quiz_id);
+            const sum = (rows || []).reduce((acc, r) => acc + (Number(r.rating) || 0), 0);
+            const count = Array.isArray(rows) ? rows.length : 0;
+            const avg = count ? Math.round((sum / count) * 100) / 100 : 0;
+
+            if (count > 100 && avg > 3) xpDelta = score;
+          } catch (err) {
+            // If ratings table isn't configured, XP condition can't be met.
+            if (err?.code !== 'NOT_CONFIGURED') throw err;
+          }
+        }
+      }
+    }
+
+    if (xpDelta > 0) {
+      await this.userStatsRepository.addXp(session.user_id, xpDelta);
+    }
 
     sessionCache.del(sessionId);
     return { status: updated.status };

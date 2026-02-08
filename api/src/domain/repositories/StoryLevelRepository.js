@@ -70,4 +70,13 @@ export class StoryLevelRepository {
     if (error) throw toAppError(error);
     return data?.[0] || null;
   }
+
+  async delete(id) {
+    const { error, count } = await supabase
+      .from('story_levels')
+      .delete({ count: 'exact' })
+      .eq('id', id);
+    if (error) throw toAppError(error);
+    return (count ?? 0) > 0;
+  }
 }

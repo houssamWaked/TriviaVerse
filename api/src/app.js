@@ -33,6 +33,7 @@ import createSessionsRouter from './routes/SessionsRoute.js';
 import createFriendsRouter from './routes/FriendsRoute.js';
 import createAdminRouter from './routes/AdminRoute.js';
 import createMeRouter from './routes/MeRoute.js';
+import createDuelsRouter from './routes/DuelsRoute.js';
 
 import { CategoryController } from './controllers/CategoryController.js';
 import { AuthController } from './controllers/AuthController.js';
@@ -48,6 +49,7 @@ import { QuizDiscoveryController } from './controllers/QuizDiscoveryController.j
 import { FriendController } from './controllers/FriendController.js';
 import { AdminController } from './controllers/AdminController.js';
 import { MeController } from './controllers/MeController.js';
+import { DuelController } from './controllers/DuelController.js';
 
 import { CategoryService } from './services/CategoryService.js';
 import { AuthService } from './services/AuthService.js';
@@ -61,6 +63,7 @@ import { QuizDiscoveryService } from './services/QuizDiscoveryService.js';
 import { FriendService } from './services/FriendService.js';
 import { AdminService } from './services/AdminService.js';
 import { MeService } from './services/MeService.js';
+import { DuelService } from './services/DuelService.js';
 
 import { CategoryRepository } from './domain/repositories/CategoryRepository.js';
 import { UserRepository } from './domain/repositories/UserRepository.js';
@@ -85,6 +88,9 @@ import { QuizScoreRepository } from './domain/repositories/QuizScoreRepository.j
 import { FriendRepository } from './domain/repositories/FriendRepository.js';
 import { ModeQuestionPoolRepository } from './domain/repositories/ModeQuestionPoolRepository.js';
 import { ClassicCategoryPoolRepository } from './domain/repositories/ClassicCategoryPoolRepository.js';
+import { DuelRepository } from './domain/repositories/DuelRepository.js';
+import { DuelAnswerRepository } from './domain/repositories/DuelAnswerRepository.js';
+import { DuelClaimRepository } from './domain/repositories/DuelClaimRepository.js';
 
 const app = express();
 
@@ -115,6 +121,9 @@ const storySessionRepository = new StorySessionRepository();
 const millionaireLadderRepository = new MillionaireLadderRepository();
 const modeQuestionPoolRepository = new ModeQuestionPoolRepository();
 const classicCategoryPoolRepository = new ClassicCategoryPoolRepository();
+const duelRepository = new DuelRepository();
+const duelAnswerRepository = new DuelAnswerRepository();
+const duelClaimRepository = new DuelClaimRepository();
 
 // services
 const categoryService = new CategoryService(
@@ -173,6 +182,7 @@ const sessionService = new SessionService({
   leaderboardRepository,
   userStatsRepository,
   quizScoreRepository,
+  quizRatingRepository,
   storyLevelRepository,
   userStoryProgressRepository,
   storySessionRepository,
@@ -183,6 +193,8 @@ const friendService = new FriendService({
   userStatsRepository,
   quizScoreRepository,
   quizRepository,
+  gameSessionRepository,
+  storyService,
 });
 
 const adminService = new AdminService({
@@ -193,6 +205,9 @@ const adminService = new AdminService({
   modeQuestionPoolRepository,
   categoryRepository,
   classicCategoryPoolRepository,
+  sessionQuestionRepository,
+  userStoryProgressRepository,
+  storySessionRepository,
 });
 
 // controllers
@@ -219,6 +234,21 @@ const meController = new MeController(
     storyService,
     quizScoreRepository,
     quizRepository,
+  })
+);
+const duelController = new DuelController(
+  new DuelService({
+    duelRepository,
+    duelAnswerRepository,
+    duelClaimRepository,
+    friendRepository,
+    userRepository,
+    quizRepository,
+    gameSessionRepository,
+    sessionQuestionRepository,
+    sessionOptionRepository,
+    sessionAnswerRepository,
+    sessionStartService,
   })
 );
 const quizDiscoveryController = new QuizDiscoveryController(
@@ -251,6 +281,7 @@ app.use('/api/sessions', createSessionsRouter(sessionsController));
 app.use('/api/friends', createFriendsRouter(friendController));
 app.use('/api/admin', createAdminRouter(adminController));
 app.use('/api/me', createMeRouter(meController));
+app.use('/api/duels', createDuelsRouter(duelController));
 
 // 404 then error handler (order matters)
 app.use(notFound);

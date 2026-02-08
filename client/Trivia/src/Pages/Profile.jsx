@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
 import { api } from '@/api';
@@ -36,19 +36,62 @@ function modeIcon(mode) {
   return ICONS.common.user;
 }
 
-export default function Profile({ user, onRequireAuth, onNavigateHome, onOpenQuiz }) {
+function getOpponentName(d) {
+  const meRole = d?.me_role;
+  if (meRole === 'challenger') return d?.opponent_user?.username || STRINGS.COMMON.playerFallback;
+  return d?.challenger_user?.username || STRINGS.COMMON.playerFallback;
+}
+
+function statusText(d) {
+  const s = String(d?.status || '');
+  if (!s) return STRINGS.COMMON.separators.emDash;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function statusPillStyle(d) {
+  const s = String(d?.status || '');
+  if (s === 'completed') return { ...ProfileStyle.statusPill, ...ProfileStyle.statusPillGood };
+  if (s === 'declined' || s === 'canceled') {
+    return { ...ProfileStyle.statusPill, ...ProfileStyle.statusPillBad };
+  }
+  return ProfileStyle.statusPill;
+}
+
+function duelResultText(d, myUserId) {
+  if (d?.status !== 'completed') return '';
+  if (!d?.winner_user_id) return STRINGS.PROFILE.duels.result.tie;
+  if (d.winner_user_id === myUserId) return STRINGS.PROFILE.duels.result.youWon;
+  return STRINGS.PROFILE.duels.result.youLost;
+}
+
+export default function Profile({
+  user,
+  friendUserId,
+  onRequireAuth,
+  onNavigateHome,
+  onOpenQuiz,
+  onOpenDuel,
+  onBack,
+}) {
+  const isFriendView = !!friendUserId;
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [data, setData] = useState(null);
 
-  const load = async () => {
+  const [data, setData] = useState(null);
+  const [plays, setPlays] = useState([]);
+  const [playsFilter, setPlaysFilter] = useState('');
+  const [duels, setDuels] = useState([]);
+  const autoOpenedRef = useRef(new Set());
+
+  const loadProfile = async () => {
     setBusy(true);
     setError('');
     try {
-      const res = await api.getMyProfile();
+      const res = isFriendView ? await api.getFriendProfile(friendUserId) : await api.getMyProfile();
       setData(res);
     } catch (err) {
-      if (isUnauthorized(err)) return onRequireAuth?.('profile');
+      if (isUnauthorized(err)) return onRequireAuth?.();
       setError(getApiErrorMessage(err));
       setData(null);
     } finally {
@@ -56,11 +99,59 @@ export default function Profile({ user, onRequireAuth, onNavigateHome, onOpenQui
     }
   };
 
+  const loadPlays = async () => {
+    try {
+      const res = await api.listMyPlayedQuizzes();
+      setPlays(Array.isArray(res?.entries) ? res.entries : []);
+    } catch (err) {
+      if (isUnauthorized(err)) return onRequireAuth?.();
+      setError(getApiErrorMessage(err));
+      setPlays([]);
+    }
+  };
+
+  const loadDuels = async () => {
+    try {
+      const res = await api.listDuels();
+      const list = Array.isArray(res?.entries) ? res.entries : [];
+      setDuels(list);
+
+      const toAutoOpen = list.find(
+        (d) =>
+          d?.status === 'active' &&
+          d?.me_role === 'challenger' &&
+          !autoOpenedRef.current.has(d.id) &&
+          Number(d?.ms_until_start) > 0 &&
+          Number(d?.ms_until_start) <= 3200
+      );
+      if (toAutoOpen?.id && onOpenDuel) {
+        autoOpenedRef.current.add(toAutoOpen.id);
+        onOpenDuel(toAutoOpen.id);
+      }
+    } catch (err) {
+      if (isUnauthorized(err)) return onRequireAuth?.();
+      setError(getApiErrorMessage(err));
+      setDuels([]);
+    }
+  };
+
+  const loadAll = async () => {
+    await Promise.all([loadProfile(), loadPlays(), loadDuels()]);
+  };
+
   useEffect(() => {
     if (!user) return;
-    load();
+
+    if (isFriendView) {
+      loadProfile();
+      return;
+    }
+
+    loadAll();
+    const t = window.setInterval(loadDuels, 1500);
+    return () => window.clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [!!user]);
+  }, [!!user, friendUserId]);
 
   const name = useMemo(
     () => data?.user?.username || user?.username || STRINGS.COMMON.playerFallback,
@@ -88,6 +179,12 @@ export default function Profile({ user, onRequireAuth, onNavigateHome, onOpenQui
     });
   }, [modeSummary]);
 
+  const filteredPlays = useMemo(() => {
+    const f = String(playsFilter || '').trim().toLowerCase();
+    if (!f) return plays;
+    return (plays || []).filter((e) => String(e.title || '').toLowerCase().includes(f));
+  }, [plays, playsFilter]);
+
   if (!user) {
     return (
       <div style={ProfileStyle.page}>
@@ -99,7 +196,7 @@ export default function Profile({ user, onRequireAuth, onNavigateHome, onOpenQui
               type="button"
               className="tv-card tv-card--hover"
               style={ProfileStyle.primaryBtnMain}
-              onClick={() => onRequireAuth?.('profile')}
+              onClick={() => onRequireAuth?.()}
             >
               {STRINGS.COMMON.joinLogin} {ICONS.common.rocket}
             </button>
@@ -121,15 +218,28 @@ export default function Profile({ user, onRequireAuth, onNavigateHome, onOpenQui
     <div style={ProfileStyle.page}>
       <div style={ProfileStyle.container}>
         <div style={ProfileStyle.topRow}>
-          <button
-            type="button"
-            className="tv-card tv-card--hover"
-            style={ProfileStyle.btnWhite}
-            onClick={load}
-            disabled={busy}
-          >
-            {STRINGS.COMMON.buttons.refresh} {ICONS.common.refresh}
-          </button>
+          <div style={ProfileStyle.topActions}>
+            {isFriendView && onBack && (
+              <button
+                type="button"
+                className="tv-card tv-card--hover"
+                style={ProfileStyle.btnWhite}
+                onClick={onBack}
+                disabled={busy}
+              >
+                {STRINGS.COMMON.symbols.leftArrow} {STRINGS.COMMON.buttons.back}
+              </button>
+            )}
+            <button
+              type="button"
+              className="tv-card tv-card--hover"
+              style={ProfileStyle.btnWhite}
+              onClick={() => (isFriendView ? loadProfile() : loadAll())}
+              disabled={busy}
+            >
+              {STRINGS.COMMON.buttons.refresh} {ICONS.common.refresh}
+            </button>
+          </div>
           <div style={ProfileStyle.topActions}>
             <button
               type="button"
@@ -157,7 +267,7 @@ export default function Profile({ user, onRequireAuth, onNavigateHome, onOpenQui
               <h1 style={ProfileStyle.name}>{name}</h1>
               <div style={ProfileStyle.sub}>
                 {busy ? STRINGS.PROFILE.header.loading : STRINGS.PROFILE.header.subtitle}{' '}
-                {!!email && (
+                {!isFriendView && !!email && (
                   <>
                     {STRINGS.COMMON.separators.dot} {ICONS.common.mail} {email}
                   </>
@@ -249,8 +359,181 @@ export default function Profile({ user, onRequireAuth, onNavigateHome, onOpenQui
             )}
           </div>
         </div>
+
+        {!isFriendView && (
+          <div className="tv-card" style={ProfileStyle.sectionCard}>
+            <div style={ProfileStyle.sectionTopRow}>
+              <div>
+                <h2 style={ProfileStyle.sectionTitle}>{STRINGS.PROFILE.plays.title}</h2>
+                <div style={ProfileStyle.sectionSub}>{STRINGS.PROFILE.plays.subtitle}</div>
+              </div>
+              <input
+                style={ProfileStyle.input}
+                value={playsFilter}
+                onChange={(e) => setPlaysFilter(e.target.value)}
+                placeholder={STRINGS.PROFILE.plays.searchPlaceholder}
+                disabled={busy}
+              />
+            </div>
+
+            <div style={ProfileStyle.list}>
+              {filteredPlays.slice(0, 30).map((e) => (
+                <button
+                  key={e.quiz_id}
+                  type="button"
+                  className="tv-card tv-card--hover"
+                  style={ProfileStyle.item}
+                  onClick={() => onOpenQuiz?.(e.quiz_id)}
+                  disabled={busy || !onOpenQuiz}
+                >
+                  <div style={ProfileStyle.itemTop}>
+                    <div style={ProfileStyle.itemTitle}>{e.title}</div>
+                    <div style={ProfileStyle.scorePill}>
+                      {ICONS.common.medal} {e.best_score ?? 0}
+                    </div>
+                  </div>
+                  <div style={ProfileStyle.meta}>
+                    {e.visibility === STRINGS.COMMON.visibility.private
+                      ? `${ICONS.common.lock} ${STRINGS.COMMON.visibility.private}`
+                      : `${ICONS.common.globe} ${STRINGS.COMMON.visibility.public}`}{' '}
+                    {STRINGS.COMMON.separators.dot} {ICONS.common.calendar} {formatDate(e.updated_at)}
+                  </div>
+                </button>
+              ))}
+
+              {!busy && filteredPlays.length === 0 && (
+                <div style={ProfileStyle.meta}>{STRINGS.PROFILE.plays.empty}</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!isFriendView && (
+          <div className="tv-card" style={ProfileStyle.sectionCard}>
+            <h2 style={ProfileStyle.sectionTitle}>{STRINGS.PROFILE.duels.title}</h2>
+            <div style={ProfileStyle.sectionSub}>{STRINGS.PROFILE.duels.subtitle}</div>
+
+            <div style={ProfileStyle.list}>
+              {(duels || []).slice(0, 30).map((d) => {
+                const oppName = getOpponentName(d);
+                const canAccept = d?.status === 'pending' && d?.me_role === 'opponent';
+                const canDecline = d?.status === 'pending' && d?.me_role === 'opponent';
+                const canCancel = d?.status === 'pending' && d?.me_role === 'challenger';
+                const canOpen = d?.status === 'active' || d?.status === 'completed';
+                const resultText = duelResultText(d, user?.id);
+
+                return (
+                  <div key={d.id} style={ProfileStyle.itemStatic}>
+                    <div style={ProfileStyle.itemTop}>
+                      <div style={ProfileStyle.itemTitle}>
+                        {STRINGS.PROFILE.duels.vsPrefix} {oppName}
+                      </div>
+                      <span style={statusPillStyle(d)}>{statusText(d)}</span>
+                    </div>
+
+                    <div style={ProfileStyle.meta}>
+                      {d?.quiz?.title || STRINGS.COMMON.separators.emDash}
+                      {STRINGS.COMMON.separators.dot} {ICONS.common.trophy}{' '}
+                      {d?.challenger_points ?? 0}:{d?.opponent_points ?? 0}
+                      {resultText ? ` ${STRINGS.COMMON.separators.dot} ${resultText}` : ''}
+                    </div>
+
+                    <div style={ProfileStyle.row}>
+                      <div style={ProfileStyle.meta}>
+                        {ICONS.common.calendar} {formatDate(d?.created_at)}
+                      </div>
+
+                      <div style={ProfileStyle.miniActions}>
+                        {canOpen && (
+                          <button
+                            type="button"
+                            style={ProfileStyle.miniBtnPrimary}
+                            disabled={busy || !onOpenDuel}
+                            onClick={() => onOpenDuel?.(d.id)}
+                          >
+                            {STRINGS.PROFILE.duels.buttons.open} {ICONS.common.play}
+                          </button>
+                        )}
+                        {canAccept && (
+                          <button
+                            type="button"
+                            style={ProfileStyle.miniBtnPrimary}
+                            disabled={busy}
+                            onClick={async () => {
+                              setBusy(true);
+                              setError('');
+                              try {
+                                const next = await api.acceptDuel(d.id);
+                                onOpenDuel?.(next?.id || d.id);
+                                await loadDuels();
+                              } catch (err) {
+                                if (isUnauthorized(err)) return onRequireAuth?.();
+                                setError(getApiErrorMessage(err));
+                              } finally {
+                                setBusy(false);
+                              }
+                            }}
+                          >
+                            {STRINGS.PROFILE.duels.buttons.accept}
+                          </button>
+                        )}
+                        {canDecline && (
+                          <button
+                            type="button"
+                            style={ProfileStyle.miniBtnDanger}
+                            disabled={busy}
+                            onClick={async () => {
+                              setBusy(true);
+                              setError('');
+                              try {
+                                await api.declineDuel(d.id);
+                                await loadDuels();
+                              } catch (err) {
+                                if (isUnauthorized(err)) return onRequireAuth?.();
+                                setError(getApiErrorMessage(err));
+                              } finally {
+                                setBusy(false);
+                              }
+                            }}
+                          >
+                            {STRINGS.PROFILE.duels.buttons.decline}
+                          </button>
+                        )}
+                        {canCancel && (
+                          <button
+                            type="button"
+                            style={ProfileStyle.miniBtnDanger}
+                            disabled={busy}
+                            onClick={async () => {
+                              setBusy(true);
+                              setError('');
+                              try {
+                                await api.cancelDuel(d.id);
+                                await loadDuels();
+                              } catch (err) {
+                                if (isUnauthorized(err)) return onRequireAuth?.();
+                                setError(getApiErrorMessage(err));
+                              } finally {
+                                setBusy(false);
+                              }
+                            }}
+                          >
+                            {STRINGS.PROFILE.duels.buttons.cancel}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {!busy && (duels || []).length === 0 && (
+                <div style={ProfileStyle.meta}>{STRINGS.PROFILE.duels.empty}</div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-

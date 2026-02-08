@@ -107,14 +107,14 @@ export default function PlaySession({
 
   useEffect(() => {
     if (sessionMode !== 'blitz') return undefined;
-    if (!Number.isFinite(Number(blitzRemaining))) return undefined;
+    if (!Number.isFinite(blitzRemaining)) return undefined;
     if (finished) return undefined;
     if (busy) return undefined;
     if (Number(blitzRemaining) <= 0) return undefined;
 
     const t = window.setInterval(() => {
       setBlitzRemaining((v) => {
-        if (!Number.isFinite(Number(v))) return v;
+        if (!Number.isFinite(v)) return v;
         return Math.max(0, Number(v) - 1);
       });
     }, 1000);
@@ -124,7 +124,7 @@ export default function PlaySession({
 
   useEffect(() => {
     if (sessionMode !== 'blitz') return;
-    if (!Number.isFinite(Number(blitzRemaining))) return;
+    if (!Number.isFinite(blitzRemaining)) return;
     if (finished) return;
     if (timeUpRef.current) return;
     if (Number(blitzRemaining) > 0) return;
@@ -145,7 +145,7 @@ export default function PlaySession({
 
   const timeInfo = useMemo(() => {
     if (!question) return null;
-    if (Number.isFinite(Number(blitzRemaining))) {
+    if (question.mode === 'blitz' && Number.isFinite(blitzRemaining)) {
       return STRINGS.PLAY_SESSION.header.timeLeft(blitzRemaining);
     }
     if (Number.isFinite(Number(question.time_limit_sec))) {

@@ -22,6 +22,18 @@ function toAppError(error) {
 }
 
 export class ClassicCategoryPoolRepository {
+  async listAssignmentsByQuestionIds(questionIds = []) {
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (ids.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('classic_category_pool')
+      .select('category_id, quiz_question_id')
+      .in('quiz_question_id', ids);
+    if (error) throw toAppError(error);
+    return data || [];
+  }
+
   async countByCategoryId(categoryId) {
     const cid = String(categoryId || '').trim();
     if (!cid) return 0;
@@ -102,5 +114,16 @@ export class ClassicCategoryPoolRepository {
     if (error) throw toAppError(error);
     return true;
   }
-}
 
+  async deleteByQuizQuestionIds(questionIds = []) {
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (ids.length === 0) return true;
+
+    const { error } = await supabase
+      .from('classic_category_pool')
+      .delete()
+      .in('quiz_question_id', ids);
+    if (error) throw toAppError(error);
+    return true;
+  }
+}

@@ -70,18 +70,31 @@ export const endpoints = {
   friendRequestDecline: (requestId) => `/api/friends/requests/${requestId}/decline`,
   friendRequestCancel: (requestId) => `/api/friends/requests/${requestId}`,
   friendStats: (friendUserId) => `/api/friends/${friendUserId}/stats`,
+  friendProfile: (friendUserId) => `/api/friends/${friendUserId}/profile`,
 
   // me
   meProfile: () => '/api/me/profile',
 
+  // duels
+  duels: () => '/api/duels',
+  duelById: (duelId) => `/api/duels/${duelId}`,
+  duelAccept: (duelId) => `/api/duels/${duelId}/accept`,
+  duelDecline: (duelId) => `/api/duels/${duelId}/decline`,
+  duelCancel: (duelId) => `/api/duels/${duelId}/cancel`,
+  duelState: (duelId) => `/api/duels/${duelId}/state`,
+  duelAnswer: (duelId) => `/api/duels/${duelId}/answer`,
+
   // admin
   adminStoryLevels: () => '/api/admin/story/levels',
+  adminStoryAssignedQuestionIds: () => '/api/admin/story/pool/assigned',
   adminCreateStoryLevel: () => '/api/admin/story/levels',
+  adminDeleteStoryLevel: (levelId) => `/api/admin/story/levels/${levelId}`,
   adminAddStoryLevelPool: (levelId) => `/api/admin/story/levels/${levelId}/pool`,
   adminSeedStoryLevelPool: (levelId) => `/api/admin/story/levels/${levelId}/pool/seed`,
   adminCreateGlobalQuestion: () => '/api/admin/questions',
   adminListGlobalQuestions: () => '/api/admin/questions',
   adminSearchGlobalQuestions: () => '/api/admin/questions/search',
+  adminDeleteGlobalQuestion: (questionId) => `/api/admin/questions/${questionId}`,
   adminModePoolSummary: (mode) => `/api/admin/modes/${mode}/pool`,
   adminSeedModePool: (mode) => `/api/admin/modes/${mode}/pool/seed`,
   adminModePoolQuestions: (mode) => `/api/admin/modes/${mode}/pool/questions`,

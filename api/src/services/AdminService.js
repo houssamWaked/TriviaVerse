@@ -20,6 +20,9 @@ export class AdminService {
     modeQuestionPoolRepository,
     categoryRepository,
     classicCategoryPoolRepository,
+    sessionQuestionRepository,
+    userStoryProgressRepository,
+    storySessionRepository,
   }) {
     this.storyLevelRepository = storyLevelRepository;
     this.storyLevelPoolRepository = storyLevelPoolRepository;
@@ -28,6 +31,102 @@ export class AdminService {
     this.modeQuestionPoolRepository = modeQuestionPoolRepository;
     this.categoryRepository = categoryRepository;
     this.classicCategoryPoolRepository = classicCategoryPoolRepository;
+    this.sessionQuestionRepository = sessionQuestionRepository;
+    this.userStoryProgressRepository = userStoryProgressRepository;
+    this.storySessionRepository = storySessionRepository;
+  }
+
+  async assertNotInStoryPool(questionIds = []) {
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (ids.length === 0) return;
+
+    const assignments = await this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids);
+    if (!Array.isArray(assignments) || assignments.length === 0) return;
+
+    throw new AppError(
+      'Some questions are already assigned to story mode. Remove them from story levels first.',
+      409,
+      'POOL_CONFLICT',
+      { story_assignments: assignments }
+    );
+  }
+
+  async assertExclusiveForStoryLevel(levelId, questionIds = []) {
+    const lid = String(levelId || '').trim();
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (!lid || ids.length === 0) return;
+
+    const [storyAssignments, modeAssignments, classicAssignments] = await Promise.all([
+      this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
+      this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
+      this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+    ]);
+
+    const storyConflicts = Array.isArray(storyAssignments)
+      ? storyAssignments.filter((a) => a?.level_id && a.level_id !== lid)
+      : [];
+
+    const modeConflicts = Array.isArray(modeAssignments) ? modeAssignments : [];
+    const classicConflicts = Array.isArray(classicAssignments) ? classicAssignments : [];
+
+    if (storyConflicts.length > 0 || modeConflicts.length > 0 || classicConflicts.length > 0) {
+      throw new AppError(
+        'Some questions are already assigned to another pool. Remove them before adding to this story level.',
+        409,
+        'POOL_CONFLICT',
+        {
+          story_level_conflicts: storyConflicts,
+          mode_conflicts: modeConflicts,
+          classic_category_conflicts: classicConflicts,
+        }
+      );
+    }
+  }
+
+  async filterEligibleForStoryLevel(levelId, questionIds = []) {
+    const lid = String(levelId || '').trim();
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (!lid || ids.length === 0) return [];
+
+    const [storyAssignments, modeAssignments, classicAssignments] = await Promise.all([
+      this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
+      this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
+      this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+    ]);
+
+    const blocked = new Set();
+
+    if (Array.isArray(storyAssignments)) {
+      for (const a of storyAssignments) {
+        if (!a?.quiz_question_id) continue;
+        if (a.level_id && a.level_id !== lid) blocked.add(a.quiz_question_id);
+      }
+    }
+
+    if (Array.isArray(modeAssignments)) {
+      for (const a of modeAssignments) {
+        if (a?.quiz_question_id) blocked.add(a.quiz_question_id);
+      }
+    }
+
+    if (Array.isArray(classicAssignments)) {
+      for (const a of classicAssignments) {
+        if (a?.quiz_question_id) blocked.add(a.quiz_question_id);
+      }
+    }
+
+    return ids.filter((id) => !blocked.has(id));
+  }
+
+  async filterOutStoryAssigned(questionIds = []) {
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (ids.length === 0) return [];
+
+    const assignments = await this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids);
+    const blocked = new Set(
+      (assignments || []).map((a) => a?.quiz_question_id).filter(Boolean)
+    );
+    return ids.filter((id) => !blocked.has(id));
   }
 
   async listStoryLevels() {
@@ -65,6 +164,33 @@ export class AdminService {
     return created;
   }
 
+  async deleteStoryLevel(levelId) {
+    const level = await this.storyLevelRepository.findById(levelId);
+    if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
+
+    // Best-effort cleanup of related tables.
+    try {
+      await this.storyLevelPoolRepository.deleteAllByLevelId(level.id);
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+    }
+
+    try {
+      await this.userStoryProgressRepository?.deleteByLevelId(level.id);
+    } catch {
+      // best-effort (progress data is optional for admin delete)
+    }
+
+    try {
+      await this.storySessionRepository?.deleteByLevelId(level.id);
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+    }
+
+    const ok = await this.storyLevelRepository.delete(level.id);
+    return { success: !!ok };
+  }
+
   async addStoryLevelPool(levelId, questionIds = []) {
     const level = await this.storyLevelRepository.findById(levelId);
     if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
@@ -72,6 +198,7 @@ export class AdminService {
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (ids.length === 0) return { success: true, added_count: 0 };
 
+    await this.assertExclusiveForStoryLevel(level.id, ids);
     await this.storyLevelPoolRepository.upsertMany(level.id, ids);
     return { success: true, added_count: ids.length };
   }
@@ -100,8 +227,14 @@ export class AdminService {
           id: q.id,
           question_text: q.question_text,
           difficulty_rating: q.difficulty_rating ?? null,
-        })),
+      })),
     };
+  }
+
+  async listStoryAssignedQuestionIds() {
+    const ids = await this.storyLevelPoolRepository.listAllQuestionIds();
+    const unique = Array.from(new Set((ids || []).filter(Boolean)));
+    return { count: unique.length, ids: unique };
   }
 
   async removeStoryLevelPoolQuestions(levelId, questionIds = []) {
@@ -120,6 +253,7 @@ export class AdminService {
     if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
 
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    await this.assertExclusiveForStoryLevel(level.id, ids);
     await this.storyLevelPoolRepository.deleteAllByLevelId(level.id);
     if (ids.length > 0) await this.storyLevelPoolRepository.upsertMany(level.id, ids);
     return { success: true, count: ids.length };
@@ -143,8 +277,17 @@ export class AdminService {
     const ids = questions.map((q) => q.id).filter(Boolean);
     if (ids.length === 0) throw new AppError('No global questions available', 400, 'NO_POOL');
 
-    await this.storyLevelPoolRepository.upsertMany(level.id, ids);
-    return { success: true, added_count: ids.length };
+    const eligible = await this.filterEligibleForStoryLevel(level.id, ids);
+    if (eligible.length === 0) {
+      throw new AppError(
+        'No eligible global questions available (some are already assigned to other pools)',
+        400,
+        'NO_POOL'
+      );
+    }
+
+    await this.storyLevelPoolRepository.upsertMany(level.id, eligible);
+    return { success: true, added_count: eligible.length };
   }
 
   async createGlobalQuestion(payload) {
@@ -225,6 +368,7 @@ export class AdminService {
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (ids.length === 0) return { success: true, added_count: 0 };
 
+    await this.assertNotInStoryPool(ids);
     await this.modeQuestionPoolRepository.upsertMany(m, ids);
     return { success: true, added_count: ids.length };
   }
@@ -245,6 +389,7 @@ export class AdminService {
     if (!m) throw new AppError('Mode is required', 400, 'VALIDATION_ERROR');
 
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    await this.assertNotInStoryPool(ids);
     await this.modeQuestionPoolRepository.deleteAllByMode(m);
     if (ids.length > 0) await this.modeQuestionPoolRepository.upsertMany(m, ids);
     return { success: true, count: ids.length };
@@ -282,8 +427,17 @@ export class AdminService {
     const ids = questions.map((q) => q.id).filter(Boolean);
     if (ids.length === 0) throw new AppError('No global questions available', 400, 'NO_POOL');
 
-    await this.modeQuestionPoolRepository.upsertMany(m, ids);
-    return { success: true, added_count: ids.length };
+    const eligible = await this.filterOutStoryAssigned(ids);
+    if (eligible.length === 0) {
+      throw new AppError(
+        'No eligible global questions available (some are already assigned to story mode)',
+        400,
+        'NO_POOL'
+      );
+    }
+
+    await this.modeQuestionPoolRepository.upsertMany(m, eligible);
+    return { success: true, added_count: eligible.length };
   }
 
   async listModePoolQuestions(mode, { limit = 50, offset = 0 } = {}) {
@@ -381,6 +535,7 @@ export class AdminService {
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (ids.length === 0) return { success: true, added_count: 0 };
 
+    await this.assertNotInStoryPool(ids);
     await this.classicCategoryPoolRepository.upsertMany(cat.id, ids);
     return { success: true, added_count: ids.length };
   }
@@ -401,6 +556,7 @@ export class AdminService {
     if (!cat) throw new AppError('Category not found', 404, 'NOT_FOUND');
 
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    await this.assertNotInStoryPool(ids);
     await this.classicCategoryPoolRepository.deleteAllByCategoryId(cat.id);
     if (ids.length > 0) await this.classicCategoryPoolRepository.upsertMany(cat.id, ids);
     return { success: true, count: ids.length };
@@ -428,14 +584,62 @@ export class AdminService {
       if (err?.code !== 'NOT_CONFIGURED') throw err;
     }
 
+    if (ids.length > 0) {
+      // Exclude story-assigned questions from the classic seed.
+      // eslint-disable-next-line no-await-in-loop
+      ids = await this.filterOutStoryAssigned(ids);
+    }
+
     if (ids.length === 0) {
       const questions = await this.quizQuestionRepository.listRandomGlobal(count);
-      ids = questions.map((q) => q.id).filter(Boolean);
+      const raw = questions.map((q) => q.id).filter(Boolean);
+      ids = await this.filterOutStoryAssigned(raw);
     }
 
     if (ids.length === 0) throw new AppError('No global questions available', 400, 'NO_POOL');
 
     await this.classicCategoryPoolRepository.upsertMany(cat.id, ids);
     return { success: true, added_count: ids.length };
+  }
+
+  async deleteGlobalQuestion(questionId) {
+    const qid = String(questionId || '').trim();
+    if (!qid) throw new AppError('Invalid question_id', 400, 'INVALID_INPUT');
+
+    const q = await this.quizQuestionRepository.findById(qid);
+    if (!q) throw new AppError('Question not found', 404, 'NOT_FOUND');
+    if (q.quiz_id != null) {
+      throw new AppError('Only global questions can be deleted here', 400, 'INVALID_INPUT');
+    }
+
+    // Remove from any pools (best-effort).
+    try {
+      await this.storyLevelPoolRepository?.deleteByQuizQuestionIds([qid]);
+    } catch {
+      // best-effort
+    }
+    try {
+      await this.modeQuestionPoolRepository?.deleteByQuizQuestionIds([qid]);
+    } catch {
+      // best-effort
+    }
+    try {
+      await this.classicCategoryPoolRepository?.deleteByQuizQuestionIds([qid]);
+    } catch {
+      // best-effort
+    }
+
+    // Preserve existing session snapshots if they FK the source question.
+    try {
+      await this.sessionQuestionRepository?.clearSourceQuestionIds([qid]);
+    } catch {
+      // best-effort
+    }
+
+    await this.questionOptionRepository.deleteByQuestionId(qid);
+    const ok = await this.quizQuestionRepository.delete(qid);
+    if (!ok) throw new AppError('Question not found', 404, 'NOT_FOUND');
+
+    return { success: true };
   }
 }
