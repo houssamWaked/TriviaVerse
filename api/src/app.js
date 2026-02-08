@@ -119,6 +119,7 @@ const isProd = process.env.NODE_ENV === 'production';
 const allowedOrigins = String(process.env.CORS_ORIGINS || '')
   .split(',')
   .map((s) => s.trim())
+  .map((s) => (s.endsWith('/') ? s.replace(/\/+$/, '') : s))
   .filter(Boolean);
 
 if (isProd && allowedOrigins.length === 0) {
@@ -131,8 +132,9 @@ app.use(
     origin(origin, cb) {
       // Allow non-browser clients (no Origin) and same-origin requests.
       if (!origin) return cb(null, true);
+      const normalizedOrigin = String(origin).trim().replace(/\/+$/, '');
       if (allowedOrigins.length === 0) return cb(null, true);
-      if (allowedOrigins.includes(origin)) return cb(null, true);
+      if (allowedOrigins.includes(normalizedOrigin)) return cb(null, true);
       return cb(new AppError('CORS origin not allowed', 403, 'CORS_FORBIDDEN'));
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
