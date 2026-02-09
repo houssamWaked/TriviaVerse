@@ -66,24 +66,39 @@ export class QuizQuestionRepository {
   }
 
   async create(payload) {
-    const { data, error } = await supabase
+    let res = await supabase
       .from('quiz_questions')
       .insert(payload)
       .select(SELECT_FIELDS)
       .limit(1);
-    if (error) throw toAppError(error);
-    return data?.[0] || null;
+    if (res.error && String(res.error.code || '').trim() === '42703') {
+      res = await supabase
+        .from('quiz_questions')
+        .insert(payload)
+        .select(SELECT_FIELDS_FALLBACK)
+        .limit(1);
+    }
+    if (res.error) throw toAppError(res.error);
+    return res.data?.[0] || null;
   }
 
   async update(id, patch) {
-    const { data, error } = await supabase
+    let res = await supabase
       .from('quiz_questions')
       .update(patch)
       .eq('id', id)
       .select(SELECT_FIELDS)
       .limit(1);
-    if (error) throw toAppError(error);
-    return data?.[0] || null;
+    if (res.error && String(res.error.code || '').trim() === '42703') {
+      res = await supabase
+        .from('quiz_questions')
+        .update(patch)
+        .eq('id', id)
+        .select(SELECT_FIELDS_FALLBACK)
+        .limit(1);
+    }
+    if (res.error) throw toAppError(res.error);
+    return res.data?.[0] || null;
   }
 
   async delete(id) {

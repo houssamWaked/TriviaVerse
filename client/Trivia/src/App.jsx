@@ -28,6 +28,7 @@ import {
   clearAuthToken,
   clearCurrentUser,
   getCurrentUser,
+  getAuthToken,
   setAuthToken,
   setCurrentUser,
 } from './api';
@@ -173,6 +174,39 @@ function App() {
     const onHash = () => setRoute(getRoute());
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function bootstrapSession() {
+      const existingUser = getCurrentUser();
+      const existingToken = getAuthToken();
+      if (!existingUser || existingToken) return;
+
+      try {
+        const res = await api.refreshSession();
+        if (cancelled) return;
+
+        if (res?.token) setAuthToken(res.token);
+        if (res?.user) {
+          setCurrentUser(res.user);
+          setUser(res.user);
+        }
+      } catch {
+        if (cancelled) return;
+        // Refresh cookie missing/blocked/expired: clear the persisted user so
+        // the UI doesn’t show “logged in” while protected API calls 401.
+        clearAuthToken();
+        clearCurrentUser();
+        setUser(null);
+      }
+    }
+
+    bootstrapSession();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const openAuth = (mode = 'signup', nextRoute = null) => {

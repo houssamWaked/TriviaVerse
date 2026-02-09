@@ -18,8 +18,25 @@ export function errorHandler(err, req, res, next) {
 
   const statusCode = err instanceof AppError ? err.statusCode : 500;
 
-  // Don’t leak internals in production
+  // Don't leak internals in production
   const isProd = process.env.NODE_ENV === 'production';
+
+  // In production, log 5xx errors server-side so platforms like Railway show
+  // the root cause in application logs without leaking internals to clients.
+  if (isProd && statusCode >= 500) {
+    // eslint-disable-next-line no-console
+    console.error('[error]', {
+      method: req.method,
+      path: req.originalUrl,
+      statusCode,
+      code: err?.code || 'INTERNAL_ERROR',
+      message: err?.message || 'Unknown error',
+    });
+    if (err?.stack) {
+      // eslint-disable-next-line no-console
+      console.error(err.stack);
+    }
+  }
 
   const payload = {
     success: false,

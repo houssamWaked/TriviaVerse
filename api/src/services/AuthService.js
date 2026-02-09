@@ -39,12 +39,16 @@ export class AuthService {
         },
       });
       if (error) {
-        if (!this.#isProd()) {
-          // eslint-disable-next-line no-console
-          console.warn('[auth] Supabase email send failed:', error.message || error);
-        }
+        // Always log server-side (Railway shows app logs even in production).
+        // eslint-disable-next-line no-console
+        console.warn('[auth] Supabase email send failed:', {
+          message: error?.message || String(error),
+          status: error?.status,
+          name: error?.name,
+        });
+
         if (this.#isProd()) {
-          throw new AppError('Failed to send verification email', 500, 'EMAIL_SEND_FAILED');
+          throw new AppError('Failed to send verification email', 502, 'EMAIL_SEND_FAILED');
         }
       } else {
         return;
@@ -54,11 +58,26 @@ export class AuthService {
     // Fallback (dev): log a usable verification link/token to the API console.
     const url = buildEmailVerificationUrl(token);
     if (this.#isProd()) {
-      throw new AppError(
-        'Email verification is not configured (missing SUPABASE_ANON_KEY or redirect URL).',
-        500,
-        'EMAIL_NOT_CONFIGURED'
-      );
+      // eslint-disable-next-line no-console
+      console.error('[auth] Email verification not configured', {
+        hasSupabaseAnonKey: Boolean(process.env.SUPABASE_ANON_KEY),
+        hasSupabasePublicClient: Boolean(supabasePublic),
+        hasRedirectUrl: Boolean(redirectTo),
+        hasUrlBase: Boolean(String(process.env.EMAIL_VERIFICATION_URL_BASE || '').trim()),
+        hasRedirectBase: Boolean(String(process.env.EMAIL_VERIFICATION_REDIRECT_URL_BASE || '').trim()),
+      });
+
+      throw new AppError('Email verification is not configured', 503, 'EMAIL_NOT_CONFIGURED', {
+        missing: {
+          SUPABASE_ANON_KEY: !Boolean(process.env.SUPABASE_ANON_KEY),
+          EMAIL_VERIFICATION_REDIRECT_URL_BASE: !Boolean(
+            String(process.env.EMAIL_VERIFICATION_REDIRECT_URL_BASE || '').trim()
+          ),
+          EMAIL_VERIFICATION_URL_BASE: !Boolean(
+            String(process.env.EMAIL_VERIFICATION_URL_BASE || '').trim()
+          ),
+        },
+      });
     }
     const display = url || token;
     // eslint-disable-next-line no-console
@@ -159,7 +178,21 @@ export class AuthService {
     if (user.email_verified_at) return { success: true, already_verified: true };
 
     const verifyToken = signEmailVerificationToken(user);
-    await this.#deliverVerification(user, verifyToken);
+    try {
+      await this.#deliverVerification(user, verifyToken);
+    } catch (err) {
+      // Avoid account enumeration in production: always return success even if
+      // email delivery fails (misconfig, provider outage, etc.).
+      if (this.#isProd()) {
+        // eslint-disable-next-line no-console
+        console.warn('[auth] Resend verification failed (suppressed)', {
+          code: err?.code,
+          message: err?.message,
+        });
+        return { success: true };
+      }
+      throw err;
+    }
 
     const payload = { success: true };
     if (!this.#isProd()) {

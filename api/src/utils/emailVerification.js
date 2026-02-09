@@ -7,6 +7,12 @@
 import jwt from 'jsonwebtoken';
 import AppError from './AppError.js';
 
+function normalizeUrlBase(value) {
+  return String(value || '')
+    .trim()
+    .replace(/^['"]|['"]$/g, '');
+}
+
 function getSecret() {
   // Optional separate secret; falls back to the JWT secret used for access tokens.
   const secret = process.env.EMAIL_VERIFICATION_SECRET || process.env.JWT_SECRET;
@@ -48,15 +54,15 @@ export function verifyEmailVerificationToken(token) {
 }
 
 export function buildEmailVerificationUrl(token) {
-  const base = String(process.env.EMAIL_VERIFICATION_URL_BASE || '').trim();
+  const base = normalizeUrlBase(process.env.EMAIL_VERIFICATION_URL_BASE);
   if (!base) return null;
   const joiner = base.includes('?') ? '&' : '?';
   return `${base}${joiner}token=${encodeURIComponent(token)}`;
 }
 
 export function buildEmailVerificationRedirectUrl(token) {
-  const explicit = String(process.env.EMAIL_VERIFICATION_REDIRECT_URL_BASE || '').trim();
-  const fromUrlBase = String(process.env.EMAIL_VERIFICATION_URL_BASE || '').trim();
+  const explicit = normalizeUrlBase(process.env.EMAIL_VERIFICATION_REDIRECT_URL_BASE);
+  const fromUrlBase = normalizeUrlBase(process.env.EMAIL_VERIFICATION_URL_BASE);
   const base = explicit || (fromUrlBase ? fromUrlBase.split('#')[0] : '');
   const trimmed = String(base || '').trim();
   if (!trimmed) return null;

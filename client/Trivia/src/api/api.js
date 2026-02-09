@@ -7,7 +7,13 @@
  */
 import { http } from './httpClient';
 import { endpoints } from './endpoints';
-import { cacheGet, cacheSet, essentialCacheGet, essentialCacheSet } from '@/utils/webCache';
+import {
+  cacheGet,
+  cacheSet,
+  essentialCacheClearByPrefix,
+  essentialCacheGet,
+  essentialCacheSet,
+} from '@/utils/webCache';
 import { getCurrentUser } from './userStore';
 
 function stableParamsString(params) {
@@ -37,6 +43,51 @@ async function cachedGet(
   const res = await http.get(u, params ? { params } : undefined);
   set(key, res.data, { ttlMs, prefer });
   return res.data;
+}
+
+function getUserId() {
+  return String(getCurrentUser()?.id || 'anon');
+}
+
+function invalidateUserCacheByPathPrefix(pathPrefix) {
+  const prefix = `user:${getUserId()}:${String(pathPrefix || '')}`;
+  essentialCacheClearByPrefix(prefix);
+}
+
+function invalidatePublicCacheByPathPrefix(pathPrefix) {
+  const prefix = `public:public:${String(pathPrefix || '')}`;
+  essentialCacheClearByPrefix(prefix);
+}
+
+// Quiz builder index so we can invalidate precisely after option/question edits.
+const quizBuilderIndex = {
+  questionIdToQuizId: new Map(),
+  optionIdToQuizId: new Map(),
+};
+
+function indexQuizQuestionsForQuiz(quizId, questions) {
+  const qid = String(quizId || '').trim();
+  if (!qid || !Array.isArray(questions)) return;
+
+  for (const q of questions) {
+    if (q?.id) quizBuilderIndex.questionIdToQuizId.set(String(q.id), qid);
+    const opts = Array.isArray(q?.options) ? q.options : [];
+    for (const o of opts) {
+      if (o?.id) quizBuilderIndex.optionIdToQuizId.set(String(o.id), qid);
+    }
+  }
+}
+
+function getQuizIdForQuestionId(questionId) {
+  const qid = String(questionId || '').trim();
+  if (!qid) return null;
+  return quizBuilderIndex.questionIdToQuizId.get(qid) || null;
+}
+
+function getQuizIdForOptionId(optionId) {
+  const oid = String(optionId || '').trim();
+  if (!oid) return null;
+  return quizBuilderIndex.optionIdToQuizId.get(oid) || null;
 }
 
 export const api = {
@@ -91,6 +142,7 @@ export const api = {
   logout: async () => (await http.post(endpoints.logout(), {})).data,
   verifyEmail: async (body) => (await http.post(endpoints.verifyEmail(), body)).data,
   resendVerification: async (body) => (await http.post(endpoints.resendVerification(), body)).data,
+  refreshSession: async () => (await http.post(endpoints.refresh(), {})).data,
 
   // leaderboard
   getLeaderboard: async (params) =>
@@ -188,42 +240,107 @@ export const api = {
     cachedGet(endpoints.quizzes(), { ttlMs: 2 * 60_000, scope: 'user', prefer: 'localStorage' }),
   listMyPlayedQuizzes: async () =>
     cachedGet(endpoints.myPlayedQuizzes(), { ttlMs: 2 * 60_000, scope: 'user', prefer: 'localStorage' }),
-  createQuiz: async (body) => (await http.post(endpoints.quizzes(), body)).data,
+  createQuiz: async (body) => {
+    const data = (await http.post(endpoints.quizzes(), body)).data;
+    invalidateUserCacheByPathPrefix('/api/quizzes');
+    return data;
+  },
   getQuiz: async (quizId) =>
     cachedGet(endpoints.quizById(quizId), { ttlMs: 2 * 60_000, scope: 'user', prefer: 'localStorage' }),
-  patchQuiz: async (quizId, body) =>
-    (await http.patch(endpoints.quizById(quizId), body)).data,
-  publishQuiz: async (quizId) =>
-    (await http.post(endpoints.quizPublish(quizId), {})).data,
-  shareQuiz: async (quizId, body) =>
-    (await http.post(endpoints.quizShare(quizId), body)).data,
-  rateQuiz: async (quizId, body) =>
-    (await http.post(endpoints.quizRatings(quizId), body)).data,
+  patchQuiz: async (quizId, body) => {
+    const data = (await http.patch(endpoints.quizById(quizId), body)).data;
+    invalidateUserCacheByPathPrefix('/api/quizzes');
+    return data;
+  },
+  publishQuiz: async (quizId) => {
+    const data = (await http.post(endpoints.quizPublish(quizId), {})).data;
+    invalidateUserCacheByPathPrefix('/api/quizzes');
+    invalidatePublicCacheByPathPrefix('/api/public/home-metrics');
+    invalidatePublicCacheByPathPrefix('/api/public/quizzes/top');
+    invalidatePublicCacheByPathPrefix(`/api/public/quizzes/${quizId}`);
+    return data;
+  },
+  shareQuiz: async (quizId, body) => {
+    const data = (await http.post(endpoints.quizShare(quizId), body)).data;
+    invalidateUserCacheByPathPrefix('/api/quizzes');
+    invalidatePublicCacheByPathPrefix(`/api/public/quizzes/${quizId}`);
+    return data;
+  },
+  rateQuiz: async (quizId, body) => {
+    const data = (await http.post(endpoints.quizRatings(quizId), body)).data;
+    invalidatePublicCacheByPathPrefix(`/api/public/quizzes/${quizId}/ratings`);
+    invalidatePublicCacheByPathPrefix(`/api/public/quizzes/${quizId}/leaderboard`);
+    invalidatePublicCacheByPathPrefix('/api/public/quizzes/top');
+    invalidatePublicCacheByPathPrefix('/api/public/home-metrics');
+    return data;
+  },
   listQuizAccess: async (quizId) =>
     cachedGet(endpoints.quizAccess(quizId), { ttlMs: 2 * 60_000, scope: 'user', prefer: 'localStorage' }),
-  addQuizAccess: async (quizId, body) =>
-    (await http.post(endpoints.quizAccess(quizId), body)).data,
-  removeQuizAccess: async (quizId, userId) =>
-    (await http.delete(endpoints.quizAccessUser(quizId, userId))).data,
+  addQuizAccess: async (quizId, body) => {
+    const data = (await http.post(endpoints.quizAccess(quizId), body)).data;
+    invalidateUserCacheByPathPrefix(`/api/quizzes/${quizId}/access`);
+    return data;
+  },
+  removeQuizAccess: async (quizId, userId) => {
+    const data = (await http.delete(endpoints.quizAccessUser(quizId, userId))).data;
+    invalidateUserCacheByPathPrefix(`/api/quizzes/${quizId}/access`);
+    return data;
+  },
   startCustomQuizSession: async (quizId) =>
     (await http.post(endpoints.customQuizStart(quizId), {})).data,
 
   listQuizQuestions: async (quizId) =>
-    cachedGet(endpoints.quizQuestions(quizId), { ttlMs: 2 * 60_000, scope: 'user', prefer: 'localStorage' }),
-  addQuizQuestion: async (quizId, body) =>
-    (await http.post(endpoints.quizQuestions(quizId), body)).data,
+    cachedGet(endpoints.quizQuestions(quizId), {
+      ttlMs: 2 * 60_000,
+      scope: 'user',
+      prefer: 'localStorage',
+    }).then((data) => {
+      indexQuizQuestionsForQuiz(quizId, data);
+      return data;
+    }),
+  addQuizQuestion: async (quizId, body) => {
+    const data = (await http.post(endpoints.quizQuestions(quizId), body)).data;
+    if (data?.id) quizBuilderIndex.questionIdToQuizId.set(String(data.id), String(quizId));
+    invalidateUserCacheByPathPrefix(`/api/quizzes/${quizId}/questions`);
+    return data;
+  },
 
-  patchQuestion: async (questionId, body) =>
-    (await http.patch(endpoints.questionById(questionId), body)).data,
-  deleteQuestion: async (questionId) =>
-    (await http.delete(endpoints.questionById(questionId))).data,
+  patchQuestion: async (questionId, body) => {
+    const data = (await http.patch(endpoints.questionById(questionId), body)).data;
+    const quizId = data?.quiz_id || getQuizIdForQuestionId(questionId);
+    if (quizId) invalidateUserCacheByPathPrefix(`/api/quizzes/${quizId}/questions`);
+    return data;
+  },
+  deleteQuestion: async (questionId) => {
+    const quizId = getQuizIdForQuestionId(questionId);
+    const data = (await http.delete(endpoints.questionById(questionId))).data;
+    if (quizId) invalidateUserCacheByPathPrefix(`/api/quizzes/${quizId}/questions`);
+    quizBuilderIndex.questionIdToQuizId.delete(String(questionId));
+    return data;
+  },
 
-  addOption: async (questionId, body) =>
-    (await http.post(endpoints.questionOptions(questionId), body)).data,
-  patchOption: async (optionId, body) =>
-    (await http.patch(endpoints.optionById(optionId), body)).data,
-  deleteOption: async (optionId) =>
-    (await http.delete(endpoints.optionById(optionId))).data,
+  addOption: async (questionId, body) => {
+    const data = (await http.post(endpoints.questionOptions(questionId), body)).data;
+    const quizId = getQuizIdForQuestionId(questionId);
+    if (quizId && data?.id) quizBuilderIndex.optionIdToQuizId.set(String(data.id), String(quizId));
+    if (quizId) invalidateUserCacheByPathPrefix(`/api/quizzes/${quizId}/questions`);
+    return data;
+  },
+  patchOption: async (optionId, body) => {
+    const data = (await http.patch(endpoints.optionById(optionId), body)).data;
+    const quizId =
+      getQuizIdForOptionId(optionId) || getQuizIdForQuestionId(data?.question_id);
+    if (quizId) invalidateUserCacheByPathPrefix(`/api/quizzes/${quizId}/questions`);
+    if (quizId && data?.id) quizBuilderIndex.optionIdToQuizId.set(String(data.id), String(quizId));
+    return data;
+  },
+  deleteOption: async (optionId) => {
+    const quizId = getQuizIdForOptionId(optionId);
+    const data = (await http.delete(endpoints.optionById(optionId))).data;
+    if (quizId) invalidateUserCacheByPathPrefix(`/api/quizzes/${quizId}/questions`);
+    quizBuilderIndex.optionIdToQuizId.delete(String(optionId));
+    return data;
+  },
 
   // friends
   listFriends: async () =>
@@ -265,7 +382,14 @@ export const api = {
   duelAnswer: async (duelId, body) => (await http.post(endpoints.duelAnswer(duelId), body)).data,
 
   // quiz delete
-  deleteQuiz: async (quizId) => (await http.delete(endpoints.quizById(quizId))).data,
+  deleteQuiz: async (quizId) => {
+    const data = (await http.delete(endpoints.quizById(quizId))).data;
+    invalidateUserCacheByPathPrefix('/api/quizzes');
+    invalidatePublicCacheByPathPrefix(`/api/public/quizzes/${quizId}`);
+    invalidatePublicCacheByPathPrefix('/api/public/quizzes/top');
+    invalidatePublicCacheByPathPrefix('/api/public/home-metrics');
+    return data;
+  },
 
   // admin
   adminListStoryLevels: async () =>
@@ -276,16 +400,33 @@ export const api = {
       scope: 'user',
       prefer: 'localStorage',
     }),
-  adminCreateStoryLevel: async (body) =>
-    (await http.post(endpoints.adminCreateStoryLevel(), body)).data,
-  adminDeleteStoryLevel: async (levelId) =>
-    (await http.delete(endpoints.adminDeleteStoryLevel(levelId))).data,
-  adminAddStoryLevelPool: async (levelId, body) =>
-    (await http.post(endpoints.adminAddStoryLevelPool(levelId), body)).data,
-  adminSeedStoryLevelPool: async (levelId, body) =>
-    (await http.post(endpoints.adminSeedStoryLevelPool(levelId), body)).data,
-  adminCreateGlobalQuestion: async (body) =>
-    (await http.post(endpoints.adminCreateGlobalQuestion(), body)).data,
+  adminCreateStoryLevel: async (body) => {
+    const data = (await http.post(endpoints.adminCreateStoryLevel(), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    invalidatePublicCacheByPathPrefix('/api/public/story/levels');
+    return data;
+  },
+  adminDeleteStoryLevel: async (levelId) => {
+    const data = (await http.delete(endpoints.adminDeleteStoryLevel(levelId))).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    invalidatePublicCacheByPathPrefix('/api/public/story/levels');
+    return data;
+  },
+  adminAddStoryLevelPool: async (levelId, body) => {
+    const data = (await http.post(endpoints.adminAddStoryLevelPool(levelId), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
+  adminSeedStoryLevelPool: async (levelId, body) => {
+    const data = (await http.post(endpoints.adminSeedStoryLevelPool(levelId), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
+  adminCreateGlobalQuestion: async (body) => {
+    const data = (await http.post(endpoints.adminCreateGlobalQuestion(), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
   adminListGlobalQuestions: async (params) =>
     cachedGet(endpoints.adminListGlobalQuestions(), {
       params,
@@ -300,14 +441,20 @@ export const api = {
       scope: 'user',
       prefer: 'localStorage',
     }),
-  adminDeleteGlobalQuestion: async (questionId) =>
-    (await http.delete(endpoints.adminDeleteGlobalQuestion(questionId))).data,
+  adminDeleteGlobalQuestion: async (questionId) => {
+    const data = (await http.delete(endpoints.adminDeleteGlobalQuestion(questionId))).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
   adminModePoolSummary: async (mode) =>
     cachedGet(endpoints.adminModePoolSummary(mode), { ttlMs: 10_000, scope: 'user', prefer: 'localStorage' }),
   adminModePoolIds: async (mode) =>
     cachedGet(endpoints.adminModePoolIds(mode), { ttlMs: 15_000, scope: 'user', prefer: 'localStorage' }),
-  adminSeedModePool: async (mode, body) =>
-    (await http.post(endpoints.adminSeedModePool(mode), body)).data,
+  adminSeedModePool: async (mode, body) => {
+    const data = (await http.post(endpoints.adminSeedModePool(mode), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
   adminListModePoolQuestions: async (mode, params) =>
     cachedGet(endpoints.adminModePoolQuestions(mode), {
       params,
@@ -315,12 +462,21 @@ export const api = {
       scope: 'user',
       prefer: 'localStorage',
     }),
-  adminAddModePool: async (mode, body) =>
-    (await http.post(endpoints.adminModePoolSummary(mode), body)).data,
-  adminRemoveModePool: async (mode, body) =>
-    (await http.delete(endpoints.adminRemoveModePool(mode), { data: body })).data,
-  adminReplaceModePool: async (mode, body) =>
-    (await http.put(endpoints.adminReplaceModePool(mode), body)).data,
+  adminAddModePool: async (mode, body) => {
+    const data = (await http.post(endpoints.adminModePoolSummary(mode), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
+  adminRemoveModePool: async (mode, body) => {
+    const data = (await http.delete(endpoints.adminRemoveModePool(mode), { data: body })).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
+  adminReplaceModePool: async (mode, body) => {
+    const data = (await http.put(endpoints.adminReplaceModePool(mode), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
   adminListStoryLevelPoolQuestions: async (levelId, params) =>
     cachedGet(endpoints.adminStoryLevelPoolQuestions(levelId), {
       params,
@@ -330,18 +486,30 @@ export const api = {
     }),
   adminStoryLevelPoolIds: async (levelId) =>
     cachedGet(endpoints.adminStoryLevelPoolIds(levelId), { ttlMs: 15_000, scope: 'user', prefer: 'localStorage' }),
-  adminRemoveStoryLevelPool: async (levelId, body) =>
-    (await http.delete(endpoints.adminRemoveStoryLevelPool(levelId), { data: body })).data,
-  adminReplaceStoryLevelPool: async (levelId, body) =>
-    (await http.put(endpoints.adminReplaceStoryLevelPool(levelId), body)).data,
+  adminRemoveStoryLevelPool: async (levelId, body) => {
+    const data = (await http.delete(endpoints.adminRemoveStoryLevelPool(levelId), { data: body })).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
+  adminReplaceStoryLevelPool: async (levelId, body) => {
+    const data = (await http.put(endpoints.adminReplaceStoryLevelPool(levelId), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
 
   // classic categories
   adminListClassicCategories: async () =>
     cachedGet(endpoints.adminClassicCategories(), { ttlMs: 20_000, scope: 'user', prefer: 'localStorage' }),
-  adminCreateClassicCategory: async (body) =>
-    (await http.post(endpoints.adminCreateClassicCategory(), body)).data,
-  adminDeleteClassicCategory: async (categoryId) =>
-    (await http.delete(endpoints.adminDeleteClassicCategory(categoryId))).data,
+  adminCreateClassicCategory: async (body) => {
+    const data = (await http.post(endpoints.adminCreateClassicCategory(), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
+  adminDeleteClassicCategory: async (categoryId) => {
+    const data = (await http.delete(endpoints.adminDeleteClassicCategory(categoryId))).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
   adminListClassicCategoryPoolQuestions: async (categoryId, params) =>
     cachedGet(endpoints.adminClassicCategoryPoolQuestions(categoryId), {
       params,
@@ -351,12 +519,24 @@ export const api = {
     }),
   adminClassicCategoryPoolIds: async (categoryId) =>
     cachedGet(endpoints.adminClassicCategoryPoolIds(categoryId), { ttlMs: 15_000, scope: 'user', prefer: 'localStorage' }),
-  adminAddClassicCategoryPool: async (categoryId, body) =>
-    (await http.post(endpoints.adminAddClassicCategoryPool(categoryId), body)).data,
-  adminRemoveClassicCategoryPool: async (categoryId, body) =>
-    (await http.delete(endpoints.adminRemoveClassicCategoryPool(categoryId), { data: body })).data,
-  adminReplaceClassicCategoryPool: async (categoryId, body) =>
-    (await http.put(endpoints.adminReplaceClassicCategoryPool(categoryId), body)).data,
-  adminSeedClassicCategoryPool: async (categoryId, body) =>
-    (await http.post(endpoints.adminSeedClassicCategoryPool(categoryId), body)).data,
+  adminAddClassicCategoryPool: async (categoryId, body) => {
+    const data = (await http.post(endpoints.adminAddClassicCategoryPool(categoryId), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
+  adminRemoveClassicCategoryPool: async (categoryId, body) => {
+    const data = (await http.delete(endpoints.adminRemoveClassicCategoryPool(categoryId), { data: body })).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
+  adminReplaceClassicCategoryPool: async (categoryId, body) => {
+    const data = (await http.put(endpoints.adminReplaceClassicCategoryPool(categoryId), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
+  adminSeedClassicCategoryPool: async (categoryId, body) => {
+    const data = (await http.post(endpoints.adminSeedClassicCategoryPool(categoryId), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
 };

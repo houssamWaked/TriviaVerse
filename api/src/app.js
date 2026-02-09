@@ -119,6 +119,7 @@ const isProd = process.env.NODE_ENV === 'production';
 const allowedOrigins = String(process.env.CORS_ORIGINS || '')
   .split(',')
   .map((s) => s.trim())
+  .map((s) => s.replace(/^['"]|['"]$/g, ''))
   .map((s) => (s.endsWith('/') ? s.replace(/\/+$/, '') : s))
   .filter(Boolean);
 
