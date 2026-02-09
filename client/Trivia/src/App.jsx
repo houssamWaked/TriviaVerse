@@ -21,6 +21,7 @@ import CookieBanner from './shared/layout/CookieBanner';
 import AuthModal from './Components/Auth/AuthModal';
 import AppStyle from './Styles/AppStyle';
 import { getApiErrorMessage } from '@/utils/apiError';
+import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
 import { essentialCacheClearByPrefix } from '@/utils/webCache';
 import {
@@ -151,6 +152,10 @@ function App() {
   const [route, setRoute] = React.useState(getRoute);
 
   const [user, setUser] = React.useState(() => getCurrentUser());
+  const [pendingDuelCount, setPendingDuelCount] = React.useState(0);
+  const [duelToast, setDuelToast] = React.useState(null);
+  const pendingDuelIdsRef = React.useRef(new Set());
+  const duelToastTimerRef = React.useRef(null);
   const [authOpen, setAuthOpen] = React.useState(false);
   const [authMode, setAuthMode] = React.useState('signup');
   const [authBusy, setAuthBusy] = React.useState(false);
@@ -208,6 +213,76 @@ function App() {
       cancelled = true;
     };
   }, []);
+
+  React.useEffect(() => {
+    pendingDuelIdsRef.current = new Set();
+    setPendingDuelCount(0);
+    setDuelToast(null);
+    if (!user?.id) return undefined;
+
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const res = await api.listDuelsFresh();
+        if (cancelled) return;
+
+        const entries = Array.isArray(res?.entries) ? res.entries : [];
+        const pending = entries.filter(
+          (d) => d?.status === 'pending' && d?.opponent_user_id === user.id
+        );
+        const nextIds = new Set(pending.map((d) => String(d?.id || '')).filter(Boolean));
+
+        const prevIds = pendingDuelIdsRef.current || new Set();
+        const newlyArrived = pending.filter((d) => d?.id && !prevIds.has(String(d.id)));
+
+        pendingDuelIdsRef.current = nextIds;
+        setPendingDuelCount(nextIds.size);
+
+        if (newlyArrived.length > 0) {
+          const first = newlyArrived[0];
+          const challengerName =
+            first?.challenger_user?.username || STRINGS.COMMON.playerFallback;
+          const quizTitle = first?.quiz?.title || '';
+          setDuelToast({
+            count: newlyArrived.length,
+            challengerName,
+            quizTitle,
+          });
+        }
+      } catch {
+        // ignore (offline/back-end down)
+      }
+    }
+
+    poll();
+    const t = window.setInterval(() => {
+      if (document.visibilityState === 'visible') poll();
+    }, 10_000);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') poll();
+    };
+    document.addEventListener('visibilitychange', onVis);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  React.useEffect(() => {
+    if (!duelToast) return undefined;
+    if (duelToastTimerRef.current) window.clearTimeout(duelToastTimerRef.current);
+    duelToastTimerRef.current = window.setTimeout(() => {
+      setDuelToast(null);
+    }, 8000);
+    return () => {
+      if (duelToastTimerRef.current) window.clearTimeout(duelToastTimerRef.current);
+      duelToastTimerRef.current = null;
+    };
+  }, [duelToast]);
 
   const openAuth = (mode = 'signup', nextRoute = null) => {
     setAuthError('');
@@ -302,6 +377,7 @@ function App() {
     <div style={AppStyle.shell}>
       <Navbar
         user={user}
+        duelNotifCount={pendingDuelCount}
         onJoin={() => {
           if (route.name === 'quiz') {
             return openAuth('signup', { name: 'quiz', params: { quizId: route.quizId } });
@@ -339,6 +415,43 @@ function App() {
         onHome={() => navigate('home')}
         onProfile={() => navigate('profile')}
       />
+
+      {!!duelToast && user && (
+        <div style={AppStyle.duelToastWrap}>
+          <div className="tv-card" style={AppStyle.duelToastCard}>
+            <div style={AppStyle.duelToastTitle}>
+              {ICONS.common.bolt} {STRINGS.DUELS.title}
+            </div>
+            <div style={AppStyle.duelToastText}>
+              {duelToast.count > 1
+                ? `${duelToast.count} new duel requests`
+                : `New duel request from ${duelToast.challengerName}`}
+              {duelToast.quizTitle ? ` • ${duelToast.quizTitle}` : ''}
+            </div>
+            <div style={AppStyle.duelToastActions}>
+              <button
+                type="button"
+                className="tv-card tv-card--hover"
+                style={AppStyle.duelToastBtnPrimary}
+                onClick={() => {
+                  setDuelToast(null);
+                  navigate('profile');
+                }}
+              >
+                Open
+              </button>
+              <button
+                type="button"
+                className="tv-card tv-card--hover"
+                style={AppStyle.duelToastBtn}
+                onClick={() => setDuelToast(null)}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {route.name === 'create-quiz' ? (
         <CreateQuiz

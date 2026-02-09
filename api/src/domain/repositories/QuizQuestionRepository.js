@@ -31,6 +31,17 @@ export class QuizQuestionRepository {
     return count ?? 0;
   }
 
+  async countByQuizId(quizId) {
+    const id = String(quizId || '').trim();
+    if (!id) return 0;
+    const { count, error } = await supabase
+      .from('quiz_questions')
+      .select('*', { count: 'exact', head: true })
+      .eq('quiz_id', id);
+    if (error) throw toAppError(error);
+    return count ?? 0;
+  }
+
   async listByQuizId(quizId) {
     let res = await supabase
       .from('quiz_questions')

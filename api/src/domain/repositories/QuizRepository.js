@@ -91,19 +91,60 @@ export class QuizRepository {
     const lim = Math.min(50, Math.max(1, Number(limit) || 30));
     if (!query) return [];
 
-    const { data, error } = await supabase
-      .from('quizzes')
-      .select(
-        'id, owner_user_id, title, description, cover_image_url, visibility, status, created_at, published_at'
-      )
-      .eq('status', 'published')
-      .in('visibility', visibilities)
-      .ilike('title', `%${query}%`)
-      .order('published_at', { ascending: false })
-      .limit(lim);
+    const select =
+      'id, owner_user_id, title, description, cover_image_url, visibility, status, created_at, published_at';
 
-    if (error) throw toAppError(error);
-    return data || [];
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(query);
+
+    const [byTitle, byDesc, byId] = await Promise.all([
+      supabase
+        .from('quizzes')
+        .select(select)
+        .eq('status', 'published')
+        .in('visibility', visibilities)
+        .ilike('title', `%${query}%`)
+        .order('published_at', { ascending: false })
+        .limit(lim),
+      supabase
+        .from('quizzes')
+        .select(select)
+        .eq('status', 'published')
+        .in('visibility', visibilities)
+        .ilike('description', `%${query}%`)
+        .order('published_at', { ascending: false })
+        .limit(lim),
+      isUuid
+        ? supabase
+            .from('quizzes')
+            .select(select)
+            .eq('status', 'published')
+            .in('visibility', visibilities)
+            .eq('id', query)
+            .limit(1)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+    if (byTitle.error) throw toAppError(byTitle.error);
+    if (byDesc.error) throw toAppError(byDesc.error);
+    if (byId.error) throw toAppError(byId.error);
+
+    const merged = [];
+    const seen = new Set();
+    for (const row of [...(byId.data || []), ...(byTitle.data || []), ...(byDesc.data || [])]) {
+      if (!row?.id) continue;
+      if (seen.has(row.id)) continue;
+      seen.add(row.id);
+      merged.push(row);
+    }
+
+    merged.sort((a, b) => {
+      const bt = new Date(b.published_at || b.created_at || 0).getTime();
+      const at = new Date(a.published_at || a.created_at || 0).getTime();
+      return bt - at;
+    });
+
+    return merged.slice(0, lim);
   }
 
   async listPublishedByVisibility({ visibilities = ['public'], limit = 50 }) {

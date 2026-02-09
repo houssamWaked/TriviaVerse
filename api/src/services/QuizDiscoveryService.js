@@ -3,8 +3,6 @@
  */
 import AppError from '../utils/AppError.js';
 import QuizDTO from '../domain/dto/QuizDTO.js';
-import QuizQuestionDTO from '../domain/dto/QuizQuestionDTO.js';
-import QuestionOptionDTO from '../domain/dto/QuestionOptionDTO.js';
 
 function computeRatingsSummary(ratingRows = []) {
   const map = new Map();
@@ -236,28 +234,7 @@ export class QuizDiscoveryService {
     await this.assertCanViewQuiz({ quiz, userId });
 
     const isOwner = !!userId && quiz.owner_user_id === userId;
-
-    const questions = await this.quizQuestionRepository.listByQuizId(quizId);
-    const questionIds = questions.map((q) => q.id);
-    const options = await this.questionOptionRepository.listByQuestionIds(questionIds);
-
-    const optionsByQuestion = new Map();
-    for (const opt of options) {
-      const list = optionsByQuestion.get(opt.question_id) || [];
-      list.push(opt);
-      optionsByQuestion.set(opt.question_id, list);
-    }
-
-    const questionDtos = questions.map((q) => {
-      const opts = (optionsByQuestion.get(q.id) || []).map((o) => {
-        const dto = QuestionOptionDTO.fromRow(o);
-        if (!isOwner) {
-          dto.is_correct = undefined;
-        }
-        return dto;
-      });
-      return QuizQuestionDTO.fromRow({ ...q, options: opts });
-    });
+    const questions_count = await this.quizQuestionRepository.countByQuizId(quizId);
 
     const owner = await this.userRepository.findById(quiz.owner_user_id);
 
@@ -266,7 +243,7 @@ export class QuizDiscoveryService {
         ...QuizDTO.fromRow(quiz),
         owner: owner ? { id: owner.id, username: owner.username, avatar_url: owner.avatar_url } : null,
       },
-      questions: questionDtos,
+      questions_count,
       can_edit: isOwner,
     };
   }

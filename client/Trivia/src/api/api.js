@@ -374,16 +374,38 @@ export const api = {
 
   // duels
   listDuels: async () =>
-    cachedGet(endpoints.duels(), { ttlMs: 60_000, scope: 'user', prefer: 'localStorage' }),
-  createDuel: async (body) => (await http.post(endpoints.duels(), body)).data,
+    cachedGet(endpoints.duels(), { ttlMs: 3_000, scope: 'user', prefer: 'localStorage' }),
+  // No-cache variant for real-time-ish UI (notifications, pending states).
+  listDuelsFresh: async () => (await http.get(endpoints.duels())).data,
+  createDuel: async (body) => {
+    const data = (await http.post(endpoints.duels(), body)).data;
+    invalidateUserCacheByPathPrefix('/api/duels');
+    return data;
+  },
   getDuel: async (duelId) =>
     cachedGet(endpoints.duelById(duelId), { ttlMs: 60_000, scope: 'user', prefer: 'localStorage' }),
-  acceptDuel: async (duelId) => (await http.post(endpoints.duelAccept(duelId), {})).data,
-  declineDuel: async (duelId) => (await http.post(endpoints.duelDecline(duelId), {})).data,
-  cancelDuel: async (duelId) => (await http.post(endpoints.duelCancel(duelId), {})).data,
+  acceptDuel: async (duelId) => {
+    const data = (await http.post(endpoints.duelAccept(duelId), {})).data;
+    invalidateUserCacheByPathPrefix('/api/duels');
+    return data;
+  },
+  declineDuel: async (duelId) => {
+    const data = (await http.post(endpoints.duelDecline(duelId), {})).data;
+    invalidateUserCacheByPathPrefix('/api/duels');
+    return data;
+  },
+  cancelDuel: async (duelId) => {
+    const data = (await http.post(endpoints.duelCancel(duelId), {})).data;
+    invalidateUserCacheByPathPrefix('/api/duels');
+    return data;
+  },
   getDuelState: async (duelId) =>
     cachedGet(endpoints.duelState(duelId), { ttlMs: 3_000, scope: 'user', prefer: 'localStorage' }),
-  duelAnswer: async (duelId, body) => (await http.post(endpoints.duelAnswer(duelId), body)).data,
+  duelAnswer: async (duelId, body) => {
+    const data = (await http.post(endpoints.duelAnswer(duelId), body)).data;
+    invalidateUserCacheByPathPrefix('/api/duels');
+    return data;
+  },
 
   // quiz delete
   deleteQuiz: async (quizId) => {

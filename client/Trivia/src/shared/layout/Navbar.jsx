@@ -40,6 +40,7 @@ function useMediaQuery(query) {
 
 export default function Navbar({
   user,
+  duelNotifCount = 0,
   onJoin,
   onLogout,
   onCreateQuiz,
@@ -128,6 +129,15 @@ export default function Navbar({
                 <span style={styles.userName}>
                   {user.username || STRINGS.COMMON.playerFallback}
                 </span>
+                {Number(duelNotifCount) > 0 && (
+                  <span
+                    style={styles.notifBadge}
+                    aria-label={`${duelNotifCount} pending duels`}
+                    title={`${duelNotifCount} pending duels`}
+                  >
+                    {Number(duelNotifCount) > 9 ? '9+' : String(duelNotifCount)}
+                  </span>
+                )}
               </button>
               {!isMobile && (
                 <button
@@ -377,6 +387,7 @@ const styles = {
     fontSize: 14,
     fontWeight: 900,
     cursor: 'pointer',
+    position: 'relative',
   },
   userIcon: { fontSize: 16 },
   userName: {
@@ -384,6 +395,26 @@ const styles = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    minWidth: 20,
+    height: 20,
+    padding: '0 6px',
+    borderRadius: 999,
+    background: '#ef4444',
+    color: colors.neutral.white,
+    border: '2px solid rgba(255,255,255,0.92)',
+    fontSize: 11,
+    fontWeight: 950,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 10px 22px rgba(239,68,68,0.25)',
+    lineHeight: 1,
+    pointerEvents: 'none',
   },
 
   logout: {

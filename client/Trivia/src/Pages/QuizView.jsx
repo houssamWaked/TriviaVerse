@@ -60,9 +60,9 @@ export default function QuizView({
   }, [quizId, !!user]);
 
   const quiz = data?.quiz;
-  const questions = data?.questions || [];
   const canEdit = !!data?.can_edit;
   const duelAllowed = quiz?.status === 'published';
+  const questionsCount = Number(data?.questions_count);
 
   const ratingText = useMemo(() => {
     if (!ratings) return STRINGS.QUIZ_VIEW.rating.zero;
@@ -276,6 +276,14 @@ export default function QuizView({
                         </>
                       )}
                     </span>
+                    {Number.isFinite(questionsCount) && (
+                      <>
+                        <span style={QuizViewStyle.dot}>{STRINGS.COMMON.separators.middot}</span>
+                        <span style={QuizViewStyle.visibility}>
+                          {ICONS.common.question} {questionsCount}
+                        </span>
+                      </>
+                    )}
                   </div>
                   <h1 style={QuizViewStyle.title}>{quiz.title}</h1>
                   {!!quiz.description && <p style={QuizViewStyle.desc}>{quiz.description}</p>}
@@ -349,40 +357,6 @@ export default function QuizView({
               </div>
             </div>
 
-            <div style={QuizViewStyle.questions}>
-              {questions.map((q) => (
-                <div
-                  key={q.id}
-                  className="tv-card tv-card--hover"
-                  style={QuizViewStyle.questionCard}
-                >
-                  <div style={QuizViewStyle.qTop}>
-                    <span style={QuizViewStyle.qNum}>
-                      {STRINGS.QUIZ_VIEW.questions.qPrefix}
-                      {q.order_index}
-                    </span>
-                    <span style={QuizViewStyle.qMeta}>
-                      {ICONS.common.timer} {q.time_limit_sec}
-                      {STRINGS.COMMON.units.secondsShort} {STRINGS.COMMON.separators.middot}{' '}
-                      {ICONS.common.star} {q.points}
-                    </span>
-                  </div>
-                  <div style={QuizViewStyle.qText}>{q.question_text}</div>
-                  <div style={QuizViewStyle.options}>
-                    {(q.options || []).map((o) => (
-                      <div key={o.id} style={QuizViewStyle.option}>
-                        <span style={QuizViewStyle.optionIdx}>{o.order_index}.</span>
-                        <span style={QuizViewStyle.optionText}>{o.option_text}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-
-              {questions.length === 0 && (
-                <div style={QuizViewStyle.loading}>{STRINGS.QUIZ_VIEW.questions.none}</div>
-              )}
-            </div>
           </>
         )}
       </div>
