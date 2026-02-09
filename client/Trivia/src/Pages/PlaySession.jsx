@@ -70,7 +70,7 @@ export default function PlaySession({
     setPhoneSuggestionOptionId(q?.phone_suggestion_option_id || null);
     setPhoneMessage(q?.phone_message || '');
     setLifelinesUsed(Array.isArray(q?.lifelines_used) ? q.lifelines_used : []);
-    if (mode === 'blitz' && Number.isFinite(Number(q?.time_remaining_sec))) {
+    if ((mode === 'blitz' || mode === 'story') && Number.isFinite(Number(q?.time_remaining_sec))) {
       setBlitzRemaining(Number(q.time_remaining_sec));
     } else {
       setBlitzRemaining(null);
@@ -111,7 +111,7 @@ export default function PlaySession({
   }, [sessionId]);
 
   useEffect(() => {
-    if (sessionMode !== 'blitz') return undefined;
+    if (sessionMode !== 'blitz' && sessionMode !== 'story') return undefined;
     if (!Number.isFinite(blitzRemaining)) return undefined;
     if (finished) return undefined;
     if (busy) return undefined;
@@ -128,14 +128,14 @@ export default function PlaySession({
   }, [sessionMode, blitzRemaining, finished, busy]);
 
   useEffect(() => {
-    if (sessionMode !== 'blitz') return;
+    if (sessionMode !== 'blitz' && sessionMode !== 'story') return;
     if (!Number.isFinite(blitzRemaining)) return;
     if (finished) return;
     if (timeUpRef.current) return;
     if (Number(blitzRemaining) > 0) return;
 
     timeUpRef.current = true;
-    finish();
+    finish(sessionMode === 'story' ? 'abandoned' : 'completed');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionMode, blitzRemaining, finished]);
 
@@ -150,7 +150,7 @@ export default function PlaySession({
 
   const timeInfo = useMemo(() => {
     if (!question) return null;
-    if (question.mode === 'blitz' && Number.isFinite(blitzRemaining)) {
+    if ((question.mode === 'blitz' || question.mode === 'story') && Number.isFinite(blitzRemaining)) {
       return STRINGS.PLAY_SESSION.header.timeLeft(blitzRemaining);
     }
     if (Number.isFinite(Number(question.time_limit_sec))) {
@@ -227,18 +227,18 @@ export default function PlaySession({
       if (Number.isFinite(Number(result.speed_bonus)))
         setSpeedBonus(result.speed_bonus);
       if (
-        question.mode === 'blitz' &&
+        (question.mode === 'blitz' || question.mode === 'story') &&
         Number.isFinite(Number(result.time_remaining_sec))
       ) {
         setBlitzRemaining(Number(result.time_remaining_sec));
-      } else if (question.mode !== 'blitz') {
+      } else if (question.mode !== 'blitz' && question.mode !== 'story') {
         setBlitzRemaining(null);
       }
 
       if (!result.next_question_available) {
         if (nextTransitionMs) await sleep(nextTransitionMs);
         if (submitSeqRef.current !== submitSeq) return;
-        await finish();
+        await finish(result?.status === 'abandoned' ? 'abandoned' : 'completed');
         return;
       }
 
@@ -255,7 +255,7 @@ export default function PlaySession({
     } catch (err) {
       if (isUnauthorized(err)) return onRequireAuth?.('play');
       if (err?.response?.data?.code === 'TIME_UP') {
-        finish();
+        finish(sessionMode === 'story' ? 'abandoned' : 'completed');
         return;
       }
       setError(getApiErrorMessage(err));
@@ -265,15 +265,15 @@ export default function PlaySession({
     }
   };
 
-  const finish = async () => {
+  const finish = async (status = 'completed') => {
     setBusy(true);
     setError('');
     try {
-      await api.finishSession(sessionId, { status: 'completed' });
+      await api.finishSession(sessionId, { status });
       if (isStory && !user) {
         const a = Number(answeredCount) || 0;
         const c = Number(correctCount) || 0;
-        const passed = a > 0 ? c / a >= 0.5 : false;
+        const passed = status === 'completed' ? (a > 0 ? c / a >= 0.5 : false) : false;
         saveGuestStoryResult(storyLevelNumber, { scoreTotal, passed });
       }
       setFinished(true);

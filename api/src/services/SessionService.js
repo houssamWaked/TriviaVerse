@@ -9,6 +9,7 @@ const MILLIONAIRE_PRIZES = [
   100, 200, 300, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 125000, 250000,
   500000, 1000000,
 ];
+const STORY_MAX_WRONG = 3;
 
 function computeStars({ scoreTotal = 0, maxScore = 0, passScoreMin = null }) {
   const score = Math.max(0, Number(scoreTotal) || 0);
@@ -130,8 +131,14 @@ export class SessionService {
         score_total: cached.score_total ?? 0,
       };
 
-      if (cached.mode === 'blitz') {
+      if (cached.mode === 'blitz' || cached.mode === 'story') {
         payload.time_remaining_sec = computeTimeRemainingFromStartedAt(cached.started_at);
+      }
+
+      if (cached.mode === 'story') {
+        const wrong = Math.max(0, Number(cached.wrong_count) || 0);
+        payload.wrong_count = wrong;
+        payload.strikes_remaining = Math.max(0, STORY_MAX_WRONG - wrong);
       }
 
       if (cached.mode === 'millionaire') {
@@ -183,6 +190,9 @@ export class SessionService {
     }
 
     const session = await this.assertSessionOwner(sessionId, userId);
+    if (session.status && session.status !== 'in_progress') {
+      throw new AppError('Session is not active', 409, 'NOT_ACTIVE');
+    }
     const questions = await this.sessionQuestionRepository.listBySessionId(sessionId);
     if (questions.length === 0) throw new AppError('No questions in session', 404, 'NOT_FOUND');
 
@@ -192,6 +202,11 @@ export class SessionService {
     const answeredSet = new Set(answers.map((a) => a.session_question_id));
     const current = questions.find((q) => !answeredSet.has(q.id));
     if (!current) throw new AppError('No current question', 404, 'NO_CURRENT_QUESTION');
+
+    const storyWrongCount =
+      session.mode === 'story'
+        ? (answers || []).filter((a) => a && a.is_correct === false).length
+        : 0;
 
     const options = await this.sessionOptionRepository.listBySessionQuestionId(current.id);
     const payload = {
@@ -208,10 +223,15 @@ export class SessionService {
       score_total: session.score_total ?? 0,
     };
 
-    if (session.mode === 'blitz') {
+    if (session.mode === 'blitz' || session.mode === 'story') {
       payload.time_remaining_sec = computeTimeRemainingSec(session);
     } else {
       payload.time_limit_sec = current.time_limit_snapshot;
+    }
+
+    if (session.mode === 'story') {
+      payload.wrong_count = storyWrongCount;
+      payload.strikes_remaining = Math.max(0, STORY_MAX_WRONG - storyWrongCount);
     }
 
     if (session.mode === 'millionaire') {
@@ -263,9 +283,20 @@ export class SessionService {
         throw new AppError('Session is not active', 409, 'NOT_ACTIVE');
       }
 
-      if (cached.mode === 'blitz') {
+      if (cached.mode === 'blitz' || cached.mode === 'story') {
         const remaining = computeTimeRemainingFromStartedAt(cached.started_at);
         if (remaining != null && remaining <= 0) {
+          if (cached.mode === 'story') {
+            cached.status = 'abandoned';
+            sessionCache.set(sessionId, cached);
+            if (!isGuest) {
+              try {
+                await this.gameSessionRepository.updateStatus(sessionId, 'abandoned');
+              } catch {
+                // ignore
+              }
+            }
+          }
           throw new AppError('Time is up', 409, 'TIME_UP');
         }
       }
@@ -285,6 +316,13 @@ export class SessionService {
         cached.correct_option_id_by_session_question_id?.[current.session_question_id] || null;
       const is_correct = correctId ? String(correctId) === String(body.chosen_option_id) : false;
 
+      let storyStrikeOut = false;
+      if (cached.mode === 'story' && !is_correct) {
+        const nextWrong = (Number(cached.wrong_count) || 0) + 1;
+        cached.wrong_count = nextWrong;
+        storyStrikeOut = nextWrong >= STORY_MAX_WRONG;
+      }
+
       if (isGuest) {
         if (!cached.answered_session_question_id_set) {
           cached.answered_session_question_id_set = new Set();
@@ -300,6 +338,29 @@ export class SessionService {
           is_correct,
           answered_in_sec: body.answered_in_sec ?? null,
         });
+      }
+
+      if (cached.mode === 'story' && storyStrikeOut) {
+        cached.status = 'abandoned';
+        sessionCache.set(sessionId, cached);
+        if (!isGuest) {
+          try {
+            await this.gameSessionRepository.updateStatus(sessionId, 'abandoned');
+          } catch {
+            // ignore
+          }
+        }
+        return {
+          is_correct: false,
+          score_total: cached.score_total ?? 0,
+          time_remaining_sec: computeTimeRemainingFromStartedAt(cached.started_at),
+          next_question_available: false,
+          finished: true,
+          status: 'abandoned',
+          reason: 'strikes',
+          wrong_count: Math.max(0, Number(cached.wrong_count) || 0),
+          strikes_remaining: 0,
+        };
       }
 
       if (cached.mode === 'millionaire') {
@@ -424,10 +485,20 @@ export class SessionService {
         ...(cached.mode === 'custom' ? { speed_bonus } : {}),
       };
 
-      if (cached.mode === 'blitz') {
+      if (cached.mode === 'blitz' || cached.mode === 'story') {
         base.time_remaining_sec = computeTimeRemainingFromStartedAt(cached.started_at);
         if (base.next_question) {
           base.next_question.time_remaining_sec = computeTimeRemainingFromStartedAt(cached.started_at);
+        }
+      }
+
+      if (cached.mode === 'story') {
+        const wrong = Math.max(0, Number(cached.wrong_count) || 0);
+        base.wrong_count = wrong;
+        base.strikes_remaining = Math.max(0, STORY_MAX_WRONG - wrong);
+        if (base.next_question) {
+          base.next_question.wrong_count = wrong;
+          base.next_question.strikes_remaining = base.strikes_remaining;
         }
       }
 
@@ -435,10 +506,21 @@ export class SessionService {
     }
 
     const session = await this.assertSessionOwner(sessionId, userId);
+    if (session.status && session.status !== 'in_progress') {
+      throw new AppError('Session is not active', 409, 'NOT_ACTIVE');
+    }
 
-    if (session.mode === 'blitz') {
+    if (session.mode === 'blitz' || session.mode === 'story') {
       const remaining = computeTimeRemainingSec(session);
       if (remaining != null && remaining <= 0) {
+        if (session.mode === 'story') {
+          try {
+            await this.gameSessionRepository.updateStatus(sessionId, 'abandoned');
+          } catch {
+            // ignore
+          }
+          sessionCache.del(sessionId);
+        }
         throw new AppError('Time is up', 409, 'TIME_UP');
       }
     }
@@ -559,6 +641,28 @@ export class SessionService {
     const answers = await this.sessionAnswerRepository.listBySessionQuestionIds(
       questions.map((q) => q.id)
     );
+
+    const storyWrongCount =
+      session.mode === 'story'
+        ? (answers || []).filter((a) => a && a.is_correct === false).length
+        : 0;
+
+    if (session.mode === 'story' && storyWrongCount >= STORY_MAX_WRONG) {
+      await this.gameSessionRepository.updateStatus(sessionId, 'abandoned');
+      sessionCache.del(sessionId);
+      return {
+        is_correct,
+        score_total: updatedSession?.score_total ?? session.score_total,
+        time_remaining_sec: computeTimeRemainingSec(updatedSession || session),
+        next_question_available: false,
+        finished: true,
+        status: 'abandoned',
+        reason: 'strikes',
+        wrong_count: storyWrongCount,
+        strikes_remaining: 0,
+      };
+    }
+
     const next_question_available = answers.length < questions.length;
 
     if (session.mode === 'blitz') {
@@ -613,6 +717,12 @@ export class SessionService {
           score_total: updatedSession?.score_total ?? session.score_total ?? 0,
           time_limit_sec: next.time_limit_snapshot,
         };
+
+        if (session.mode === 'story') {
+          next_question.time_remaining_sec = computeTimeRemainingSec(updatedSession || session);
+          next_question.wrong_count = storyWrongCount;
+          next_question.strikes_remaining = Math.max(0, STORY_MAX_WRONG - storyWrongCount);
+        }
       }
     }
 
@@ -622,6 +732,13 @@ export class SessionService {
       next_question_available,
       ...(next_question ? { next_question } : {}),
       ...(session.mode === 'custom' ? { speed_bonus } : {}),
+      ...(session.mode === 'story'
+        ? {
+            time_remaining_sec: computeTimeRemainingSec(updatedSession || session),
+            wrong_count: storyWrongCount,
+            strikes_remaining: Math.max(0, STORY_MAX_WRONG - storyWrongCount),
+          }
+        : {}),
     };
   }
 

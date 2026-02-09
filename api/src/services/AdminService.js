@@ -639,29 +639,13 @@ export class AdminService {
       throw new AppError('Only global questions can be deleted here', 400, 'INVALID_INPUT');
     }
 
-    // Remove from any pools (best-effort).
-    try {
-      await this.storyLevelPoolRepository?.deleteByQuizQuestionIds([qid]);
-    } catch {
-      // best-effort
-    }
-    try {
-      await this.modeQuestionPoolRepository?.deleteByQuizQuestionIds([qid]);
-    } catch {
-      // best-effort
-    }
-    try {
-      await this.classicCategoryPoolRepository?.deleteByQuizQuestionIds([qid]);
-    } catch {
-      // best-effort
-    }
-
-    // Preserve existing session snapshots if they FK the source question.
-    try {
-      await this.sessionQuestionRepository?.clearSourceQuestionIds([qid]);
-    } catch {
-      // best-effort
-    }
+    // Remove from any pools + preserve session snapshots (best-effort).
+    await Promise.allSettled([
+      this.storyLevelPoolRepository?.deleteByQuizQuestionIds?.([qid]),
+      this.modeQuestionPoolRepository?.deleteByQuizQuestionIds?.([qid]),
+      this.classicCategoryPoolRepository?.deleteByQuizQuestionIds?.([qid]),
+      this.sessionQuestionRepository?.clearSourceQuestionIds?.([qid]),
+    ]);
 
     await this.questionOptionRepository.deleteByQuestionId(qid);
     const ok = await this.quizQuestionRepository.delete(qid);

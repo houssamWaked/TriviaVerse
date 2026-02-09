@@ -1117,19 +1117,19 @@ export default function AdminDashboard({
                       const ok = window.confirm(STRINGS.ADMIN.confirm.deleteGlobalQuestion);
                       if (!ok) return;
 
+                      const prevPoolQuestions = pool.questions;
+                      setPool((v) => ({
+                        ...v,
+                        questions: (v.questions || []).filter((x) => x?.id !== q.id),
+                      }));
+
                       setBusy(true);
                       clearMessages();
                       try {
                         await api.adminDeleteGlobalQuestion(q.id);
-                        await loadPool({
-                          kind: pool.kind,
-                          id: pool.id,
-                          title: pool.title,
-                          offset: pool.offset,
-                        });
-                        await loadDashboard();
                         setSuccess(STRINGS.ADMIN.toasts.questionDeleted);
                       } catch (err) {
+                        setPool((v) => ({ ...v, questions: prevPoolQuestions }));
                         setError(getApiErrorMessage(err));
                       } finally {
                         setBusy(false);
@@ -1299,26 +1299,20 @@ export default function AdminDashboard({
                     const ok = window.confirm(STRINGS.ADMIN.confirm.deleteGlobalQuestion);
                     if (!ok) return;
 
+                    const prevResults = picker.results;
+                    setPicker((v) => ({
+                      ...v,
+                      results: (v.results || []).filter((x) => x?.id !== r.id),
+                      selected: (v.selected || []).filter((id) => id !== r.id),
+                    }));
+
                     setBusy(true);
                     clearMessages();
                     try {
                       await api.adminDeleteGlobalQuestion(r.id);
-                      setPicker((v) => ({
-                        ...v,
-                        selected: (v.selected || []).filter((id) => id !== r.id),
-                      }));
-                      await loadDashboard();
-                      if (pool.open && pool.kind && pool.id) {
-                        await loadPool({
-                          kind: pool.kind,
-                          id: pool.id,
-                          title: pool.title,
-                          offset: pool.offset,
-                        });
-                      }
-                      await loadPicker({ q: picker.q, offset: picker.offset, keepSelected: true });
                       setSuccess(STRINGS.ADMIN.toasts.questionDeleted);
                     } catch (err) {
+                      setPicker((v) => ({ ...v, results: prevResults }));
                       setError(getApiErrorMessage(err));
                     } finally {
                       setBusy(false);
