@@ -2,7 +2,9 @@
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
 import { api } from '@/api';
-import PlaySessionStyle, { getStoryOptionTheme } from '@/Styles/ComponentStyles/PlaySessionStyle';
+import PlaySessionStyle, {
+  getStoryOptionTheme,
+} from '@/Styles/ComponentStyles/PlaySessionStyle';
 import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
 import { saveGuestStoryResult } from '@/utils/guestStoryProgress';
 
@@ -61,7 +63,9 @@ export default function PlaySession({
     setAnswerResult(null);
     setPendingChoiceId(null);
     setSpeedBonus(0);
-    setDisabledOptionIds(Array.isArray(q?.disabled_option_ids) ? q.disabled_option_ids : []);
+    setDisabledOptionIds(
+      Array.isArray(q?.disabled_option_ids) ? q.disabled_option_ids : []
+    );
     setAudiencePoll(q?.audience_poll || null);
     setPhoneSuggestionOptionId(q?.phone_suggestion_option_id || null);
     setPhoneMessage(q?.phone_message || '');
@@ -175,11 +179,13 @@ export default function PlaySession({
     return Math.min(6, total);
   }, [question?.total_questions]);
 
-  const storyDotActiveCount = useMemo(() => {
+  // ✅ single active dot, mapped to question index
+  const storyDotActiveIndex = useMemo(() => {
     const qNum = Math.max(1, Number(question?.question_number) || 1);
     const total = Math.max(1, Number(question?.total_questions) || 1);
     const dots = Math.max(1, storyDots);
-    return Math.max(1, Math.min(dots, Math.ceil((qNum / total) * dots)));
+    const idx = Math.round(((qNum - 1) / Math.max(1, total - 1)) * (dots - 1));
+    return Math.max(0, Math.min(dots - 1, idx));
   }, [question?.question_number, question?.total_questions, storyDots]);
 
   const accuracyPct = useMemo(() => {
@@ -189,7 +195,9 @@ export default function PlaySession({
 
   const storyEmoji = useMemo(() => {
     if (!answerResult) return '🤔';
-    return answerResult.is_correct ? ICONS.common.moodCorrect : ICONS.common.moodWrong;
+    return answerResult.is_correct
+      ? ICONS.common.moodCorrect
+      : ICONS.common.moodWrong;
   }, [answerResult]);
 
   const submit = async (chosenOptionId) => {
@@ -212,10 +220,16 @@ export default function PlaySession({
       setAnswerResult(result);
       setAnsweredCount((x) => x + 1);
       if (result.is_correct) setCorrectCount((x) => x + 1);
-      if (Number.isFinite(Number(result.score_total))) setScoreTotal(result.score_total);
-      if (Number.isFinite(Number(result.current_prize))) setScoreTotal(result.current_prize);
-      if (Number.isFinite(Number(result.speed_bonus))) setSpeedBonus(result.speed_bonus);
-      if (question.mode === 'blitz' && Number.isFinite(Number(result.time_remaining_sec))) {
+      if (Number.isFinite(Number(result.score_total)))
+        setScoreTotal(result.score_total);
+      if (Number.isFinite(Number(result.current_prize)))
+        setScoreTotal(result.current_prize);
+      if (Number.isFinite(Number(result.speed_bonus)))
+        setSpeedBonus(result.speed_bonus);
+      if (
+        question.mode === 'blitz' &&
+        Number.isFinite(Number(result.time_remaining_sec))
+      ) {
         setBlitzRemaining(Number(result.time_remaining_sec));
       } else if (question.mode !== 'blitz') {
         setBlitzRemaining(null);
@@ -298,9 +312,14 @@ export default function PlaySession({
         lifeline_type,
         session_question_id: question.session_question_id,
       });
-      setLifelinesUsed((prev) => Array.from(new Set([...(prev || []), lifeline_type])));
+      setLifelinesUsed((prev) =>
+        Array.from(new Set([...(prev || []), lifeline_type]))
+      );
 
-      if (res?.lifeline_type === 'fifty_fifty' && Array.isArray(res.disabled_option_ids)) {
+      if (
+        res?.lifeline_type === 'fifty_fifty' &&
+        Array.isArray(res.disabled_option_ids)
+      ) {
         setDisabledOptionIds(res.disabled_option_ids);
       } else if (res?.lifeline_type === 'audience' && res?.audience_poll) {
         setAudiencePoll(res.audience_poll);
@@ -308,7 +327,11 @@ export default function PlaySession({
         setPhoneSuggestionOptionId(res.suggestion_option_id || null);
         setPhoneMessage(res.message || '');
       } else if (res?.lifeline_type === 'skip' && res?.skipped) {
-        setAnswerResult({ is_correct: false, skipped: true, next_question_available: true });
+        setAnswerResult({
+          is_correct: false,
+          skipped: true,
+          next_question_available: true,
+        });
         window.setTimeout(() => loadCurrent(), 80);
       }
     } catch (err) {
@@ -322,7 +345,9 @@ export default function PlaySession({
   return (
     <div style={PlaySessionStyle.page}>
       <div
-        style={isStory ? PlaySessionStyle.containerStory : PlaySessionStyle.container}
+        style={
+          isStory ? PlaySessionStyle.containerStory : PlaySessionStyle.container
+        }
       >
         {!isStory ? (
           <div style={PlaySessionStyle.topRow}>
@@ -340,7 +365,9 @@ export default function PlaySession({
               <span style={PlaySessionStyle.pill}>
                 {ICONS.common.target} {title}
               </span>
-              {timeInfo && <span style={PlaySessionStyle.pill}>{timeInfo}</span>}
+              {timeInfo && (
+                <span style={PlaySessionStyle.pill}>{timeInfo}</span>
+              )}
               <span style={PlaySessionStyle.pill}>
                 {question?.mode === 'millionaire'
                   ? `${ICONS.common.money} ${STRINGS.PLAY_SESSION.header.prizeLabel}`
@@ -358,6 +385,7 @@ export default function PlaySession({
                   question.total_questions
                 )}
               </div>
+
               <div
                 style={PlaySessionStyle.storyDots}
                 aria-label={STRINGS.PLAY_SESSION.aria.progressDots}
@@ -365,11 +393,14 @@ export default function PlaySession({
                 {Array.from({ length: storyDots }).map((_, i) => (
                   <span
                     key={i}
-                    style={PlaySessionStyle.storyDotItem(i < storyDotActiveCount)}
+                    style={PlaySessionStyle.storyDotItem(
+                      i === storyDotActiveIndex
+                    )}
                   />
                 ))}
               </div>
             </div>
+
             <div
               style={PlaySessionStyle.storyTrack}
               aria-label={STRINGS.PLAY_SESSION.aria.progressBar}
@@ -387,7 +418,9 @@ export default function PlaySession({
 
         {finished && !question ? (
           <div className="tv-card" style={PlaySessionStyle.doneCard}>
-            <h2 style={PlaySessionStyle.doneTitle}>{STRINGS.PLAY_SESSION.done.title}</h2>
+            <h2 style={PlaySessionStyle.doneTitle}>
+              {STRINGS.PLAY_SESSION.done.title}
+            </h2>
             <p style={PlaySessionStyle.doneText}>
               {sessionMode === 'millionaire'
                 ? STRINGS.PLAY_SESSION.done.finalPrize(formatMoney(scoreTotal))
@@ -404,9 +437,12 @@ export default function PlaySession({
           </div>
         ) : !question ? (
           <div style={PlaySessionStyle.loading}>
-            {busy ? STRINGS.PLAY_SESSION.states.loading : STRINGS.PLAY_SESSION.states.noQuestion}
+            {busy
+              ? STRINGS.PLAY_SESSION.states.loading
+              : STRINGS.PLAY_SESSION.states.noQuestion}
           </div>
         ) : !isStory && question.mode === 'millionaire' ? (
+          /* ===== Millionaire mode: unchanged ===== */
           <div style={PlaySessionStyle.millionaireShell}>
             <div style={PlaySessionStyle.millionaireTopBar}>
               <button
@@ -416,7 +452,8 @@ export default function PlaySession({
                 onClick={walkAway}
                 disabled={busy}
               >
-                {STRINGS.COMMON.symbols.leftArrow} {STRINGS.PLAY_SESSION.millionaire.exit}
+                {STRINGS.COMMON.symbols.leftArrow}{' '}
+                {STRINGS.PLAY_SESSION.millionaire.exit}
               </button>
 
               <div style={PlaySessionStyle.millionairePrizePill}>
@@ -445,7 +482,10 @@ export default function PlaySession({
 
                   <div style={PlaySessionStyle.millionaireOptions}>
                     {(question.options || []).slice(0, 4).map((o) => {
-                      const disabled = busy || !!answerResult || disabledOptionIds.includes(o.id);
+                      const disabled =
+                        busy ||
+                        !!answerResult ||
+                        disabledOptionIds.includes(o.id);
                       const suggested = phoneSuggestionOptionId === o.id;
                       const selected = pendingChoiceId === o.id;
                       return (
@@ -463,14 +503,20 @@ export default function PlaySession({
                           <span style={PlaySessionStyle.millionaireOptionLabel}>
                             {o.label}
                           </span>
-                          <span style={PlaySessionStyle.millionaireOptionText}>{o.text}</span>
+                          <span style={PlaySessionStyle.millionaireOptionText}>
+                            {o.text}
+                          </span>
                         </button>
                       );
                     })}
                   </div>
 
                   {!!answerResult && (
-                    <div style={PlaySessionStyle.resultState(answerResult.is_correct)}>
+                    <div
+                      style={PlaySessionStyle.resultState(
+                        answerResult.is_correct
+                      )}
+                    >
                       {answerResult.is_correct
                         ? STRINGS.PLAY_SESSION.results.correct
                         : STRINGS.PLAY_SESSION.results.wrong}
@@ -487,10 +533,16 @@ export default function PlaySession({
                       type="button"
                       className="tv-card tv-card--hover"
                       style={PlaySessionStyle.millionaireLifelineBtn}
-                      disabled={busy || !!answerResult || lifelinesUsed.includes('fifty_fifty')}
+                      disabled={
+                        busy ||
+                        !!answerResult ||
+                        lifelinesUsed.includes('fifty_fifty')
+                      }
                       onClick={() => triggerLifeline('fifty_fifty')}
                     >
-                      <div style={PlaySessionStyle.millionaireLifelineIcon}>½</div>
+                      <div style={PlaySessionStyle.millionaireLifelineIcon}>
+                        ½
+                      </div>
                       <div style={PlaySessionStyle.millionaireLifelineText}>
                         {STRINGS.PLAY_SESSION.millionaire.lifelineFifty}
                       </div>
@@ -499,7 +551,11 @@ export default function PlaySession({
                       type="button"
                       className="tv-card tv-card--hover"
                       style={PlaySessionStyle.millionaireLifelineBtn}
-                      disabled={busy || !!answerResult || lifelinesUsed.includes('phone')}
+                      disabled={
+                        busy ||
+                        !!answerResult ||
+                        lifelinesUsed.includes('phone')
+                      }
                       onClick={() => triggerLifeline('phone')}
                     >
                       <div style={PlaySessionStyle.millionaireLifelineIcon}>
@@ -513,7 +569,11 @@ export default function PlaySession({
                       type="button"
                       className="tv-card tv-card--hover"
                       style={PlaySessionStyle.millionaireLifelineBtn}
-                      disabled={busy || !!answerResult || lifelinesUsed.includes('audience')}
+                      disabled={
+                        busy ||
+                        !!answerResult ||
+                        lifelinesUsed.includes('audience')
+                      }
                       onClick={() => triggerLifeline('audience')}
                     >
                       <div style={PlaySessionStyle.millionaireLifelineIcon}>
@@ -527,7 +587,8 @@ export default function PlaySession({
 
                   {audiencePoll ? (
                     <div style={PlaySessionStyle.millionaireHint}>
-                      {ICONS.common.people} {STRINGS.PLAY_SESSION.millionaire.audienceLabel}:{' '}
+                      {ICONS.common.people}{' '}
+                      {STRINGS.PLAY_SESSION.millionaire.audienceLabel}:{' '}
                       {(question.options || [])
                         .map((o) => ({
                           label: o.label,
@@ -547,13 +608,18 @@ export default function PlaySession({
                 </div>
                 <div style={PlaySessionStyle.millionaireLadderList}>
                   {prizeLadder.map((row) => {
-                    const active = Number(question.question_number) === row.index;
+                    const active =
+                      Number(question.question_number) === row.index;
                     return (
                       <div
                         key={row.index}
-                        style={PlaySessionStyle.millionaireLadderRowState(active)}
+                        style={PlaySessionStyle.millionaireLadderRowState(
+                          active
+                        )}
                       >
-                        <span style={PlaySessionStyle.millionaireLadderNum}>{row.index}</span>
+                        <span style={PlaySessionStyle.millionaireLadderNum}>
+                          {row.index}
+                        </span>
                         <span style={PlaySessionStyle.millionaireLadderValue}>
                           {formatMoney(row.value)}
                         </span>
@@ -565,6 +631,7 @@ export default function PlaySession({
             </div>
           </div>
         ) : !isStory ? (
+          /* ===== Default mode (non-story): unchanged ===== */
           <div className="tv-card" style={PlaySessionStyle.card}>
             <div style={PlaySessionStyle.qText}>{question.question_text}</div>
 
@@ -574,7 +641,11 @@ export default function PlaySession({
                   type="button"
                   className="tv-card tv-card--hover"
                   style={PlaySessionStyle.optionBtn}
-                  disabled={busy || !!answerResult || lifelinesUsed.includes('fifty_fifty')}
+                  disabled={
+                    busy ||
+                    !!answerResult ||
+                    lifelinesUsed.includes('fifty_fifty')
+                  }
                   onClick={() => triggerLifeline('fifty_fifty')}
                 >
                   {STRINGS.PLAY_SESSION.millionaire.lifelineFiftyShort}
@@ -583,7 +654,9 @@ export default function PlaySession({
                   type="button"
                   className="tv-card tv-card--hover"
                   style={PlaySessionStyle.optionBtn}
-                  disabled={busy || !!answerResult || lifelinesUsed.includes('phone')}
+                  disabled={
+                    busy || !!answerResult || lifelinesUsed.includes('phone')
+                  }
                   onClick={() => triggerLifeline('phone')}
                 >
                   {STRINGS.PLAY_SESSION.millionaire.lifelinePhone}
@@ -592,7 +665,9 @@ export default function PlaySession({
                   type="button"
                   className="tv-card tv-card--hover"
                   style={PlaySessionStyle.optionBtn}
-                  disabled={busy || !!answerResult || lifelinesUsed.includes('audience')}
+                  disabled={
+                    busy || !!answerResult || lifelinesUsed.includes('audience')
+                  }
                   onClick={() => triggerLifeline('audience')}
                 >
                   {STRINGS.PLAY_SESSION.millionaire.lifelineAudience}
@@ -630,7 +705,9 @@ export default function PlaySession({
                     key={o.id}
                     type="button"
                     className="tv-card tv-card--hover"
-                    style={PlaySessionStyle.optionBtnState(suggested || selected)}
+                    style={PlaySessionStyle.optionBtnState(
+                      suggested || selected
+                    )}
                     disabled={disabled || disabledOptionIds.includes(o.id)}
                     onClick={() => submit(o.id)}
                   >
@@ -642,7 +719,9 @@ export default function PlaySession({
             </div>
 
             {!!answerResult && (
-              <div style={PlaySessionStyle.resultState(answerResult.is_correct)}>
+              <div
+                style={PlaySessionStyle.resultState(answerResult.is_correct)}
+              >
                 {answerResult.skipped
                   ? STRINGS.PLAY_SESSION.results.skipped
                   : answerResult.is_correct
@@ -664,7 +743,9 @@ export default function PlaySession({
                   className="tv-card tv-card--hover"
                   style={PlaySessionStyle.primaryBtnMain}
                   disabled={busy}
-                  onClick={answerResult.next_question_available ? loadCurrent : finish}
+                  onClick={
+                    answerResult.next_question_available ? loadCurrent : finish
+                  }
                 >
                   {answerResult.next_question_available
                     ? STRINGS.PLAY_SESSION.results.next
@@ -685,6 +766,7 @@ export default function PlaySession({
             </div>
           </div>
         ) : (
+          /* ===== Story mode: UPDATED to match left screenshot ===== */
           <>
             <div className="tv-card" style={PlaySessionStyle.storyCard}>
               <div
@@ -693,13 +775,17 @@ export default function PlaySession({
               >
                 {storyEmoji}
               </div>
-              <div style={PlaySessionStyle.storyQuestion}>{question.question_text}</div>
+
+              <div style={PlaySessionStyle.storyQuestion}>
+                {question.question_text}
+              </div>
 
               <div style={PlaySessionStyle.storyOptions}>
                 {(question.options || []).slice(0, 4).map((o, idx) => {
                   const disabled = busy || !!answerResult;
                   const theme = getStoryOptionTheme(idx);
                   const selected = pendingChoiceId === o.id;
+
                   return (
                     <button
                       key={o.id}
@@ -712,8 +798,12 @@ export default function PlaySession({
                       <div
                         style={PlaySessionStyle.storyOptionInnerBg(theme.bg)}
                       >
-                        <div style={PlaySessionStyle.storyShape}>{theme.shape}</div>
-                        <div style={PlaySessionStyle.storyOptionText}>{o.text}</div>
+                        <div style={PlaySessionStyle.storyShape}>
+                          {theme.shape}
+                        </div>
+                        <div style={PlaySessionStyle.storyOptionText}>
+                          {o.text}
+                        </div>
                       </div>
                     </button>
                   );
@@ -722,7 +812,9 @@ export default function PlaySession({
 
               {!!answerResult && (
                 <div
-                  style={PlaySessionStyle.storyToastState(answerResult.is_correct)}
+                  style={PlaySessionStyle.storyToastState(
+                    answerResult.is_correct
+                  )}
                 >
                   {answerResult.is_correct
                     ? STRINGS.PLAY_SESSION.results.correctShort
@@ -733,13 +825,10 @@ export default function PlaySession({
 
             <div style={PlaySessionStyle.storyBottom}>
               <div style={PlaySessionStyle.storyBottomPill}>
-                {STRINGS.PLAY_SESSION.story.correctCount(correctCount)}
+                {correctCount} Correct! 🎉
               </div>
               <div style={PlaySessionStyle.storyBottomPill}>
-                {ICONS.common.bolt} {accuracyPct}%
-              </div>
-              <div style={PlaySessionStyle.storyBottomPill}>
-                {ICONS.common.trophy} {scoreTotal}
+                {ICONS.common.bolt} {accuracyPct}% 🔥
               </div>
             </div>
           </>
@@ -748,4 +837,3 @@ export default function PlaySession({
     </div>
   );
 }
-

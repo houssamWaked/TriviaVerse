@@ -5,14 +5,22 @@ import React from 'react';
 
 function useMediaQuery(query) {
   const getMatch = () => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+    if (
+      typeof window === 'undefined' ||
+      typeof window.matchMedia !== 'function'
+    )
+      return false;
     return window.matchMedia(query).matches;
   };
 
   const [matches, setMatches] = React.useState(getMatch);
 
   React.useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+    if (
+      typeof window === 'undefined' ||
+      typeof window.matchMedia !== 'function'
+    )
+      return undefined;
     const mql = window.matchMedia(query);
     const onChange = () => setMatches(mql.matches);
 
@@ -136,7 +144,9 @@ export default function Navbar({
             <button
               type="button"
               className="tv-btn-reset tv-nav-cta"
-              style={isMobile ? { ...styles.cta, ...styles.ctaMobile } : styles.cta}
+              style={
+                isMobile ? { ...styles.cta, ...styles.ctaMobile } : styles.cta
+              }
               onClick={onJoin}
             >
               {STRINGS.COMMON.joinNow} {ICONS.common.rocket}
@@ -160,10 +170,7 @@ export default function Navbar({
       </div>
 
       {isMobile && menuOpen && (
-        <div
-          id="tv-nav-mobile-menu"
-          style={styles.mobileMenu}
-        >
+        <div id="tv-nav-mobile-menu" style={styles.mobileMenu}>
           <div style={styles.mobileMenuInner}>
             <NavItem
               fullWidth
@@ -372,7 +379,12 @@ const styles = {
     cursor: 'pointer',
   },
   userIcon: { fontSize: 16 },
-  userName: { lineHeight: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  userName: {
+    lineHeight: 1,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
 
   logout: {
     padding: '10px 14px',

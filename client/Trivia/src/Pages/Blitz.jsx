@@ -34,18 +34,16 @@ export default function Blitz({
   const seconds = config?.time_limit_sec ?? 60;
 
   const diffMeta = useMemo(() => {
-    if (difficulty === 'easy') {
+    if (difficulty === 'easy')
       return {
         label: STRINGS.BLITZ.difficulty.easy,
         range: STRINGS.BLITZ.difficulty.range.easy,
       };
-    }
-    if (difficulty === 'medium') {
+    if (difficulty === 'medium')
       return {
         label: STRINGS.BLITZ.difficulty.medium,
         range: STRINGS.BLITZ.difficulty.range.medium,
       };
-    }
     return {
       label: STRINGS.BLITZ.difficulty.hard,
       range: STRINGS.BLITZ.difficulty.range.hard,
@@ -65,9 +63,31 @@ export default function Blitz({
     }
   };
 
+  const diffButtons = useMemo(
+    () => [
+      {
+        key: 'easy',
+        label: STRINGS.BLITZ.difficulty.easy,
+        range: STRINGS.BLITZ.difficulty.range.easy,
+      },
+      {
+        key: 'medium',
+        label: STRINGS.BLITZ.difficulty.medium,
+        range: STRINGS.BLITZ.difficulty.range.medium,
+      },
+      {
+        key: 'hard',
+        label: STRINGS.BLITZ.difficulty.hard,
+        range: STRINGS.BLITZ.difficulty.range.hard,
+      },
+    ],
+    []
+  );
+
   return (
     <div style={ModeStartStyle.page}>
       <div style={ModeStartStyle.container}>
+        {/* HERO */}
         <div style={ModeStartStyle.hero}>
           <div
             style={BlitzStyle.heroIcon}
@@ -76,67 +96,53 @@ export default function Blitz({
             {ICONS.common.bolt}
           </div>
           <h1 style={ModeStartStyle.title}>{STRINGS.BLITZ.title}</h1>
-          <p style={ModeStartStyle.subtitle}>{STRINGS.BLITZ.subtitle(seconds)}</p>
+          <p style={ModeStartStyle.subtitle}>
+            {STRINGS.BLITZ.subtitle(seconds)}
+          </p>
         </div>
 
-        <div className="tv-card" style={ModeStartStyle.card}>
-          <div style={BlitzStyle.center}>
-            {!!error && <div style={ModeStartStyle.error}>{error}</div>}
+        {/* STAGE */}
+        <div className="tv-card" style={BlitzStyle.stageCard}>
+          {!!error && <div style={BlitzStyle.errorInline}>{error}</div>}
 
-            <div
-              className="tv-card"
-              style={BlitzStyle.howToCard}
-            >
-              <h3 style={BlitzStyle.howToTitle}>
-                {STRINGS.BLITZ.howToPlayTitle}
-              </h3>
+          {/* TOP SETUP PANEL */}
+          <div className="tv-card" style={BlitzStyle.setupPanel}>
+            <div style={BlitzStyle.setupGrid}>
+              {/* HOW TO */}
+              <div style={BlitzStyle.howToCol}>
+                <div style={BlitzStyle.panelTitle}>
+                  {STRINGS.BLITZ.howToPlayTitle}
+                </div>
 
-              <div style={BlitzStyle.howToList}>
-                {[
-                  STRINGS.BLITZ.howToPlay.onClock(seconds),
-                  STRINGS.BLITZ.howToPlay.rapidFire,
-                  STRINGS.BLITZ.howToPlay.correctAdds,
-                  STRINGS.BLITZ.howToPlay.wrongNoPenalty,
-                  STRINGS.BLITZ.howToPlay.speedAccuracy,
-                ].map((t) => (
-                  <div key={t} style={BlitzStyle.howToRow}>
-                    <span style={BlitzStyle.howToBullet}>
-                      {ICONS.common.circle}
-                    </span>
-                    <span>{t}</span>
-                  </div>
-                ))}
+                <div style={BlitzStyle.howToList}>
+                  {[
+                    STRINGS.BLITZ.howToPlay.onClock(seconds),
+                    STRINGS.BLITZ.howToPlay.rapidFire,
+                    STRINGS.BLITZ.howToPlay.correctAdds,
+                    STRINGS.BLITZ.howToPlay.wrongNoPenalty,
+                    STRINGS.BLITZ.howToPlay.speedAccuracy,
+                  ].map((t) => (
+                    <div key={t} style={BlitzStyle.howToRow}>
+                      <span style={BlitzStyle.bulletDot} />
+                      <span style={BlitzStyle.howToText}>{t}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div style={BlitzStyle.difficultyBlock}>
-                <div style={BlitzStyle.difficultyTitle}>
+              {/* DIFFICULTY */}
+              <div style={BlitzStyle.diffCol}>
+                <div style={BlitzStyle.panelTitle}>
                   {STRINGS.BLITZ.difficultyTitle}
                 </div>
-                <div
-                  style={BlitzStyle.difficultyRow}
-                >
-                  {[
-                    {
-                      key: 'easy',
-                      label: STRINGS.BLITZ.difficulty.easy,
-                      range: STRINGS.BLITZ.difficulty.range.easy,
-                    },
-                    {
-                      key: 'medium',
-                      label: STRINGS.BLITZ.difficulty.medium,
-                      range: STRINGS.BLITZ.difficulty.range.medium,
-                    },
-                    {
-                      key: 'hard',
-                      label: STRINGS.BLITZ.difficulty.hard,
-                      range: STRINGS.BLITZ.difficulty.range.hard,
-                    },
-                  ].map((d) => (
+
+                <div style={BlitzStyle.diffPillsRow}>
+                  {diffButtons.map((d) => (
                     <button
                       key={d.key}
                       type="button"
                       className="tv-card tv-card--hover"
-                      style={BlitzStyle.difficultyBtn(difficulty === d.key)}
+                      style={BlitzStyle.diffPill(difficulty === d.key)}
                       onClick={() => setDifficulty(d.key)}
                       disabled={busy}
                     >
@@ -145,75 +151,80 @@ export default function Blitz({
                   ))}
                 </div>
 
-                <div style={BlitzStyle.difficultySelected}>
-                  {STRINGS.BLITZ.difficulty.selected(diffMeta.label, diffMeta.range)}
+                <div style={BlitzStyle.diffHint}>
+                  {STRINGS.BLITZ.difficulty.selected(
+                    diffMeta.label,
+                    diffMeta.range
+                  )}
                 </div>
               </div>
             </div>
+          </div>
 
-            <div
-              style={BlitzStyle.statsGrid}
-            >
-              {[
-                {
-                  title: STRINGS.BLITZ.formatSeconds(seconds),
-                  sub: STRINGS.BLITZ.stats.timeLimit,
-                  icon: ICONS.common.timer,
-                },
-                {
-                  title: STRINGS.BLITZ.stats.fast,
-                  sub: STRINGS.BLITZ.stats.paced,
-                  icon: ICONS.common.bolt,
-                },
-                {
-                  title: STRINGS.BLITZ.stats.questionsCount,
-                  sub: STRINGS.BLITZ.stats.questions,
-                  icon: ICONS.common.check,
-                },
-              ].map((s) => (
-                <div key={s.sub} className="tv-card" style={BlitzStyle.statCard}>
-                  <div style={BlitzStyle.statIcon}>{s.icon}</div>
-                  <div style={BlitzStyle.statValue}>{s.title}</div>
-                  <div style={BlitzStyle.statLabel}>{s.sub}</div>
-                </div>
-              ))}
-            </div>
+          {/* FEATURE CARDS */}
+          <div style={BlitzStyle.featureGrid}>
+            {[
+              {
+                icon: ICONS.common.timer,
+                title: STRINGS.BLITZ.formatSeconds(seconds),
+                sub: STRINGS.BLITZ.stats.timeLimit,
+              },
+              {
+                icon: ICONS.common.bolt,
+                title: STRINGS.BLITZ.stats.fast,
+                sub: STRINGS.BLITZ.stats.paced,
+              },
+              {
+                icon: ICONS.common.check,
+                title: STRINGS.BLITZ.stats.questionsCount,
+                sub: STRINGS.BLITZ.stats.questions,
+              },
+            ].map((s) => (
+              <div
+                key={s.sub}
+                className="tv-card"
+                style={BlitzStyle.featureCard}
+              >
+                <div style={BlitzStyle.featureIcon}>{s.icon}</div>
+                <div style={BlitzStyle.featureValue}>{s.title}</div>
+                <div style={BlitzStyle.featureLabel}>{s.sub}</div>
+              </div>
+            ))}
+          </div>
 
-            <div
-              style={BlitzStyle.actions}
+          {/* CTA ROW */}
+          <div style={BlitzStyle.ctaRow}>
+            <button
+              type="button"
+              className="tv-card tv-card--hover"
+              style={BlitzStyle.startBtn}
+              onClick={start}
+              disabled={busy}
             >
+              {ICONS.common.bolt} {STRINGS.BLITZ.buttons.start}
+            </button>
+
+            <button
+              type="button"
+              className="tv-card tv-card--hover"
+              style={BlitzStyle.secondaryBtn}
+              onClick={onNavigateHome}
+              disabled={busy}
+            >
+              {STRINGS.COMMON.backHome}
+            </button>
+
+            {!user ? (
               <button
                 type="button"
                 className="tv-card tv-card--hover"
-                style={BlitzStyle.startBtn}
-                onClick={start}
+                style={BlitzStyle.ghostBtn}
+                onClick={() => onRequireAuth?.('blitz')}
                 disabled={busy}
               >
-                {ICONS.common.bolt} {STRINGS.BLITZ.buttons.start}
+                Login to save progress
               </button>
-
-              <button
-                type="button"
-                className="tv-card tv-card--hover"
-                style={BlitzStyle.homeBtn}
-                onClick={onNavigateHome}
-                disabled={busy}
-              >
-                {STRINGS.COMMON.backHome}
-              </button>
-
-              {!user ? (
-                <button
-                  type="button"
-                  className="tv-card tv-card--hover"
-                  style={BlitzStyle.loginBtn}
-                  onClick={() => onRequireAuth?.('blitz')}
-                  disabled={busy}
-                >
-                  Login to save progress
-                </button>
-              ) : null}
-            </div>
+            ) : null}
           </div>
         </div>
       </div>

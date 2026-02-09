@@ -1,103 +1,151 @@
 import colors from '../../constants/colors';
-import ModeStartStyle from './ModeStartStyle';
 
 const MillionaireStyle = {
   crown: {
-    width: 74,
-    height: 74,
+    width: 82,
+    height: 82,
     borderRadius: 999,
     background: colors.accent.yellow,
     margin: '0 auto 14px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 18px 44px rgba(216, 46, 46, 0.18)',
+    boxShadow: '0 22px 60px rgba(0,0,0,0.22)',
     color: colors.neutral.white,
-    fontSize: 34,
+    fontSize: 36,
     fontWeight: 950,
   },
 
-  cardTopRow: { ...ModeStartStyle.row, justifyContent: 'space-between' },
+  stageCard: {
+    background: colors.neutral.white,
+    borderRadius: 28,
+    padding: 22,
+    boxShadow: '0 26px 70px rgba(0,0,0,0.22)',
+    maxWidth: 960,
+    margin: '0 auto',
+  },
 
-  rulesCard: {
-    ...ModeStartStyle.section,
-    maxWidth: 720,
-    margin: '18px auto 0',
-    background:
-      'linear-gradient(180deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.14) 100%)',
-    border: '1px solid rgba(255,255,255,0.32)',
-    boxShadow: '0 18px 44px rgba(0,0,0,0.14)',
-    backdropFilter: 'blur(10px)',
+  error: {
+    marginBottom: 14,
+    padding: '10px 12px',
+    borderRadius: 16,
+    border: `1px solid ${colors.secondary[100]}`,
+    background: colors.secondary[50],
+    color: colors.secondary[700],
+    fontSize: 13,
+    fontWeight: 900,
   },
-  rulesTitle: {
-    ...ModeStartStyle.sectionTitle,
-    textAlign: 'center',
-    color: colors.neutral.white,
+
+  stageGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1.4fr 1fr',
+    gap: 22,
+    alignItems: 'start',
   },
+
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: 950,
+    color: colors.neutral[900],
+    marginBottom: 10,
+  },
+
   rulesList: {
-    marginTop: 14,
     display: 'flex',
     flexDirection: 'column',
     gap: 10,
   },
+
   ruleRow: {
     display: 'flex',
     gap: 10,
     alignItems: 'flex-start',
-    fontSize: 14,
-    fontWeight: 900,
-    color: 'rgba(255,255,255,0.94)',
+    fontSize: 13,
+    fontWeight: 850,
+    color: colors.neutral[700],
     lineHeight: 1.55,
-    textShadow: '0 10px 26px rgba(0,0,0,0.14)',
   },
-  ruleTick: { color: colors.accent.green, fontWeight: 950 },
 
-  ladderToggleWrap: { marginTop: 16 },
-  ladderToggleBtn: {
-    ...ModeStartStyle.btn,
-    background: 'rgba(255,255,255,0.10)',
-    border: '1px solid rgba(255,255,255,0.22)',
-    color: colors.neutral.white,
+  ruleDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    background: colors.accent.yellow,
+    marginTop: 4,
+    boxShadow: '0 6px 16px rgba(0,0,0,0.22)',
   },
-  ladderLabel: { ...ModeStartStyle.label, color: 'rgba(255,255,255,0.92)' },
-  ladderSelect: {
-    ...ModeStartStyle.select,
-    background: 'rgba(255,255,255,0.92)',
-    color: colors.neutral[900],
-    border: '1px solid rgba(255,255,255,0.32)',
+
+  toggleBtn: {
+    height: 42,
+    padding: '0 14px',
+    borderRadius: 999,
+    border: `1px solid ${colors.neutral[200]}`,
+    background: colors.neutral.white,
+    fontSize: 13,
+    fontWeight: 900,
+    cursor: 'pointer',
+    boxShadow: '0 12px 26px rgba(0,0,0,0.10)',
   },
+
+  ladderBox: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 16,
+    border: `1px solid ${colors.neutral[200]}`,
+    background: colors.neutral[50],
+  },
+
+  select: {
+    width: '100%',
+    height: 42,
+    borderRadius: 14,
+    border: `1px solid ${colors.neutral[300]}`,
+    padding: '0 12px',
+    fontSize: 13,
+    fontWeight: 900,
+    outline: 'none',
+  },
+
   ladderCurrent: {
     marginTop: 8,
     fontSize: 12,
     fontWeight: 850,
-    color: 'rgba(255,255,255,0.82)',
+    color: colors.neutral[600],
   },
 
   actions: {
-    marginTop: 18,
+    marginTop: 20,
     display: 'flex',
     justifyContent: 'center',
     gap: 12,
     flexWrap: 'wrap',
   },
+
   startBtn: {
-    ...ModeStartStyle.btn,
     height: 54,
-    minWidth: 180,
+    minWidth: 200,
+    borderRadius: 16,
     border: 'none',
     background: colors.accent.yellow,
     color: colors.neutral.white,
-    boxShadow: '0 18px 44px rgba(0,0,0,0.18)',
+    fontSize: 14,
+    fontWeight: 950,
+    cursor: 'pointer',
+    boxShadow: '0 22px 60px rgba(245,158,11,0.38)',
   },
+
   secondaryBtn: {
-    ...ModeStartStyle.btn,
     height: 54,
-    minWidth: 180,
-    background: 'rgba(255,255,255,0.14)',
-    border: '1px solid rgba(255,255,255,0.22)',
-    color: colors.neutral.white,
+    minWidth: 200,
+    borderRadius: 16,
+    border: `1px solid ${colors.neutral[200]}`,
+    background: colors.neutral.white,
+    color: colors.neutral[900],
+    fontSize: 14,
+    fontWeight: 950,
+    cursor: 'pointer',
+    boxShadow: '0 12px 26px rgba(0,0,0,0.10)',
   },
 };
 
 export default MillionaireStyle;
-

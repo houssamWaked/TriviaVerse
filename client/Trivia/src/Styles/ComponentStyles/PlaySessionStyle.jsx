@@ -30,6 +30,7 @@ const PlaySessionStyle = {
     justifyContent: 'center',
     padding: '36px 18px 74px',
   },
+
   container: {
     width: '100%',
     maxWidth: 980,
@@ -37,6 +38,7 @@ const PlaySessionStyle = {
     flexDirection: 'column',
     gap: 16,
   },
+
   containerStory: {
     width: '100%',
     maxWidth: 1100,
@@ -53,6 +55,7 @@ const PlaySessionStyle = {
     gap: 10,
     flexWrap: 'wrap',
   },
+
   pills: {
     display: 'flex',
     gap: 8,
@@ -60,6 +63,7 @@ const PlaySessionStyle = {
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
+
   pill: {
     padding: '8px 12px',
     borderRadius: 999,
@@ -71,6 +75,7 @@ const PlaySessionStyle = {
     boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18)',
     backdropFilter: 'blur(10px)',
   },
+
   pillsCentered: {
     display: 'flex',
     gap: 8,
@@ -86,6 +91,7 @@ const PlaySessionStyle = {
     padding: 20,
     boxShadow: '0 22px 60px rgba(0,0,0,0.18)',
   },
+
   qText: {
     fontSize: 18,
     fontWeight: 950,
@@ -93,12 +99,14 @@ const PlaySessionStyle = {
     letterSpacing: -0.4,
     lineHeight: 1.35,
   },
+
   options: {
     marginTop: 16,
     display: 'grid',
     gridTemplateColumns: 'repeat(1, minmax(0, 1fr))',
     gap: 12,
   },
+
   optionBtn: {
     width: '100%',
     textAlign: 'left',
@@ -112,16 +120,20 @@ const PlaySessionStyle = {
     gap: 12,
     alignItems: 'center',
   },
+
   optionBtnActive: {
     border: `1px solid ${colors.primary[200]}`,
     background: colors.primary[50],
   },
+
   optionBtnState: (active) => ({
     width: '100%',
     textAlign: 'left',
     padding: 14,
     borderRadius: 20,
-    border: active ? `1px solid ${colors.primary[200]}` : `1px solid ${colors.neutral[200]}`,
+    border: active
+      ? `1px solid ${colors.primary[200]}`
+      : `1px solid ${colors.neutral[200]}`,
     background: active ? colors.primary[50] : colors.neutral.white,
     cursor: 'pointer',
     boxShadow: '0 14px 30px rgba(0,0,0,0.10)',
@@ -129,6 +141,7 @@ const PlaySessionStyle = {
     gap: 12,
     alignItems: 'center',
   }),
+
   optionLabel: {
     width: 34,
     height: 34,
@@ -143,6 +156,7 @@ const PlaySessionStyle = {
     color: colors.neutral[800],
     flex: '0 0 auto',
   },
+
   optionText: {
     fontSize: 14,
     fontWeight: 850,
@@ -156,6 +170,7 @@ const PlaySessionStyle = {
     gap: 10,
     flexWrap: 'wrap',
   },
+
   primaryBtn: {
     height: 46,
     padding: '0 18px',
@@ -167,6 +182,7 @@ const PlaySessionStyle = {
     fontWeight: 950,
     boxShadow: '0 18px 34px rgba(139,44,255,0.28)',
   },
+
   primaryBtnMain: {
     height: 46,
     padding: '0 18px',
@@ -179,6 +195,7 @@ const PlaySessionStyle = {
     boxShadow: '0 18px 34px rgba(139,44,255,0.28)',
     background: colors.gradients.main,
   },
+
   secondaryBtn: {
     height: 46,
     padding: '0 16px',
@@ -190,6 +207,7 @@ const PlaySessionStyle = {
     color: colors.neutral[900],
     boxShadow: '0 12px 26px rgba(0,0,0,0.10)',
   },
+
   secondaryBtnWhite: {
     height: 46,
     padding: '0 16px',
@@ -210,16 +228,19 @@ const PlaySessionStyle = {
     fontSize: 13,
     fontWeight: 950,
   },
+
   resultOk: {
     background: 'rgba(34,197,94,0.12)',
     border: '1px solid rgba(34,197,94,0.35)',
     color: colors.accent.green,
   },
+
   resultBad: {
     background: 'rgba(239,68,68,0.12)',
     border: '1px solid rgba(239,68,68,0.35)',
     color: colors.accent.red,
   },
+
   resultState: (isCorrect) => ({
     marginTop: 14,
     padding: '10px 12px',
@@ -238,6 +259,7 @@ const PlaySessionStyle = {
           color: colors.accent.red,
         }),
   }),
+
   bonus: {
     marginLeft: 10,
     padding: '4px 8px',
@@ -259,6 +281,7 @@ const PlaySessionStyle = {
     fontWeight: 850,
     boxShadow: '0 18px 50px rgba(0,0,0,0.16)',
   },
+
   loading: {
     textAlign: 'center',
     color: colors.neutral.white,
@@ -278,6 +301,7 @@ const PlaySessionStyle = {
     fontWeight: 900,
     color: colors.primary[800],
   },
+
   phoneHintCard: {
     marginTop: 12,
     padding: 12,
@@ -301,6 +325,7 @@ const PlaySessionStyle = {
     flexDirection: 'column',
     gap: 12,
   },
+
   lockTitle: {
     margin: 0,
     fontSize: 24,
@@ -308,6 +333,7 @@ const PlaySessionStyle = {
     color: colors.neutral[900],
     letterSpacing: -0.5,
   },
+
   lockText: {
     margin: 0,
     fontSize: 14,
@@ -323,6 +349,7 @@ const PlaySessionStyle = {
     boxShadow: '0 22px 60px rgba(0,0,0,0.18)',
     textAlign: 'center',
   },
+
   doneTitle: {
     margin: 0,
     fontSize: 26,
@@ -330,6 +357,7 @@ const PlaySessionStyle = {
     color: colors.neutral[900],
     letterSpacing: -0.6,
   },
+
   doneText: {
     margin: '10px 0 18px',
     fontSize: 14,
@@ -337,7 +365,7 @@ const PlaySessionStyle = {
     color: colors.neutral[700],
   },
 
-  /* ================= Millionaire variant ================= */
+  /* ================= Millionaire variant (UNCHANGED) ================= */
   millionaireShell: {
     width: '100%',
     maxWidth: 1180,
@@ -363,7 +391,8 @@ const PlaySessionStyle = {
     fontSize: 14,
     fontWeight: 950,
     color: colors.neutral.white,
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18), 0 18px 40px rgba(0,0,0,0.14)',
+    boxShadow:
+      'inset 0 1px 0 rgba(255,255,255,0.18), 0 18px 40px rgba(0,0,0,0.14)',
     backdropFilter: 'blur(10px)',
   },
   millionairePrizePill: {
@@ -374,7 +403,8 @@ const PlaySessionStyle = {
     color: colors.neutral.white,
     fontSize: 14,
     fontWeight: 950,
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18), 0 18px 40px rgba(0,0,0,0.14)',
+    boxShadow:
+      'inset 0 1px 0 rgba(255,255,255,0.18), 0 18px 40px rgba(0,0,0,0.14)',
     backdropFilter: 'blur(10px)',
     whiteSpace: 'nowrap',
   },
@@ -395,7 +425,8 @@ const PlaySessionStyle = {
     borderRadius: 26,
     padding: '22px 22px 18px',
     border: '1px solid rgba(255,255,255,0.22)',
-    background: 'linear-gradient(180deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.16) 100%)',
+    background:
+      'linear-gradient(180deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.16) 100%)',
     boxShadow: '0 26px 70px rgba(0,0,0,0.22)',
     backdropFilter: 'blur(10px)',
     color: colors.neutral.white,
@@ -420,21 +451,6 @@ const PlaySessionStyle = {
     display: 'grid',
     gridTemplateColumns: 'repeat(1, minmax(0, 1fr))',
     gap: 12,
-  },
-  millionaireOptionBtn: {
-    width: '100%',
-    textAlign: 'left',
-    padding: 16,
-    borderRadius: 20,
-    border: '1px solid rgba(255,255,255,0.30)',
-    background: 'rgba(255,255,255,0.18)',
-    cursor: 'pointer',
-    boxShadow: '0 18px 44px rgba(0,0,0,0.16)',
-    display: 'flex',
-    gap: 12,
-    alignItems: 'center',
-    color: colors.neutral.white,
-    backdropFilter: 'blur(10px)',
   },
   millionaireOptionBtnState: (suggested, disabled) => ({
     width: '100%',
@@ -474,14 +490,6 @@ const PlaySessionStyle = {
     color: colors.neutral.white,
     lineHeight: 1.3,
   },
-  millionaireOptionSuggested: {
-    border: '1px solid rgba(255,204,0,0.78)',
-    background: 'rgba(255,204,0,0.20)',
-  },
-  millionaireOptionDisabled: {
-    opacity: 0.45,
-    cursor: 'not-allowed',
-  },
   millionaireHint: {
     marginTop: 12,
     padding: '10px 12px',
@@ -496,7 +504,8 @@ const PlaySessionStyle = {
     borderRadius: 26,
     padding: 18,
     border: '1px solid rgba(255,255,255,0.22)',
-    background: 'linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.14) 100%)',
+    background:
+      'linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.14) 100%)',
     boxShadow: '0 26px 70px rgba(0,0,0,0.18)',
     backdropFilter: 'blur(10px)',
     color: colors.neutral.white,
@@ -536,7 +545,8 @@ const PlaySessionStyle = {
     borderRadius: 26,
     padding: 18,
     border: '1px solid rgba(255,255,255,0.22)',
-    background: 'linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.14) 100%)',
+    background:
+      'linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.14) 100%)',
     boxShadow: '0 26px 70px rgba(0,0,0,0.18)',
     backdropFilter: 'blur(10px)',
     color: colors.neutral.white,
@@ -553,25 +563,12 @@ const PlaySessionStyle = {
     flexDirection: 'column',
     gap: 10,
   },
-  millionaireLadderRow: {
-    padding: '10px 12px',
-    borderRadius: 18,
-    border: '1px solid rgba(255,255,255,0.22)',
-    background: 'rgba(255,255,255,0.14)',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 10,
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14)',
-  },
-  millionaireLadderRowActive: {
-    border: '1px solid rgba(255,204,0,0.55)',
-    background: 'rgba(255,204,0,0.20)',
-  },
   millionaireLadderRowState: (active) => ({
     padding: '10px 12px',
     borderRadius: 18,
-    border: active ? '1px solid rgba(255,204,0,0.55)' : '1px solid rgba(255,255,255,0.22)',
+    border: active
+      ? '1px solid rgba(255,204,0,0.55)'
+      : '1px solid rgba(255,255,255,0.22)',
     background: active ? 'rgba(255,204,0,0.20)' : 'rgba(255,255,255,0.14)',
     display: 'flex',
     justifyContent: 'space-between',
@@ -589,88 +586,72 @@ const PlaySessionStyle = {
     fontWeight: 950,
   },
 
-  /* ================= Story variant ================= */
-  storyShell: {
-    width: '100%',
-    maxWidth: 1100,
-    margin: '0 auto',
-  },
+  /* ================= Story variant (UPDATED) ================= */
   storyTop: {
     width: '100%',
-    maxWidth: 900,
+    maxWidth: 980,
     margin: '0 auto 14px',
     color: colors.neutral.white,
   },
+
   storyTopRow: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
   },
+
   storyCount: {
     fontSize: 14,
     fontWeight: 950,
+    opacity: 0.95,
     textShadow: '0 10px 26px rgba(0,0,0,0.16)',
   },
+
   storyDots: {
     display: 'inline-flex',
     gap: 6,
     alignItems: 'center',
   },
-  storyDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    background: 'rgba(255,255,255,0.35)',
-    border: '1px solid rgba(255,255,255,0.40)',
-  },
-  storyDotActive: {
-    background: colors.neutral.white,
-    border: '1px solid rgba(255,255,255,0.70)',
-  },
+
+  // ✅ single active dot (green), others white
   storyDotItem: (active) => ({
     width: 10,
     height: 10,
     borderRadius: 999,
-    background: active ? colors.neutral.white : 'rgba(255,255,255,0.35)',
-    border: active
-      ? '1px solid rgba(255,255,255,0.70)'
-      : '1px solid rgba(255,255,255,0.40)',
+    background: active ? colors.accent.green : 'rgba(255,255,255,0.55)',
+    border: active ? 'none' : '1px solid rgba(255,255,255,0.55)',
+    boxShadow: active ? '0 10px 18px rgba(34,197,94,0.28)' : 'none',
   }),
+
   storyTrack: {
     marginTop: 10,
     height: 14,
     borderRadius: 999,
-    background: 'rgba(255,255,255,0.26)',
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18)',
+    background: 'rgba(255,255,255,0.35)',
     overflow: 'hidden',
   },
-  storyFill: {
-    height: '100%',
-    borderRadius: 999,
-    background: colors.accent.green,
-    boxShadow: '0 10px 22px rgba(34,197,94,0.28)',
-    transition: 'width 220ms ease',
-  },
+
   storyFillWidth: (pct) => ({
     height: '100%',
+    width: `${pct}%`,
     borderRadius: 999,
     background: colors.accent.green,
     boxShadow: '0 10px 22px rgba(34,197,94,0.28)',
     transition: 'width 220ms ease',
-    width: `${pct}%`,
   }),
 
   storyCard: {
     width: '100%',
-    maxWidth: 900,
+    maxWidth: 980,
     margin: '0 auto',
     background: colors.neutral.white,
-    borderRadius: 26,
-    padding: '28px 22px',
+    borderRadius: 28,
+    padding: '28px 24px',
     boxShadow: '0 26px 70px rgba(0,0,0,0.22)',
     textAlign: 'center',
   },
+
   storyEmoji: {
     width: 58,
     height: 58,
@@ -683,72 +664,59 @@ const PlaySessionStyle = {
     justifyContent: 'center',
     fontSize: 30,
   },
+
   storyQuestion: {
     margin: '6px auto 0',
-    maxWidth: 760,
-    fontSize: 'clamp(22px, 4.6vw, 34px)',
+    maxWidth: 820,
+    fontSize: 'clamp(22px, 4.6vw, 36px)',
     fontWeight: 950,
     color: colors.neutral[900],
     letterSpacing: -0.8,
     lineHeight: 1.15,
   },
+
+  // ✅ 2x2 grid like the left screenshot
   storyOptions: {
     marginTop: 22,
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))',
-    gap: 14,
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: 18,
   },
-  storyOptionBtn: {
-    width: '100%',
-    padding: 0,
-    borderRadius: 20,
-    border: 'none',
-    cursor: 'pointer',
-    boxShadow: '0 18px 44px rgba(0,0,0,0.16)',
-    overflow: 'hidden',
-    textAlign: 'left',
-  },
+
   storyOptionBtnState: (selected) => ({
     width: '100%',
     padding: 0,
-    borderRadius: 20,
+    borderRadius: 24,
     border: 'none',
     cursor: 'pointer',
     boxShadow: selected
-      ? '0 0 0 2px rgba(255,255,255,0.95), 0 18px 44px rgba(0,0,0,0.16)'
-      : '0 18px 44px rgba(0,0,0,0.16)',
+      ? '0 0 0 2px rgba(255,255,255,0.95), 0 22px 60px rgba(0,0,0,0.20)'
+      : '0 22px 60px rgba(0,0,0,0.18)',
     overflow: 'hidden',
     textAlign: 'left',
     transform: selected ? 'translateY(-1px)' : 'none',
   }),
-  storyOptionInner: {
-    minHeight: 96,
-    padding: 18,
-    borderRadius: 20,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
+
   storyOptionInnerBg: (bg) => ({
-    minHeight: 96,
-    padding: 18,
-    borderRadius: 20,
+    minHeight: 108,
+    padding: 20,
+    borderRadius: 24,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
     background: bg,
   }),
+
   storyShape: {
     position: 'absolute',
-    top: 12,
-    left: 12,
-    width: 34,
-    height: 34,
+    top: 14,
+    left: 14,
+    width: 36,
+    height: 36,
     borderRadius: 12,
-    background: 'rgba(255,255,255,0.20)',
-    border: '1px solid rgba(255,255,255,0.30)',
+    background: 'rgba(255,255,255,0.22)',
+    border: '1px solid rgba(255,255,255,0.34)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -756,24 +724,16 @@ const PlaySessionStyle = {
     fontSize: 16,
     fontWeight: 950,
   },
+
   storyOptionText: {
     fontSize: 18,
     fontWeight: 950,
     color: colors.neutral.white,
     textAlign: 'center',
     letterSpacing: -0.2,
+    lineHeight: 1.2,
   },
 
-  storyToast: {
-    marginTop: 14,
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 10,
-    padding: '10px 14px',
-    borderRadius: 999,
-    fontSize: 13,
-    fontWeight: 950,
-  },
   storyToastState: (isCorrect) => ({
     marginTop: 14,
     display: 'inline-flex',
@@ -803,6 +763,8 @@ const PlaySessionStyle = {
     gap: 14,
     flexWrap: 'wrap',
   },
+
+  // ✅ only 2 pills (Correct + Accuracy), like left
   storyBottomPill: {
     padding: '12px 16px',
     borderRadius: 999,
@@ -811,7 +773,7 @@ const PlaySessionStyle = {
     color: colors.neutral.white,
     fontSize: 13,
     fontWeight: 950,
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18), 0 18px 40px rgba(0,0,0,0.14)',
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18)',
     backdropFilter: 'blur(10px)',
   },
 };
