@@ -390,6 +390,8 @@ export class SessionStartService {
       started_at: session.started_at,
       score_total: session.score_total ?? 0,
       wrong_count: 0,
+      strike_count: 0,
+      question_started_at: new Date().toISOString(),
       status: session.status,
       current_index: 0,
       questions: cachedQuestions,
@@ -484,6 +486,8 @@ export class SessionStartService {
       started_at: started_at || new Date().toISOString(),
       score_total: 0,
       wrong_count: 0,
+      strike_count: 0,
+      question_started_at: new Date().toISOString(),
       status: 'in_progress',
       current_index: 0,
       questions: cachedQuestions,
@@ -674,6 +678,11 @@ export class SessionStartService {
     }
     let sessionId = null;
     let status = 'in_progress';
+    const perQuestionTimeLimitSec = 15;
+    const adjustedQuestions = questions.map((q) => ({
+      ...q,
+      time_limit_sec: perQuestionTimeLimitSec,
+    }));
 
     if (userId) {
       const session = await this.gameSessionRepository.create({
@@ -681,14 +690,14 @@ export class SessionStartService {
         mode: 'blitz',
         category_id: category_id ?? null,
         difficulty: difficulty ?? null,
-        total_questions: questions.length,
+        total_questions: adjustedQuestions.length,
         status: 'in_progress',
       });
       if (!session) throw new AppError('Failed to create session', 500, 'DB_ERROR');
       sessionId = session.id;
       status = session.status;
 
-      await this.snapshotSessionQuestions(session.id, questions);
+      await this.snapshotSessionQuestions(session.id, adjustedQuestions);
 
       // Prime in-memory cache so gameplay can run "flash fast" without DB reads per answer.
       try {
@@ -698,13 +707,14 @@ export class SessionStartService {
       }
     } else {
       sessionId = randomUUID();
-      await this.primeGuestSessionCache(sessionId, 'blitz', questions);
+      await this.primeGuestSessionCache(sessionId, 'blitz', adjustedQuestions);
     }
 
     return {
       session_id: sessionId,
       mode: 'blitz',
-      time_limit_sec: 60,
+      time_limit_sec: perQuestionTimeLimitSec,
+      strikes: 3,
       status,
     };
   }

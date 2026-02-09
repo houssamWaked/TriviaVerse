@@ -31,7 +31,7 @@ export default function Blitz({
     };
   }, []);
 
-  const seconds = config?.time_limit_sec ?? 60;
+  const seconds = config?.time_limit_sec ?? 15;
 
   const diffMeta = useMemo(() => {
     if (difficulty === 'easy')

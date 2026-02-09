@@ -135,7 +135,13 @@ export default function PlaySession({
     if (Number(blitzRemaining) > 0) return;
 
     timeUpRef.current = true;
-    finish(sessionMode === 'story' ? 'abandoned' : 'completed');
+    if (sessionMode === 'blitz') {
+      const first = question?.options?.[0]?.id || null;
+      if (first) submit(first);
+      else finish('completed');
+      return;
+    }
+    finish('abandoned');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionMode, blitzRemaining, finished]);
 
@@ -151,7 +157,11 @@ export default function PlaySession({
   const timeInfo = useMemo(() => {
     if (!question) return null;
     if ((question.mode === 'blitz' || question.mode === 'story') && Number.isFinite(blitzRemaining)) {
-      return STRINGS.PLAY_SESSION.header.timeLeft(blitzRemaining);
+      const base = STRINGS.PLAY_SESSION.header.timeLeft(blitzRemaining);
+      if (question.mode === 'blitz' && Number.isFinite(Number(question?.strikes_remaining))) {
+        return `${base} • ${Number(question.strikes_remaining)} strikes left`;
+      }
+      return base;
     }
     if (Number.isFinite(Number(question.time_limit_sec))) {
       return STRINGS.PLAY_SESSION.header.timeLimit(question.time_limit_sec);
@@ -233,6 +243,12 @@ export default function PlaySession({
         setBlitzRemaining(Number(result.time_remaining_sec));
       } else if (question.mode !== 'blitz' && question.mode !== 'story') {
         setBlitzRemaining(null);
+      }
+
+      if (sessionMode === 'blitz' && result?.status === 'abandoned') {
+        setFinished(true);
+        setQuestion(null);
+        return;
       }
 
       if (!result.next_question_available) {

@@ -19,7 +19,7 @@ export const endpoints = {
   millionaireConfig: () => '/api/public/millionaire/config',
   millionaireStart: () => '/api/public/millionaire/sessions/start',
   classicStart: () => '/api/public/classic/sessions/start',
-  blitzConfig: () => '/api/public/blitz/config',
+  blitzConfig: () => '/api/public/blitz/config?v=2',
   blitzStart: () => '/api/public/blitz/sessions/start',
   sessionCurrent: (sessionId) => `/api/public/sessions/${sessionId}/current`,
   sessionAnswer: (sessionId) => `/api/public/sessions/${sessionId}/answer`,

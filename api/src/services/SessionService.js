@@ -10,6 +10,8 @@ const MILLIONAIRE_PRIZES = [
   500000, 1000000,
 ];
 const STORY_MAX_WRONG = 3;
+const BLITZ_TIME_LIMIT_SEC = 15;
+const BLITZ_MAX_STRIKES = 3;
 
 function computeStars({ scoreTotal = 0, maxScore = 0, passScoreMin = null }) {
   const score = Math.max(0, Number(scoreTotal) || 0);
@@ -36,6 +38,13 @@ function computeTimeRemainingFromStartedAt(started_at) {
   const started = new Date(started_at).getTime();
   const elapsed = Math.floor((Date.now() - started) / 1000);
   return Math.max(0, 60 - elapsed);
+}
+
+function computePerQuestionRemainingFromStartedAt(started_at, limitSec) {
+  if (!started_at) return null;
+  const started = new Date(started_at).getTime();
+  const elapsed = Math.floor((Date.now() - started) / 1000);
+  return Math.max(0, Math.max(0, Number(limitSec) || 0) - elapsed);
 }
 
 function buildAudiencePoll(options) {
@@ -131,7 +140,16 @@ export class SessionService {
         score_total: cached.score_total ?? 0,
       };
 
-      if (cached.mode === 'blitz' || cached.mode === 'story') {
+      if (cached.mode === 'blitz') {
+        const startedAt = cached.question_started_at || cached.started_at;
+        payload.time_remaining_sec = computePerQuestionRemainingFromStartedAt(
+          startedAt,
+          BLITZ_TIME_LIMIT_SEC
+        );
+        const strikes = Math.max(0, Number(cached.strike_count) || 0);
+        payload.strike_count = strikes;
+        payload.strikes_remaining = Math.max(0, BLITZ_MAX_STRIKES - strikes);
+      } else if (cached.mode === 'story') {
         payload.time_remaining_sec = computeTimeRemainingFromStartedAt(cached.started_at);
       }
 
@@ -223,7 +241,23 @@ export class SessionService {
       score_total: session.score_total ?? 0,
     };
 
-    if (session.mode === 'blitz' || session.mode === 'story') {
+    if (session.mode === 'blitz') {
+      const lastAnsweredAt = (answers || [])
+        .map((a) => a?.answered_at)
+        .filter(Boolean)
+        .sort()
+        .slice(-1)[0];
+      const start = lastAnsweredAt || session.started_at;
+
+      const strikes = (answers || []).filter((a) => a && a.is_correct === false).length;
+      payload.time_limit_sec = BLITZ_TIME_LIMIT_SEC;
+      payload.time_remaining_sec = computePerQuestionRemainingFromStartedAt(
+        start,
+        BLITZ_TIME_LIMIT_SEC
+      );
+      payload.strike_count = strikes;
+      payload.strikes_remaining = Math.max(0, BLITZ_MAX_STRIKES - strikes);
+    } else if (session.mode === 'story') {
       payload.time_remaining_sec = computeTimeRemainingSec(session);
     } else {
       payload.time_limit_sec = current.time_limit_snapshot;
@@ -283,18 +317,16 @@ export class SessionService {
         throw new AppError('Session is not active', 409, 'NOT_ACTIVE');
       }
 
-      if (cached.mode === 'blitz' || cached.mode === 'story') {
+      if (cached.mode === 'story') {
         const remaining = computeTimeRemainingFromStartedAt(cached.started_at);
         if (remaining != null && remaining <= 0) {
-          if (cached.mode === 'story') {
-            cached.status = 'abandoned';
-            sessionCache.set(sessionId, cached);
-            if (!isGuest) {
-              try {
-                await this.gameSessionRepository.updateStatus(sessionId, 'abandoned');
-              } catch {
-                // ignore
-              }
+          cached.status = 'abandoned';
+          sessionCache.set(sessionId, cached);
+          if (!isGuest) {
+            try {
+              await this.gameSessionRepository.updateStatus(sessionId, 'abandoned');
+            } catch {
+              // ignore
             }
           }
           throw new AppError('Time is up', 409, 'TIME_UP');
@@ -314,7 +346,19 @@ export class SessionService {
 
       const correctId =
         cached.correct_option_id_by_session_question_id?.[current.session_question_id] || null;
-      const is_correct = correctId ? String(correctId) === String(body.chosen_option_id) : false;
+      const computedCorrect = correctId ? String(correctId) === String(body.chosen_option_id) : false;
+
+      let is_correct = computedCorrect;
+      let blitzTimedOut = false;
+      if (cached.mode === 'blitz') {
+        const start = cached.question_started_at || cached.started_at;
+        const remaining = computePerQuestionRemainingFromStartedAt(start, BLITZ_TIME_LIMIT_SEC);
+        const answeredInSec = Number(body.answered_in_sec);
+        blitzTimedOut =
+          (remaining != null && remaining <= 0) ||
+          (Number.isFinite(answeredInSec) && answeredInSec >= BLITZ_TIME_LIMIT_SEC);
+        if (blitzTimedOut) is_correct = false;
+      }
 
       let storyStrikeOut = false;
       if (cached.mode === 'story' && !is_correct) {
@@ -338,6 +382,33 @@ export class SessionService {
           is_correct,
           answered_in_sec: body.answered_in_sec ?? null,
         });
+      }
+
+      if (cached.mode === 'blitz') {
+        const strikes = Math.max(0, Number(cached.strike_count) || 0) + (is_correct ? 0 : 1);
+        cached.strike_count = strikes;
+        if (strikes >= BLITZ_MAX_STRIKES) {
+          cached.status = 'abandoned';
+          sessionCache.del(sessionId);
+          if (!isGuest) {
+            try {
+              await this.gameSessionRepository.updateStatus(sessionId, 'abandoned');
+            } catch {
+              // ignore
+            }
+          }
+          return {
+            is_correct: false,
+            score_total: cached.score_total ?? 0,
+            next_question_available: false,
+            finished: true,
+            status: 'abandoned',
+            reason: 'strikes',
+            strike_count: strikes,
+            strikes_remaining: 0,
+            timed_out: blitzTimedOut,
+          };
+        }
       }
 
       if (cached.mode === 'story' && storyStrikeOut) {
@@ -471,6 +542,9 @@ export class SessionService {
         cached.score_total = (Number(cached.score_total) || 0) + scoreDelta;
       }
       cached.current_index = idx + 1;
+      if (cached.mode === 'blitz') {
+        cached.question_started_at = new Date().toISOString();
+      }
 
       const next = Array.isArray(cached.questions) ? cached.questions[cached.current_index] : null;
       const next_question_available = !!next;
@@ -485,7 +559,22 @@ export class SessionService {
         ...(cached.mode === 'custom' ? { speed_bonus } : {}),
       };
 
-      if (cached.mode === 'blitz' || cached.mode === 'story') {
+      if (cached.mode === 'blitz') {
+        const startedAt = cached.question_started_at || cached.started_at;
+        base.time_remaining_sec = computePerQuestionRemainingFromStartedAt(
+          startedAt,
+          BLITZ_TIME_LIMIT_SEC
+        );
+        const strikes = Math.max(0, Number(cached.strike_count) || 0);
+        base.strike_count = strikes;
+        base.strikes_remaining = Math.max(0, BLITZ_MAX_STRIKES - strikes);
+        base.timed_out = !!blitzTimedOut;
+        if (base.next_question) {
+          base.next_question.time_remaining_sec = BLITZ_TIME_LIMIT_SEC;
+          base.next_question.strike_count = strikes;
+          base.next_question.strikes_remaining = base.strikes_remaining;
+        }
+      } else if (cached.mode === 'story') {
         base.time_remaining_sec = computeTimeRemainingFromStartedAt(cached.started_at);
         if (base.next_question) {
           base.next_question.time_remaining_sec = computeTimeRemainingFromStartedAt(cached.started_at);
@@ -510,17 +599,15 @@ export class SessionService {
       throw new AppError('Session is not active', 409, 'NOT_ACTIVE');
     }
 
-    if (session.mode === 'blitz' || session.mode === 'story') {
+    if (session.mode === 'story') {
       const remaining = computeTimeRemainingSec(session);
       if (remaining != null && remaining <= 0) {
-        if (session.mode === 'story') {
-          try {
-            await this.gameSessionRepository.updateStatus(sessionId, 'abandoned');
-          } catch {
-            // ignore
-          }
-          sessionCache.del(sessionId);
+        try {
+          await this.gameSessionRepository.updateStatus(sessionId, 'abandoned');
+        } catch {
+          // ignore
         }
+        sessionCache.del(sessionId);
         throw new AppError('Time is up', 409, 'TIME_UP');
       }
     }
@@ -532,17 +619,103 @@ export class SessionService {
     const existing = await this.sessionAnswerRepository.findBySessionQuestionId(sessionQuestion.id);
     if (existing) throw new AppError('Already answered', 409, 'CONFLICT');
 
+    const answersBefore = await this.sessionAnswerRepository.listBySessionQuestionIds(
+      questions.map((q) => q.id)
+    );
+
     const options = await this.sessionOptionRepository.listBySessionQuestionId(sessionQuestion.id);
     const chosen = options.find((o) => o.id === body.chosen_option_id);
     if (!chosen) throw new AppError('Invalid chosen_option_id', 400, 'INVALID_INPUT');
 
-    const is_correct = !!chosen.is_correct_snapshot;
-    await this.sessionAnswerRepository.create({
+    let is_correct = !!chosen.is_correct_snapshot;
+    let blitzTimedOut = false;
+    if (session.mode === 'blitz') {
+      const lastAnsweredAt = (answersBefore || [])
+        .map((a) => a?.answered_at)
+        .filter(Boolean)
+        .sort()
+        .slice(-1)[0];
+      const start = lastAnsweredAt || session.started_at;
+      const remaining = computePerQuestionRemainingFromStartedAt(start, BLITZ_TIME_LIMIT_SEC);
+      const answeredInSec = Number(body.answered_in_sec);
+      blitzTimedOut =
+        (remaining != null && remaining <= 0) ||
+        (Number.isFinite(answeredInSec) && answeredInSec >= BLITZ_TIME_LIMIT_SEC);
+      if (blitzTimedOut) is_correct = false;
+    }
+
+    const createdAnswer = await this.sessionAnswerRepository.create({
       session_question_id: sessionQuestion.id,
       chosen_option_id: chosen.id,
       is_correct,
       answered_in_sec: body.answered_in_sec ?? null,
     });
+
+    if (session.mode === 'blitz') {
+      const strikesBefore = (answersBefore || []).filter((a) => a && a.is_correct === false).length;
+      const strikes = strikesBefore + (is_correct ? 0 : 1);
+
+      if (strikes >= BLITZ_MAX_STRIKES) {
+        await this.gameSessionRepository.updateStatus(sessionId, 'abandoned');
+        sessionCache.del(sessionId);
+        return {
+          is_correct: false,
+          score_total: session.score_total ?? 0,
+          time_remaining_sec: 0,
+          next_question_available: false,
+          finished: true,
+          status: 'abandoned',
+          reason: 'strikes',
+          strike_count: strikes,
+          strikes_remaining: 0,
+          timed_out: blitzTimedOut,
+        };
+      }
+
+      const scoreDelta = is_correct ? 1 : 0;
+      const updatedSession = scoreDelta
+        ? await this.gameSessionRepository.addScore(sessionId, scoreDelta)
+        : session;
+
+      const answers = [...(answersBefore || []), createdAnswer].filter(Boolean);
+      const answeredSet = new Set(answers.map((a) => a.session_question_id));
+      const next = questions.find((q) => !answeredSet.has(q.id)) || null;
+      const next_question_available = !!next;
+
+      let next_question = null;
+      if (next) {
+        const nextOptions = await this.sessionOptionRepository.listBySessionQuestionId(next.id);
+        next_question = {
+          session_question_id: next.id,
+          mode: session.mode,
+          question_number: next.order_index,
+          total_questions: session.total_questions,
+          question_text: next.question_text_snapshot,
+          options: nextOptions.map((o) => ({
+            id: o.id,
+            label: LABELS[o.order_index - 1] || String(o.order_index),
+            text: o.option_text_snapshot,
+          })),
+          score_total: updatedSession?.score_total ?? session.score_total ?? 0,
+          time_limit_sec: BLITZ_TIME_LIMIT_SEC,
+          time_remaining_sec: BLITZ_TIME_LIMIT_SEC,
+          strike_count: strikes,
+          strikes_remaining: Math.max(0, BLITZ_MAX_STRIKES - strikes),
+        };
+      }
+
+      return {
+        is_correct,
+        score_total: updatedSession?.score_total ?? session.score_total,
+        time_limit_sec: BLITZ_TIME_LIMIT_SEC,
+        time_remaining_sec: BLITZ_TIME_LIMIT_SEC,
+        strike_count: strikes,
+        strikes_remaining: Math.max(0, BLITZ_MAX_STRIKES - strikes),
+        timed_out: blitzTimedOut,
+        next_question_available,
+        ...(next_question ? { next_question } : {}),
+      };
+    }
 
     if (session.mode === 'millionaire') {
       if (!is_correct) {
@@ -1016,16 +1189,26 @@ export class SessionService {
       }
     }
 
-    await this.leaderboardRepository.insertFromSession({
-      user_id: session.user_id,
-      mode: session.mode,
-      score_value: updated.score_total ?? 0,
-    });
-    await this.leaderboardRepository.insertFromSession({
-      user_id: session.user_id,
-      mode: 'global',
-      score_value: updated.score_total ?? 0,
-    });
+    if (status === 'completed') {
+      let modeForLeaderboard = session.mode;
+      if (session.mode === 'blitz') {
+        modeForLeaderboard = session.difficulty === 'hard' ? 'blitz_hard' : null;
+      }
+
+      if (modeForLeaderboard) {
+        await this.leaderboardRepository.insertFromSession({
+          user_id: session.user_id,
+          mode: modeForLeaderboard,
+          score_value: updated.score_total ?? 0,
+        });
+      }
+
+      await this.leaderboardRepository.insertFromSession({
+        user_id: session.user_id,
+        mode: 'global',
+        score_value: updated.score_total ?? 0,
+      });
+    }
 
     let xpDelta = 0;
 

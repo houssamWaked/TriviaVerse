@@ -153,8 +153,8 @@ export const STRINGS = {
       millionaireDesc: 'Win big with lifelines!',
       classicTitle: 'Classic Quiz',
       classicDesc: 'Pick your category!',
-      blitzTitle: '60s Blitz',
-      blitzDesc: 'Speed is everything!',
+      blitzTitle: 'Blitz',
+      blitzDesc: '15s per question • 3 strikes.',
     },
     banner: {
       title: 'Create Your Own Quiz!',
@@ -251,16 +251,15 @@ export const STRINGS = {
     aria: {
       lightning: 'Lightning',
     },
-    title: '60-Second Blitz',
-    subtitle: (seconds) =>
-      `Answer as many questions as you can in ${seconds} seconds!`,
+    title: 'Blitz',
+    subtitle: (seconds) => `Answer each question in ${seconds} seconds. 3 strikes = lose.`,
     howToPlayTitle: 'How to Play',
     howToPlay: {
-      onClock: (seconds) => `You have ${seconds} seconds on the clock`,
+      onClock: (seconds) => `You have ${seconds} seconds per question`,
       rapidFire: 'Answer rapid-fire questions as fast as possible',
       correctAdds: 'Each correct answer adds to your score',
-      wrongNoPenalty: "Wrong answers don't penalize, just keep going!",
-      speedAccuracy: 'Speed and accuracy both matter',
+      wrongNoPenalty: 'Wrong answers or time-outs count as a strike',
+      speedAccuracy: '3 strikes and the run ends',
     },
     difficultyTitle: 'Difficulty',
     difficulty: {
@@ -369,7 +368,7 @@ export const STRINGS = {
       story: 'story',
       millionaire: 'millionaire',
       classic: 'classic',
-      blitz: 'blitz',
+      blitzHard: 'blitz_hard',
       custom: 'custom',
     },
     empty: {
@@ -795,7 +794,7 @@ export const STRINGS = {
     },
     modeCards: {
       classic: { title: 'Classic', desc: 'Balanced gameplay.' },
-      blitz: { title: 'Blitz', desc: 'Fast 60s sprint.' },
+      blitz: { title: 'Blitz', desc: '15s per question • 3 strikes.' },
       millionaire: { title: 'Millionaire', desc: '15-question ladder.' },
     },
     pills: {
