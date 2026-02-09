@@ -4,22 +4,30 @@ import { STRINGS } from '@/constants/strings';
 import { api } from '@/api';
 import StoryStyle from '@/Styles/ComponentStyles/StoryStyle';
 import { getApiErrorMessage } from '@/utils/apiError';
-import { computeGuestStoryUnlockedMax, loadGuestStoryProgress } from '@/utils/guestStoryProgress';
+import {
+  computeGuestStoryUnlockedMax,
+  loadGuestStoryProgress,
+} from '@/utils/guestStoryProgress';
 
 function toDifficultyLabel(raw) {
   const d = String(raw || '').toLowerCase();
   if (d === STRINGS.STORY.difficulty.easy) return STRINGS.STORY.difficulty.easy;
-  if (d === STRINGS.STORY.difficulty.medium) return STRINGS.STORY.difficulty.medium;
+  if (d === STRINGS.STORY.difficulty.medium)
+    return STRINGS.STORY.difficulty.medium;
   if (d === STRINGS.STORY.difficulty.hard) return STRINGS.STORY.difficulty.hard;
   return STRINGS.STORY.difficulty.unknown;
 }
 
-function starsText(n) {
-  const x = Math.max(0, Math.min(3, Number(n) || 0));
-  return ICONS.common.star.repeat(x) + ICONS.common.starEmpty.repeat(3 - x);
+function clampStars(n) {
+  return Math.max(0, Math.min(3, Number(n) || 0));
 }
 
-export default function Story({ user, onRequireAuth, onNavigateHome, onPlaySession }) {
+export default function Story({
+  user,
+  onRequireAuth,
+  onNavigateHome,
+  onPlaySession,
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -40,8 +48,10 @@ export default function Story({ user, onRequireAuth, onNavigateHome, onPlaySessi
         const list = await api.getStoryLevels();
         const guest = loadGuestStoryProgress();
         const unlockedMax = computeGuestStoryUnlockedMax(list);
+
         setCompletedLevels(0);
         setTotalLevels(Array.isArray(list) ? list.length : 0);
+
         setLevels(
           (Array.isArray(list) ? list : []).map((lvl) => ({
             level_id: lvl.id,
@@ -53,8 +63,10 @@ export default function Story({ user, onRequireAuth, onNavigateHome, onPlaySessi
                 : (Number(lvl.difficulty_max) || 0) <= 6
                   ? STRINGS.STORY.difficulty.medium
                   : STRINGS.STORY.difficulty.hard,
-            best_score: Number(guest?.bestScore?.[String(lvl.level_number)] || 0) || 0,
-            stars_earned: 0,
+            best_score:
+              Number(guest?.bestScore?.[String(lvl.level_number)] || 0) || 0,
+            stars_earned:
+              Number(guest?.stars?.[String(lvl.level_number)] || 0) || 0,
             is_unlocked: Number(lvl.level_number) <= unlockedMax,
             is_completed: !!guest?.completed?.[String(lvl.level_number)],
           }))
@@ -72,15 +84,12 @@ export default function Story({ user, onRequireAuth, onNavigateHome, onPlaySessi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!user]);
 
-  const progressPill = useMemo(() => {
-    if (!user) return 'Playing as guest (saved locally)';
-    return STRINGS.STORY.progress.loggedIn(completedLevels, totalLevels);
-  }, [user, completedLevels, totalLevels]);
-
-  const starsSaved = useMemo(() => {
-    if (!user) return 0;
-    return (levels || []).reduce((acc, l) => acc + (Number(l.stars_earned) || 0), 0);
-  }, [user, levels]);
+  const progressPct = useMemo(() => {
+    const t = Number(totalLevels) || 0;
+    const c = Number(completedLevels) || 0;
+    if (!t) return 0;
+    return Math.max(0, Math.min(100, Math.round((c / t) * 100)));
+  }, [completedLevels, totalLevels]);
 
   const startLevel = async (levelNumber, isUnlocked) => {
     if (!isUnlocked) return;
@@ -88,7 +97,9 @@ export default function Story({ user, onRequireAuth, onNavigateHome, onPlaySessi
     setBusy(true);
     setError('');
     try {
-      const res = await api.startStorySession({ level_number: Number(levelNumber) });
+      const res = await api.startStorySession({
+        level_number: Number(levelNumber),
+      });
       if (!res?.session_id) throw new Error(STRINGS.STORY.errors.failedStart);
       onPlaySession?.(res.session_id, levelNumber);
     } catch (err) {
@@ -101,99 +112,158 @@ export default function Story({ user, onRequireAuth, onNavigateHome, onPlaySessi
   return (
     <div style={StoryStyle.page}>
       <div style={StoryStyle.container}>
+        {/* HERO (matches left image) */}
         <div style={StoryStyle.hero}>
-          <div style={StoryStyle.badge}>
-            <span style={StoryStyle.badgeIcon}>{ICONS.common.book}</span>
-            <span style={StoryStyle.badgeText}>{STRINGS.STORY.badge.text}</span>
-            <span style={StoryStyle.badgeDot}>{ICONS.brand.sparkles}</span>
+          <div style={StoryStyle.heroIcons}>
+            <span style={StoryStyle.heroIcon}>{ICONS.common.book}</span>
+            <span style={StoryStyle.heroIcon}>
+              {ICONS.common.controller ?? '🎮'}
+            </span>
           </div>
-          <h1 style={StoryStyle.title}>
-            {STRINGS.STORY.titlePrefix}{' '}
-            <span style={StoryStyle.titleAccent}>{STRINGS.STORY.titleAccent}</span>{' '}
-            {STRINGS.STORY.titleSuffix}
+
+          <h1 style={StoryStyle.heroTitle}>
+            {STRINGS.STORY.modeTitle ?? 'Story Mode!'}
           </h1>
-          <p style={StoryStyle.subtitle}>{STRINGS.STORY.subtitle}</p>
+
+          <p style={StoryStyle.heroSubtitle}>
+            {STRINGS.STORY.modeSubtitle ??
+              'Level up through epic trivia challenges!'}{' '}
+            <span style={StoryStyle.heroEmoji}>⭐</span>
+          </p>
         </div>
 
-        <div className="tv-card" style={StoryStyle.card}>
-          <div style={StoryStyle.topRow}>
-            <div style={StoryStyle.pills}>
-              <span style={StoryStyle.pill}>{progressPill}</span>
-              {user && <span style={StoryStyle.pill}>{STRINGS.STORY.starsSaved(starsSaved)}</span>}
+        {/* PROGRESS CARD (replaces your pills/actions row) */}
+        <div style={StoryStyle.progressCard}>
+          <div style={StoryStyle.progressTop}>
+            <div style={StoryStyle.progressLeft}>
+              <span style={StoryStyle.progressTarget}>
+                {ICONS.common.target ?? '🎯'}
+              </span>
+              <span style={StoryStyle.progressLabel}>Your Progress</span>
             </div>
-
-            <div style={StoryStyle.topActions}>
-              <button
-                type="button"
-                className="tv-card tv-card--hover"
-                style={StoryStyle.btnWhite}
-                onClick={load}
-                disabled={busy}
-              >
-                {STRINGS.COMMON.buttons.refresh} {ICONS.common.refresh}
-              </button>
-              <button
-                type="button"
-                className="tv-card tv-card--hover"
-                style={StoryStyle.btnPrimary}
-                onClick={onNavigateHome}
-              >
-                {STRINGS.COMMON.buttons.home}
-              </button>
+            <div style={StoryStyle.progressRight}>
+              {completedLevels} / {totalLevels} Levels
             </div>
           </div>
 
-          {!!error && <div style={StoryStyle.error}>{error}</div>}
+          <div style={StoryStyle.progressBarOuter}>
+            <div
+              style={{
+                ...StoryStyle.progressBarInner,
+                width: `${progressPct}%`,
+              }}
+            />
+          </div>
+        </div>
 
-          <div style={StoryStyle.grid}>
-            {levels.map((lvl) => {
-              const unlocked = !!lvl.is_unlocked;
-              const completed = !!lvl.is_completed;
-              const label = toDifficultyLabel(lvl.difficulty);
+        {!!error && <div style={StoryStyle.error}>{error}</div>}
 
-              return (
-                <button
-                  key={lvl.level_id || lvl.level_number}
-                  type="button"
-                  className="tv-card tv-card--hover"
-                  style={unlocked ? StoryStyle.levelCard : StoryStyle.levelCardLocked}
-                  disabled={busy || !unlocked}
-                  onClick={() => startLevel(lvl.level_number, unlocked)}
-                  title={
-                    unlocked ? STRINGS.STORY.tooltips.play : STRINGS.STORY.tooltips.locked
-                  }
+        {/* LEVELS GRID (cards like left image) */}
+        <div style={StoryStyle.levelGrid}>
+          {levels.map((lvl) => {
+            const unlocked = !!lvl.is_unlocked;
+            const completed = !!lvl.is_completed;
+
+            const difficulty = toDifficultyLabel(lvl.difficulty);
+            const stars = clampStars(lvl.stars_earned);
+
+            return (
+              <button
+                key={lvl.level_id || lvl.level_number}
+                type="button"
+                style={
+                  unlocked ? StoryStyle.levelCard : StoryStyle.levelCardLocked
+                }
+                disabled={busy || !unlocked}
+                onClick={() => startLevel(lvl.level_number, unlocked)}
+                title={unlocked ? 'Play' : 'Locked'}
+              >
+                {/* top row: badge + check */}
+                <div style={StoryStyle.levelTopRow}>
+                  <div
+                    style={{
+                      ...StoryStyle.levelBadge,
+                      ...(completed
+                        ? StoryStyle.levelBadgeCompleted
+                        : unlocked
+                          ? StoryStyle.levelBadgeUnlocked
+                          : StoryStyle.levelBadgeLocked),
+                    }}
+                  >
+                    {lvl.level_number}
+                  </div>
+
+                  <div style={StoryStyle.levelTopRight}>
+                    {completed ? (
+                      <span style={StoryStyle.check}>✓</span>
+                    ) : (
+                      <span />
+                    )}
+                  </div>
+                </div>
+
+                {/* title */}
+                <div style={StoryStyle.levelTitle}>
+                  {lvl.title ||
+                    STRINGS.STORY.level.titleFallback(lvl.level_number)}
+                </div>
+
+                {/* difficulty pill */}
+                <div
+                  style={{
+                    ...StoryStyle.diffPill,
+                    ...(difficulty === STRINGS.STORY.difficulty.easy
+                      ? StoryStyle.diffEasy
+                      : difficulty === STRINGS.STORY.difficulty.medium
+                        ? StoryStyle.diffMedium
+                        : difficulty === STRINGS.STORY.difficulty.hard
+                          ? StoryStyle.diffHard
+                          : StoryStyle.diffUnknown),
+                  }}
                 >
-                  <div style={StoryStyle.levelTop}>
-                    <div>
-                      <div style={StoryStyle.levelNum}>
-                        {STRINGS.STORY.level.label} {lvl.level_number}
-                      </div>
-                      <div style={StoryStyle.levelTitle}>
-                        {lvl.title || STRINGS.STORY.level.titleFallback(lvl.level_number)}
-                      </div>
-                    </div>
-                    <div style={StoryStyle.metaItem}>
-                      {unlocked ? ICONS.common.unlock : ICONS.common.lock}{' '}
-                      {completed ? STRINGS.STORY.level.done : STRINGS.STORY.level.play}
-                    </div>
-                  </div>
+                  {difficulty}
+                </div>
 
-                  <div style={StoryStyle.meta}>
-                    <span style={StoryStyle.metaItem}>
-                      {ICONS.common.slider} {label}
+                {/* stars row (bottom left like left image) */}
+                <div style={StoryStyle.starsRow} aria-label={`${stars} stars`}>
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <span
+                      key={i}
+                      style={i < stars ? StoryStyle.starOn : StoryStyle.starOff}
+                    >
+                      ★
                     </span>
-                    <span style={StoryStyle.metaItem}>
-                      {ICONS.common.trophy} {lvl.best_score ?? 0}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                  ))}
+                </div>
+              </button>
+            );
+          })}
+        </div>
 
-          {levels.length === 0 && !busy && (
-            <div style={StoryStyle.empty}>{STRINGS.STORY.empty}</div>
-          )}
+        {/* empty */}
+        {levels.length === 0 && !busy && (
+          <div style={StoryStyle.empty}>{STRINGS.STORY.empty}</div>
+        )}
+
+        {/* optional: tiny actions (not in left screenshot, but useful) */}
+        <div style={StoryStyle.bottomActions}>
+          <button
+            type="button"
+            style={StoryStyle.smallBtn}
+            onClick={load}
+            disabled={busy}
+            title="Refresh"
+          >
+            {ICONS.common.refresh ?? '↻'} Refresh
+          </button>
+          <button
+            type="button"
+            style={{ ...StoryStyle.smallBtn, ...StoryStyle.smallBtnPrimary }}
+            onClick={onNavigateHome}
+            title="Home"
+          >
+            Home
+          </button>
         </div>
       </div>
     </div>
