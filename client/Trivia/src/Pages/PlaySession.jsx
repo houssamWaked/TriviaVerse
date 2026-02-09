@@ -30,7 +30,7 @@ export default function PlaySession({
 }) {
   const isStory = variant === 'story';
   // Keep answer->next transitions snappy. Any intentional pause here is felt as lag.
-  const nextTransitionMs = 0;
+  const nextTransitionMs = 1000;
   const sleep = (ms) => new Promise((r) => window.setTimeout(r, ms));
   const [sessionMode, setSessionMode] = useState('');
 
@@ -115,6 +115,9 @@ export default function PlaySession({
     if (!Number.isFinite(blitzRemaining)) return undefined;
     if (finished) return undefined;
     if (busy) return undefined;
+    // Blitz uses a per-question timer. Freeze the client countdown while showing
+    // answer feedback so the 1s transition delay doesn't "steal" time visually.
+    if (sessionMode === 'blitz' && answerResult) return undefined;
     if (Number(blitzRemaining) <= 0) return undefined;
 
     const t = window.setInterval(() => {
@@ -125,7 +128,7 @@ export default function PlaySession({
     }, 1000);
 
     return () => window.clearInterval(t);
-  }, [sessionMode, blitzRemaining, finished, busy]);
+  }, [sessionMode, blitzRemaining, finished, busy, answerResult]);
 
   useEffect(() => {
     if (sessionMode !== 'blitz' && sessionMode !== 'story') return;
@@ -258,6 +261,7 @@ export default function PlaySession({
         return;
       }
 
+      const transitionStartMs = Date.now();
       const nextQuestionPromise = result?.next_question
         ? Promise.resolve(result.next_question)
         : api.getCurrentQuestion(sessionId);
@@ -267,6 +271,17 @@ export default function PlaySession({
         nextQuestionPromise,
       ]);
       if (submitSeqRef.current !== submitSeq) return;
+      if (
+        question?.mode === 'blitz' &&
+        nextQuestion &&
+        Number.isFinite(Number(nextQuestion?.time_remaining_sec))
+      ) {
+        const elapsed = Math.floor((Date.now() - transitionStartMs) / 1000);
+        nextQuestion.time_remaining_sec = Math.max(
+          0,
+          Number(nextQuestion.time_remaining_sec) - elapsed
+        );
+      }
       applyQuestion(nextQuestion);
     } catch (err) {
       if (isUnauthorized(err)) return onRequireAuth?.('play');
