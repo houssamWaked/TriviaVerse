@@ -1,10 +1,13 @@
 /**
  * Session start service for different game modes.
  *
- * NOTE: The provided schema does not include `category_id` or `difficulty`
- * columns on `quiz_questions`, so classic/blitz/millionaire currently select
- * from the global question pool. The requested `category_id`/`difficulty` are
- * still stored on the created `game_sessions` row for future filtering.
+ * Pool selection:
+ * - If `mode_question_pool` is configured, classic/blitz/millionaire pull only from their assigned pools.
+ * - If it's not configured, we fall back to random questions from `quiz_questions`.
+ *
+ * NOTE: `quiz_questions` does not include `category_id` for global questions, so classic/blitz/millionaire
+ * cannot strictly filter by category without a separate mapping table. The requested `category_id`/`difficulty`
+ * are still stored on the created `game_sessions` row for future filtering.
  */
 import AppError from '../utils/AppError.js';
 import { sessionCache } from '../utils/sessionCache.js';
@@ -68,28 +71,50 @@ export class SessionStartService {
     if (this.modeQuestionPoolRepository) {
       try {
         const ids = await this.modeQuestionPoolRepository.listQuestionIdsByMode(mode);
-        if (ids.length > 0) {
-          const shuffled = ids.slice();
-          for (let i = shuffled.length - 1; i > 0; i -= 1) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-          }
-          const pickedIds = shuffled.slice(0, Math.min(count, shuffled.length));
-          const picked = await this.quizQuestionRepository.listByIds(pickedIds);
-          if (picked.length >= Math.min(count, pickedIds.length)) {
-            // If pool isn't large enough yet, we'll still return what we have and
-            // fill below (fallback) rather than breaking the mode.
-            if (picked.length >= count) return picked.slice(0, count);
+        if (ids.length === 0) {
+          throw new AppError(
+            `No questions configured for ${mode} mode yet. Add questions to the ${mode} pool in Admin.`,
+            400,
+            'NO_POOL'
+          );
+        }
 
-            try {
-              const filler = await this.quizQuestionRepository.listRandomGlobal(count - picked.length);
-              return [...picked, ...filler].slice(0, count);
-            } catch {
-              const filler = await this.quizQuestionRepository.listRandom(count - picked.length);
-              return [...picked, ...filler].slice(0, count);
-            }
+        // Important: never mix in unrelated global questions when the mode pool is configured.
+        // Also, avoid selecting "missing" pool rows by continuing through shuffled ids until
+        // we have enough real `quiz_questions` rows.
+        const shuffled = ids.slice();
+        for (let i = shuffled.length - 1; i > 0; i -= 1) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
+        const picked = [];
+        const pickedIds = new Set();
+        const batchSize = 200;
+        for (let off = 0; off < shuffled.length && picked.length < count; off += batchSize) {
+          const batchIds = shuffled.slice(off, off + batchSize);
+          // eslint-disable-next-line no-await-in-loop
+          const rows = await this.quizQuestionRepository.listByIds(batchIds);
+          const map = new Map(rows.map((q) => [q.id, q]));
+          for (const id of batchIds) {
+            const q = map.get(id);
+            if (!q) continue;
+            if (pickedIds.has(q.id)) continue;
+            pickedIds.add(q.id);
+            picked.push(q);
+            if (picked.length >= count) break;
           }
         }
+
+        if (picked.length < count) {
+          throw new AppError(
+            `Not enough questions configured for ${mode} mode (have ${picked.length}, need ${count}). Add more questions to the ${mode} pool in Admin.`,
+            400,
+            'NOT_ENOUGH_QUESTIONS'
+          );
+        }
+
+        return picked.slice(0, count);
       } catch (err) {
         if (err?.code !== 'NOT_CONFIGURED') throw err;
       }
