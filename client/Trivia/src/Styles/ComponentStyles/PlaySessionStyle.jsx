@@ -126,21 +126,53 @@ const PlaySessionStyle = {
     background: colors.primary[50],
   },
 
-  optionBtnState: (active) => ({
-    width: '100%',
-    textAlign: 'left',
-    padding: 14,
-    borderRadius: 20,
-    border: active
-      ? `1px solid ${colors.primary[200]}`
-      : `1px solid ${colors.neutral[200]}`,
-    background: active ? colors.primary[50] : colors.neutral.white,
-    cursor: 'pointer',
-    boxShadow: '0 14px 30px rgba(0,0,0,0.10)',
-    display: 'flex',
-    gap: 12,
-    alignItems: 'center',
-  }),
+  optionBtnState: (arg) => {
+    const isObj = !!arg && typeof arg === 'object';
+    const isActive = isObj ? !!arg.active : !!arg;
+    const state = isObj ? String(arg.state || 'idle') : 'idle'; // 'idle' | 'correct' | 'wrong' | 'dim'
+    const disabled = isObj ? !!arg.disabled : false;
+
+    const correct = state === 'correct';
+    const wrong = state === 'wrong';
+    const dim = state === 'dim';
+
+    const border = correct
+      ? '1px solid rgba(34,197,94,0.45)'
+      : wrong
+        ? '1px solid rgba(239,68,68,0.45)'
+        : isActive
+          ? `1px solid ${colors.primary[200]}`
+          : `1px solid ${colors.neutral[200]}`;
+
+    const background = correct
+      ? 'rgba(34,197,94,0.14)'
+      : wrong
+        ? 'rgba(239,68,68,0.14)'
+        : isActive
+          ? colors.primary[50]
+          : colors.neutral.white;
+
+    return {
+      width: '100%',
+      textAlign: 'left',
+      padding: 14,
+      borderRadius: 20,
+      border,
+      background,
+      cursor: disabled ? 'not-allowed' : 'pointer',
+      opacity: dim ? 0.7 : 1,
+      boxShadow: '0 14px 30px rgba(0,0,0,0.10)',
+      display: 'flex',
+      gap: 12,
+      alignItems: 'center',
+    };
+  },
+
+  optionResultIcon: {
+    marginLeft: 'auto',
+    fontSize: 18,
+    fontWeight: 950,
+  },
 
   optionLabel: {
     width: 34,
@@ -732,6 +764,17 @@ const PlaySessionStyle = {
     textAlign: 'center',
     letterSpacing: -0.2,
     lineHeight: 1.2,
+    padding: '0 46px',
+  },
+
+  storyResultIcon: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    color: colors.neutral.white,
+    fontSize: 22,
+    fontWeight: 950,
+    textShadow: '0 10px 26px rgba(0,0,0,0.18)',
   },
 
   storyToastState: (isCorrect) => ({

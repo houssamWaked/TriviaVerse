@@ -243,6 +243,8 @@ export const api = {
   createQuiz: async (body) => {
     const data = (await http.post(endpoints.quizzes(), body)).data;
     invalidateUserCacheByPathPrefix('/api/quizzes');
+    // Home shows global counts (quizzes/questions), so invalidate after writes.
+    invalidatePublicCacheByPathPrefix('/api/public/home-metrics');
     return data;
   },
   getQuiz: async (quizId) =>
@@ -302,6 +304,7 @@ export const api = {
     const data = (await http.post(endpoints.quizQuestions(quizId), body)).data;
     if (data?.id) quizBuilderIndex.questionIdToQuizId.set(String(data.id), String(quizId));
     invalidateUserCacheByPathPrefix(`/api/quizzes/${quizId}/questions`);
+    invalidatePublicCacheByPathPrefix('/api/public/home-metrics');
     return data;
   },
 
@@ -316,6 +319,7 @@ export const api = {
     const data = (await http.delete(endpoints.questionById(questionId))).data;
     if (quizId) invalidateUserCacheByPathPrefix(`/api/quizzes/${quizId}/questions`);
     quizBuilderIndex.questionIdToQuizId.delete(String(questionId));
+    invalidatePublicCacheByPathPrefix('/api/public/home-metrics');
     return data;
   },
 
@@ -425,6 +429,7 @@ export const api = {
   adminCreateGlobalQuestion: async (body) => {
     const data = (await http.post(endpoints.adminCreateGlobalQuestion(), body)).data;
     invalidateUserCacheByPathPrefix('/api/admin');
+    invalidatePublicCacheByPathPrefix('/api/public/home-metrics');
     return data;
   },
   adminListGlobalQuestions: async (params) =>
@@ -444,6 +449,7 @@ export const api = {
   adminDeleteGlobalQuestion: async (questionId) => {
     const data = (await http.delete(endpoints.adminDeleteGlobalQuestion(questionId))).data;
     invalidateUserCacheByPathPrefix('/api/admin');
+    invalidatePublicCacheByPathPrefix('/api/public/home-metrics');
     return data;
   },
   adminModePoolSummary: async (mode) =>

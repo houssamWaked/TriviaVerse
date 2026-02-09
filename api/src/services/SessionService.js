@@ -399,6 +399,8 @@ export class SessionService {
           }
           return {
             is_correct: false,
+            chosen_option_id: body.chosen_option_id,
+            correct_option_id: correctId,
             score_total: cached.score_total ?? 0,
             next_question_available: false,
             finished: true,
@@ -423,6 +425,8 @@ export class SessionService {
         }
         return {
           is_correct: false,
+          chosen_option_id: body.chosen_option_id,
+          correct_option_id: correctId,
           score_total: cached.score_total ?? 0,
           time_remaining_sec: computeTimeRemainingFromStartedAt(cached.started_at),
           next_question_available: false,
@@ -440,6 +444,8 @@ export class SessionService {
           sessionCache.set(sessionId, cached);
           return {
             is_correct: false,
+            chosen_option_id: body.chosen_option_id,
+            correct_option_id: correctId,
             current_prize: cached.score_total ?? 0,
             next_question_available: false,
             finished: true,
@@ -514,6 +520,8 @@ export class SessionService {
         sessionCache.set(sessionId, cached);
         return {
           is_correct: true,
+          chosen_option_id: body.chosen_option_id,
+          correct_option_id: correctId,
           current_prize: cached.score_total ?? prize,
           next_question_available,
           ...(next_question ? { next_question } : {}),
@@ -553,6 +561,8 @@ export class SessionService {
 
       const base = {
         is_correct,
+        chosen_option_id: body.chosen_option_id,
+        correct_option_id: correctId,
         score_total: cached.score_total ?? 0,
         next_question_available,
         ...(next ? { next_question: { ...next, score_total: cached.score_total ?? 0 } } : {}),
@@ -627,6 +637,8 @@ export class SessionService {
     const chosen = options.find((o) => o.id === body.chosen_option_id);
     if (!chosen) throw new AppError('Invalid chosen_option_id', 400, 'INVALID_INPUT');
 
+    const correctOptionId = options.find((o) => !!o.is_correct_snapshot)?.id || null;
+
     let is_correct = !!chosen.is_correct_snapshot;
     let blitzTimedOut = false;
     if (session.mode === 'blitz') {
@@ -660,6 +672,8 @@ export class SessionService {
         sessionCache.del(sessionId);
         return {
           is_correct: false,
+          chosen_option_id: chosen.id,
+          correct_option_id: correctOptionId,
           score_total: session.score_total ?? 0,
           time_remaining_sec: 0,
           next_question_available: false,
@@ -706,6 +720,8 @@ export class SessionService {
 
       return {
         is_correct,
+        chosen_option_id: chosen.id,
+        correct_option_id: correctOptionId,
         score_total: updatedSession?.score_total ?? session.score_total,
         time_limit_sec: BLITZ_TIME_LIMIT_SEC,
         time_remaining_sec: BLITZ_TIME_LIMIT_SEC,
@@ -722,6 +738,8 @@ export class SessionService {
         await this.gameSessionRepository.updateStatus(sessionId, 'completed');
         return {
           is_correct: false,
+          chosen_option_id: chosen.id,
+          correct_option_id: correctOptionId,
           current_prize: session.score_total ?? 0,
           next_question_available: false,
           finished: true,
@@ -788,6 +806,8 @@ export class SessionService {
       }
       return {
         is_correct: true,
+        chosen_option_id: chosen.id,
+        correct_option_id: correctOptionId,
         current_prize: updatedSession?.score_total ?? prize,
         next_question_available,
         ...(next_question ? { next_question } : {}),
@@ -901,6 +921,8 @@ export class SessionService {
 
     return {
       is_correct,
+      chosen_option_id: chosen.id,
+      correct_option_id: correctOptionId,
       score_total: updatedSession?.score_total ?? session.score_total,
       next_question_available,
       ...(next_question ? { next_question } : {}),
