@@ -9,15 +9,19 @@ function safeParse(json) {
 }
 
 export function loadGuestStoryProgress() {
-  if (typeof window === 'undefined') return { completed: {}, bestScore: {} };
+  if (typeof window === 'undefined') return { completed: {}, bestScore: {}, stars: {} };
   const raw = window.localStorage.getItem(KEY);
   const parsed = raw ? safeParse(raw) : null;
   const completed = parsed?.completed && typeof parsed.completed === 'object' ? parsed.completed : {};
   const bestScore = parsed?.bestScore && typeof parsed.bestScore === 'object' ? parsed.bestScore : {};
-  return { completed, bestScore };
+  const stars = parsed?.stars && typeof parsed.stars === 'object' ? parsed.stars : {};
+  return { completed, bestScore, stars };
 }
 
-export function saveGuestStoryResult(levelNumber, { scoreTotal = 0, passed = false } = {}) {
+export function saveGuestStoryResult(
+  levelNumber,
+  { scoreTotal = 0, passed = false, stars = 0 } = {}
+) {
   const n = Number(levelNumber);
   if (!Number.isFinite(n) || n < 1) return false;
 
@@ -25,11 +29,16 @@ export function saveGuestStoryResult(levelNumber, { scoreTotal = 0, passed = fal
   const next = {
     completed: { ...(current.completed || {}) },
     bestScore: { ...(current.bestScore || {}) },
+    stars: { ...(current.stars || {}) },
   };
 
   if (passed) next.completed[String(n)] = true;
   const prevBest = Number(next.bestScore[String(n)] || 0) || 0;
   next.bestScore[String(n)] = Math.max(prevBest, Number(scoreTotal) || 0);
+
+  const nextStars = Math.max(0, Math.min(3, Math.floor(Number(stars) || 0)));
+  const prevStars = Number(next.stars[String(n)] || 0) || 0;
+  next.stars[String(n)] = Math.max(prevStars, nextStars);
 
   window.localStorage.setItem(KEY, JSON.stringify(next));
   return true;
@@ -51,4 +60,3 @@ export function computeGuestStoryUnlockedMax(levels = []) {
 
   return Math.min(unlockedMax, maxLevel || unlockedMax);
 }
-

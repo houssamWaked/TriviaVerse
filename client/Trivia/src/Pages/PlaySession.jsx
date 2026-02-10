@@ -14,6 +14,16 @@ function clampPct(n) {
   return Math.max(0, Math.min(100, x));
 }
 
+function computeStoryOutcomeFromCounts({ correctCount = 0, totalCount = 0 } = {}) {
+  const total = Math.max(0, Number(totalCount) || 0);
+  const correct = Math.max(0, Number(correctCount) || 0);
+  const ratio = total > 0 ? correct / total : 0;
+
+  const passed = ratio >= 0.7;
+  const stars = ratio >= 1 ? 3 : ratio >= 0.9 ? 2 : ratio >= 0.8 ? 1 : 0;
+  return { passed, stars, accuracy_pct: clampPct(Math.round(ratio * 100)) };
+}
+
 function formatMoney(n) {
   const value = Math.max(0, Number(n) || 0);
   return `€${value.toLocaleString()}`;
@@ -31,7 +41,7 @@ export default function PlaySession({
 }) {
   const isStory = variant === 'story';
   // Keep answer->next transitions snappy. Any intentional pause here is felt as lag.
-  const nextTransitionMs = 1000;
+  const nextTransitionMs = isStory ? 1000 : 0;
   const sleep = (ms) => new Promise((r) => window.setTimeout(r, ms));
   const [sessionMode, setSessionMode] = useState('');
 
@@ -54,6 +64,7 @@ export default function PlaySession({
   const [answeredCount, setAnsweredCount] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [shareMessage, setShareMessage] = useState('');
+  const [storyOutcome, setStoryOutcome] = useState(null);
 
   const questionStartRef = useRef(Date.now());
   const submitSeqRef = useRef(0);
@@ -72,7 +83,7 @@ export default function PlaySession({
     setPhoneSuggestionOptionId(q?.phone_suggestion_option_id || null);
     setPhoneMessage(q?.phone_message || '');
     setLifelinesUsed(Array.isArray(q?.lifelines_used) ? q.lifelines_used : []);
-    if ((mode === 'blitz' || mode === 'story') && Number.isFinite(Number(q?.time_remaining_sec))) {
+    if (mode === 'blitz' && Number.isFinite(Number(q?.time_remaining_sec))) {
       setBlitzRemaining(Number(q.time_remaining_sec));
     } else {
       setBlitzRemaining(null);
@@ -101,6 +112,7 @@ export default function PlaySession({
     setAnsweredCount(0);
     setCorrectCount(0);
     setShareMessage('');
+    setStoryOutcome(null);
     setSessionMode('');
     setDisabledOptionIds([]);
     setAudiencePoll(null);
@@ -114,15 +126,14 @@ export default function PlaySession({
   }, [sessionId]);
 
   useEffect(() => {
-    if (sessionMode !== 'blitz' && sessionMode !== 'story') return undefined;
+    if (sessionMode !== 'blitz') return undefined;
     if (!Number.isFinite(blitzRemaining)) return undefined;
     if (finished) return undefined;
     // Blitz: freeze countdown while awaiting network/transition feedback.
-    // Story: keep the session timer moving so it doesn't "jump" after slow requests.
-    if (sessionMode === 'blitz' && busy) return undefined;
+    if (busy) return undefined;
     // Blitz uses a per-question timer. Freeze the client countdown while showing
     // answer feedback so the 1s transition delay doesn't "steal" time visually.
-    if (sessionMode === 'blitz' && answerResult) return undefined;
+    if (answerResult) return undefined;
     if (Number(blitzRemaining) <= 0) return undefined;
 
     const t = window.setInterval(() => {
@@ -136,7 +147,7 @@ export default function PlaySession({
   }, [sessionMode, blitzRemaining, finished, busy, answerResult]);
 
   useEffect(() => {
-    if (sessionMode !== 'blitz' && sessionMode !== 'story') return;
+    if (sessionMode !== 'blitz') return;
     if (!Number.isFinite(blitzRemaining)) return;
     if (finished) return;
     if (busy) return;
@@ -144,13 +155,9 @@ export default function PlaySession({
     if (Number(blitzRemaining) > 0) return;
 
     timeUpRef.current = true;
-    if (sessionMode === 'blitz') {
-      const first = question?.options?.[0]?.id || null;
-      if (first) submit(first);
-      else finish('completed');
-      return;
-    }
-    finish('abandoned');
+    const first = question?.options?.[0]?.id || null;
+    if (first) submit(first);
+    else finish('completed');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionMode, blitzRemaining, finished]);
 
@@ -165,7 +172,7 @@ export default function PlaySession({
 
   const timeInfo = useMemo(() => {
     if (!question) return null;
-    if ((question.mode === 'blitz' || question.mode === 'story') && Number.isFinite(blitzRemaining)) {
+    if (question.mode === 'blitz' && Number.isFinite(blitzRemaining)) {
       const base = STRINGS.PLAY_SESSION.header.timeLeft(blitzRemaining);
       if (question.mode === 'blitz' && Number.isFinite(Number(question?.strikes_remaining))) {
         return `${base} • ${Number(question.strikes_remaining)} strikes left`;
@@ -211,6 +218,17 @@ export default function PlaySession({
     if (!answeredCount) return 0;
     return clampPct(Math.round((correctCount / answeredCount) * 100));
   }, [answeredCount, correctCount]);
+
+  const storyResult = useMemo(() => {
+    if (!isStory) return null;
+    const computed = computeStoryOutcomeFromCounts({
+      correctCount,
+      totalCount: answeredCount,
+    });
+    const passed = Boolean(storyOutcome?.passed ?? computed.passed);
+    const stars = Math.max(0, Math.min(3, Number(storyOutcome?.stars ?? computed.stars) || 0));
+    return { passed, stars };
+  }, [isStory, answeredCount, correctCount, storyOutcome]);
 
   const modeLabel = useMemo(() => {
     const m = String(sessionMode || '').toLowerCase();
@@ -307,6 +325,33 @@ export default function PlaySession({
     else window.location.hash = '#/quizzes';
   };
 
+  const playNextLevel = async () => {
+    if (!isStory || !Number.isFinite(Number(storyLevelNumber))) return;
+    const nextLevelNumber = Number(storyLevelNumber) + 1;
+    if (!Number.isFinite(nextLevelNumber) || nextLevelNumber < 1) return;
+
+    setShareMessage('');
+    setBusy(true);
+    setError('');
+    try {
+      const res = await api.startStorySession({ level_number: nextLevelNumber });
+      const sid = res?.session_id;
+      if (sid) {
+        window.location.hash = `#/play/${encodeURIComponent(String(sid))}?from=story&level=${encodeURIComponent(
+          String(nextLevelNumber)
+        )}`;
+      } else {
+        window.location.hash = '#/story';
+      }
+    } catch (err) {
+      if (isUnauthorized(err)) return onRequireAuth?.('play');
+      setError(getApiErrorMessage(err));
+      window.location.hash = '#/story';
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const storyEmoji = useMemo(() => {
     if (!answerResult) return '🤔';
     return answerResult.is_correct
@@ -340,12 +385,9 @@ export default function PlaySession({
         setScoreTotal(result.current_prize);
       if (Number.isFinite(Number(result.speed_bonus)))
         setSpeedBonus(result.speed_bonus);
-      if (
-        (question.mode === 'blitz' || question.mode === 'story') &&
-        Number.isFinite(Number(result.time_remaining_sec))
-      ) {
+      if (question.mode === 'blitz' && Number.isFinite(Number(result.time_remaining_sec))) {
         setBlitzRemaining(Number(result.time_remaining_sec));
-      } else if (question.mode !== 'blitz' && question.mode !== 'story') {
+      } else if (question.mode !== 'blitz') {
         setBlitzRemaining(null);
       }
 
@@ -387,7 +429,7 @@ export default function PlaySession({
     } catch (err) {
       if (isUnauthorized(err)) return onRequireAuth?.('play');
       if (err?.response?.data?.code === 'TIME_UP') {
-        finish(sessionMode === 'story' ? 'abandoned' : 'completed');
+        finish('completed');
         return;
       }
       setError(getApiErrorMessage(err));
@@ -401,12 +443,26 @@ export default function PlaySession({
     setBusy(true);
     setError('');
     try {
-      await api.finishSession(sessionId, { status });
-      if (isStory && !user) {
-        const a = Number(answeredCount) || 0;
-        const c = Number(correctCount) || 0;
-        const passed = status === 'completed' ? (a > 0 ? c / a >= 0.5 : false) : false;
-        saveGuestStoryResult(storyLevelNumber, { scoreTotal, passed });
+      const res = await api.finishSession(sessionId, { status });
+
+      if (isStory) {
+        const computed = computeStoryOutcomeFromCounts({
+          correctCount,
+          totalCount: answeredCount,
+        });
+        const server = res?.story && typeof res.story === 'object' ? res.story : null;
+        const passed =
+          status === 'completed' ? Boolean(server?.passed ?? computed.passed) : false;
+        const stars =
+          status === 'completed'
+            ? Math.max(0, Math.min(3, Number(server?.stars ?? computed.stars) || 0))
+            : 0;
+
+        setStoryOutcome({ passed, stars });
+
+        if (!user) {
+          saveGuestStoryResult(storyLevelNumber, { scoreTotal, passed, stars });
+        }
       }
       setFinished(true);
       setQuestion(null);
@@ -591,6 +647,12 @@ export default function PlaySession({
                   Level {Number(storyLevelNumber)} {ICONS.common.star}
                 </div>
               ) : null}
+              {isStory && storyResult ? (
+                <div className="tv-results__levelLine">
+                  {storyResult.passed ? '✅ Passed' : '❌ Not passed'} • {'★'.repeat(storyResult.stars)}
+                  {'☆'.repeat(Math.max(0, 3 - storyResult.stars))}
+                </div>
+              ) : null}
 
               <div className="tv-results__scorePanel">
                 <div className="tv-results__scoreLabel">YOUR SCORE</div>
@@ -633,6 +695,16 @@ export default function PlaySession({
               >
                 🏠 Home
               </button>
+              {isStory && storyResult?.passed ? (
+                <button
+                  type="button"
+                  className="tv-card tv-card--hover tv-results__btn"
+                  onClick={playNextLevel}
+                  disabled={busy}
+                >
+                  ➡️ Next level
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="tv-card tv-card--hover tv-results__btn"

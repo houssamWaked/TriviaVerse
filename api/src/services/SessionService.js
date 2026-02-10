@@ -9,7 +9,6 @@ const MILLIONAIRE_PRIZES = [
   100, 200, 300, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 125000, 250000,
   500000, 1000000,
 ];
-const STORY_MAX_WRONG = 3;
 const BLITZ_TIME_LIMIT_SEC = 15;
 const BLITZ_MAX_STRIKES = 3;
 
@@ -24,6 +23,22 @@ function computeStars({ scoreTotal = 0, maxScore = 0, passScoreMin = null }) {
   const ratio = max > 0 ? score / max : 1;
   const stars = ratio >= 0.9 ? 3 : ratio >= 0.75 ? 2 : 1;
   return { passed: true, stars };
+}
+
+function computeStoryOutcome({ correctCount = 0, totalCount = 0 } = {}) {
+  const total = Math.max(0, Number(totalCount) || 0);
+  const correct = Math.max(0, Number(correctCount) || 0);
+  const ratio = total > 0 ? correct / total : 0;
+
+  const passed = ratio >= 0.7;
+  const stars = ratio >= 1 ? 3 : ratio >= 0.9 ? 2 : ratio >= 0.8 ? 1 : 0;
+  return {
+    passed,
+    stars,
+    accuracy_pct: Math.round(ratio * 100),
+    correct_count: correct,
+    total_count: total,
+  };
 }
 
 function computeTimeRemainingSec(session) {
@@ -149,14 +164,6 @@ export class SessionService {
         const strikes = Math.max(0, Number(cached.strike_count) || 0);
         payload.strike_count = strikes;
         payload.strikes_remaining = Math.max(0, BLITZ_MAX_STRIKES - strikes);
-      } else if (cached.mode === 'story') {
-        payload.time_remaining_sec = computeTimeRemainingFromStartedAt(cached.started_at);
-      }
-
-      if (cached.mode === 'story') {
-        const wrong = Math.max(0, Number(cached.wrong_count) || 0);
-        payload.wrong_count = wrong;
-        payload.strikes_remaining = Math.max(0, STORY_MAX_WRONG - wrong);
       }
 
       if (cached.mode === 'millionaire') {
@@ -221,11 +228,6 @@ export class SessionService {
     const current = questions.find((q) => !answeredSet.has(q.id));
     if (!current) throw new AppError('No current question', 404, 'NO_CURRENT_QUESTION');
 
-    const storyWrongCount =
-      session.mode === 'story'
-        ? (answers || []).filter((a) => a && a.is_correct === false).length
-        : 0;
-
     const options = await this.sessionOptionRepository.listBySessionQuestionId(current.id);
     const payload = {
       session_question_id: current.id,
@@ -257,15 +259,8 @@ export class SessionService {
       );
       payload.strike_count = strikes;
       payload.strikes_remaining = Math.max(0, BLITZ_MAX_STRIKES - strikes);
-    } else if (session.mode === 'story') {
-      payload.time_remaining_sec = computeTimeRemainingSec(session);
     } else {
       payload.time_limit_sec = current.time_limit_snapshot;
-    }
-
-    if (session.mode === 'story') {
-      payload.wrong_count = storyWrongCount;
-      payload.strikes_remaining = Math.max(0, STORY_MAX_WRONG - storyWrongCount);
     }
 
     if (session.mode === 'millionaire') {
@@ -317,22 +312,6 @@ export class SessionService {
         throw new AppError('Session is not active', 409, 'NOT_ACTIVE');
       }
 
-      if (cached.mode === 'story') {
-        const remaining = computeTimeRemainingFromStartedAt(cached.started_at);
-        if (remaining != null && remaining <= 0) {
-          cached.status = 'abandoned';
-          sessionCache.set(sessionId, cached);
-          if (!isGuest) {
-            try {
-              await this.gameSessionRepository.updateStatus(sessionId, 'abandoned');
-            } catch {
-              // ignore
-            }
-          }
-          throw new AppError('Time is up', 409, 'TIME_UP');
-        }
-      }
-
       const idx = Math.max(0, Number(cached.current_index) || 0);
       const current = Array.isArray(cached.questions) ? cached.questions[idx] : null;
       if (!current) throw new AppError('No current question', 404, 'NO_CURRENT_QUESTION');
@@ -358,13 +337,6 @@ export class SessionService {
           (remaining != null && remaining <= 0) ||
           (Number.isFinite(answeredInSec) && answeredInSec >= BLITZ_TIME_LIMIT_SEC);
         if (blitzTimedOut) is_correct = false;
-      }
-
-      let storyStrikeOut = false;
-      if (cached.mode === 'story' && !is_correct) {
-        const nextWrong = (Number(cached.wrong_count) || 0) + 1;
-        cached.wrong_count = nextWrong;
-        storyStrikeOut = nextWrong >= STORY_MAX_WRONG;
       }
 
       if (isGuest) {
@@ -411,31 +383,6 @@ export class SessionService {
             timed_out: blitzTimedOut,
           };
         }
-      }
-
-      if (cached.mode === 'story' && storyStrikeOut) {
-        cached.status = 'abandoned';
-        sessionCache.set(sessionId, cached);
-        if (!isGuest) {
-          try {
-            await this.gameSessionRepository.updateStatus(sessionId, 'abandoned');
-          } catch {
-            // ignore
-          }
-        }
-        return {
-          is_correct: false,
-          chosen_option_id: body.chosen_option_id,
-          correct_option_id: correctId,
-          score_total: cached.score_total ?? 0,
-          time_remaining_sec: computeTimeRemainingFromStartedAt(cached.started_at),
-          next_question_available: false,
-          finished: true,
-          status: 'abandoned',
-          reason: 'strikes',
-          wrong_count: Math.max(0, Number(cached.wrong_count) || 0),
-          strikes_remaining: 0,
-        };
       }
 
       if (cached.mode === 'millionaire') {
@@ -584,21 +531,6 @@ export class SessionService {
           base.next_question.strike_count = strikes;
           base.next_question.strikes_remaining = base.strikes_remaining;
         }
-      } else if (cached.mode === 'story') {
-        base.time_remaining_sec = computeTimeRemainingFromStartedAt(cached.started_at);
-        if (base.next_question) {
-          base.next_question.time_remaining_sec = computeTimeRemainingFromStartedAt(cached.started_at);
-        }
-      }
-
-      if (cached.mode === 'story') {
-        const wrong = Math.max(0, Number(cached.wrong_count) || 0);
-        base.wrong_count = wrong;
-        base.strikes_remaining = Math.max(0, STORY_MAX_WRONG - wrong);
-        if (base.next_question) {
-          base.next_question.wrong_count = wrong;
-          base.next_question.strikes_remaining = base.strikes_remaining;
-        }
       }
 
       return base;
@@ -607,19 +539,6 @@ export class SessionService {
     const session = await this.assertSessionOwner(sessionId, userId);
     if (session.status && session.status !== 'in_progress') {
       throw new AppError('Session is not active', 409, 'NOT_ACTIVE');
-    }
-
-    if (session.mode === 'story') {
-      const remaining = computeTimeRemainingSec(session);
-      if (remaining != null && remaining <= 0) {
-        try {
-          await this.gameSessionRepository.updateStatus(sessionId, 'abandoned');
-        } catch {
-          // ignore
-        }
-        sessionCache.del(sessionId);
-        throw new AppError('Time is up', 409, 'TIME_UP');
-      }
     }
 
     const questions = await this.sessionQuestionRepository.listBySessionId(sessionId);
@@ -835,27 +754,6 @@ export class SessionService {
       questions.map((q) => q.id)
     );
 
-    const storyWrongCount =
-      session.mode === 'story'
-        ? (answers || []).filter((a) => a && a.is_correct === false).length
-        : 0;
-
-    if (session.mode === 'story' && storyWrongCount >= STORY_MAX_WRONG) {
-      await this.gameSessionRepository.updateStatus(sessionId, 'abandoned');
-      sessionCache.del(sessionId);
-      return {
-        is_correct,
-        score_total: updatedSession?.score_total ?? session.score_total,
-        time_remaining_sec: computeTimeRemainingSec(updatedSession || session),
-        next_question_available: false,
-        finished: true,
-        status: 'abandoned',
-        reason: 'strikes',
-        wrong_count: storyWrongCount,
-        strikes_remaining: 0,
-      };
-    }
-
     const next_question_available = answers.length < questions.length;
 
     if (session.mode === 'blitz') {
@@ -910,12 +808,6 @@ export class SessionService {
           score_total: updatedSession?.score_total ?? session.score_total ?? 0,
           time_limit_sec: next.time_limit_snapshot,
         };
-
-        if (session.mode === 'story') {
-          next_question.time_remaining_sec = computeTimeRemainingSec(updatedSession || session);
-          next_question.wrong_count = storyWrongCount;
-          next_question.strikes_remaining = Math.max(0, STORY_MAX_WRONG - storyWrongCount);
-        }
       }
     }
 
@@ -927,13 +819,6 @@ export class SessionService {
       next_question_available,
       ...(next_question ? { next_question } : {}),
       ...(session.mode === 'custom' ? { speed_bonus } : {}),
-      ...(session.mode === 'story'
-        ? {
-            time_remaining_sec: computeTimeRemainingSec(updatedSession || session),
-            wrong_count: storyWrongCount,
-            strikes_remaining: Math.max(0, STORY_MAX_WRONG - storyWrongCount),
-          }
-        : {}),
     };
   }
 
@@ -1145,6 +1030,7 @@ export class SessionService {
 
     let storyXpEligible = false;
     let storyXpValue = 0;
+    let storySummary = null;
 
     if (session.mode === 'story' && status === 'completed') {
       if (
@@ -1162,20 +1048,20 @@ export class SessionService {
                 level.id
               );
               const questions = await this.sessionQuestionRepository.listBySessionId(sessionId);
-              const maxScore = questions.reduce(
-                (acc, q) => acc + (Number(q.points_snapshot) || 0),
-                0
-              );
+              const totalQuestions = questions.length;
               const scoreTotal = Number(updated.score_total) || 0;
-              const { passed, stars } = computeStars({
-                scoreTotal,
-                maxScore,
-                passScoreMin: level.pass_score_min ?? null,
-              });
+              const answers = await this.sessionAnswerRepository.listBySessionQuestionIds(
+                questions.map((q) => q.id)
+              );
+              const correctCount = (answers || []).filter((a) => a && a.is_correct === true).length;
+              const outcome = computeStoryOutcome({ correctCount, totalCount: totalQuestions });
 
-              const noStrike = maxScore > 0 ? scoreTotal >= maxScore : passed;
-              const alreadyPerfect = maxScore > 0 ? (existing?.best_score ?? 0) >= maxScore : false;
-              storyXpEligible = Boolean(passed && noStrike && !alreadyPerfect);
+              const passed = outcome.passed;
+              const stars = outcome.stars;
+
+              const perfect = outcome.total_count > 0 ? outcome.correct_count >= outcome.total_count : false;
+              const alreadyPerfect = (existing?.stars_earned ?? 0) >= 3;
+              storyXpEligible = Boolean(passed && perfect && !alreadyPerfect);
               storyXpValue = scoreTotal;
 
               await this.userStoryProgressRepository.upsertResult(session.user_id, level.id, {
@@ -1184,14 +1070,29 @@ export class SessionService {
                 is_completed: passed,
               });
 
-              if (passed && meta.level_number) {
+              let hasNextLevel = false;
+              let nextLevelNumber = null;
+              if (meta.level_number) {
                 const next = await this.storyLevelRepository.findByLevelNumber(
                   Number(meta.level_number) + 1
                 );
                 if (next?.id) {
-                  await this.userStoryProgressRepository.ensureUnlocked(session.user_id, next.id);
+                  hasNextLevel = true;
+                  nextLevelNumber = Number(meta.level_number) + 1;
+                  if (passed) {
+                    await this.userStoryProgressRepository.ensureUnlocked(session.user_id, next.id);
+                  }
                 }
               }
+
+              storySummary = {
+                level_number: meta.level_number ?? null,
+                ...outcome,
+                score_total: scoreTotal,
+                passed,
+                has_next_level: hasNextLevel,
+                next_level_number: nextLevelNumber,
+              };
             }
           }
         } catch (err) {
@@ -1277,6 +1178,7 @@ export class SessionService {
         difficulty: session.difficulty ?? null,
         score_total: updated.score_total ?? null,
       },
+      ...(storySummary ? { story: storySummary } : {}),
       warnings,
     };
   }
