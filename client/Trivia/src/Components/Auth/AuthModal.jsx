@@ -3,7 +3,7 @@ import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
 import AuthModalStyle from '@/Styles/ComponentStyles/AuthModalStyle';
 
-function useMediaQuery(query) {
+function useMediaQuery(query, { enabled = true } = {}) {
   const getMatch = () => {
     if (
       typeof window === 'undefined' ||
@@ -16,6 +16,7 @@ function useMediaQuery(query) {
   const [matches, setMatches] = useState(getMatch);
 
   useEffect(() => {
+    if (!enabled) return undefined;
     if (
       typeof window === 'undefined' ||
       typeof window.matchMedia !== 'function'
@@ -59,6 +60,7 @@ export default function AuthModal({
   });
   const [resendBusy, setResendBusy] = useState(false);
   const [resendMessage, setResendMessage] = useState('');
+  const isCompact = useMediaQuery('(max-width: 720px)', { enabled: open });
 
   useEffect(() => {
     if (!open) return undefined;
@@ -92,7 +94,6 @@ export default function AuthModal({
   if (!open) return null;
 
   const isLogin = mode === 'login';
-  const isCompact = useMediaQuery('(max-width: 720px)');
 
   const reset = ({ keepEmail = false } = {}) =>
     setValues((v) => ({

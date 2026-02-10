@@ -20,7 +20,7 @@ import Footer from './shared/layout/Footer';
 import CookieBanner from './shared/layout/CookieBanner';
 import AuthModal from './Components/Auth/AuthModal';
 import AppStyle from './Styles/AppStyle';
-import { getApiErrorMessage } from '@/utils/apiError';
+import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
 import { essentialCacheClearByPrefix } from '@/utils/webCache';
@@ -250,7 +250,13 @@ function App() {
             quizTitle,
           });
         }
-      } catch {
+      } catch (err) {
+        if (isUnauthorized(err)) {
+          clearAuthToken();
+          clearCurrentUser();
+          setUser(null);
+          return;
+        }
         // ignore (offline/back-end down)
       }
     }
