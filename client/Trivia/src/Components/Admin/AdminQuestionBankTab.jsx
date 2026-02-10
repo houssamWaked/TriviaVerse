@@ -119,6 +119,20 @@ export default function AdminQuestionBankTab({
           </button>
         </div>
 
+        <div style={AdminStyle.field}>
+          <span style={AdminStyle.label}>{STRINGS.ADMIN.labels.explanation}</span>
+          <textarea
+            style={AdminQuestionBankTabStyle.textareaMin70}
+            value={questionForm.explanation}
+            onChange={(e) =>
+              setQuestionForm((v) => ({ ...v, explanation: e.target.value }))
+            }
+            placeholder={STRINGS.ADMIN.text.explanationPlaceholder}
+            disabled={busy}
+            required
+          />
+        </div>
+
         <label style={AdminQuestionBankTabStyle.toggleLabel}>
           <input
             type="checkbox"
@@ -129,7 +143,7 @@ export default function AdminQuestionBankTab({
             disabled={busy}
             style={AdminQuestionBankTabStyle.checkboxMr8}
           />
-          Show advanced settings (explanation, time, points)
+          Show advanced settings (modes, time, points)
         </label>
 
         {questionForm.showAdvanced && (
@@ -157,19 +171,6 @@ export default function AdminQuestionBankTab({
                   {m}
                 </label>
               ))}
-            </div>
-
-            <div style={AdminStyle.field}>
-              <span style={AdminStyle.label}>{STRINGS.ADMIN.labels.explanation}</span>
-              <textarea
-                style={AdminQuestionBankTabStyle.textareaMin70}
-                value={questionForm.explanation}
-                onChange={(e) =>
-                  setQuestionForm((v) => ({ ...v, explanation: e.target.value }))
-                }
-                placeholder={STRINGS.ADMIN.text.explanationPlaceholder}
-                disabled={busy}
-              />
             </div>
 
             <div style={AdminQuestionBankTabStyle.rowMt10}>
@@ -213,7 +214,11 @@ export default function AdminQuestionBankTab({
             className="tv-card tv-card--hover"
             style={AdminStyle.btnPrimaryFull}
             onClick={onCreateQuestion}
-            disabled={busy || !String(questionForm.question_text || '').trim()}
+            disabled={
+              busy ||
+              !String(questionForm.question_text || '').trim() ||
+              !String(questionForm.explanation || '').trim()
+            }
           >
             {STRINGS.ADMIN.text.createQuestionButton}
           </button>

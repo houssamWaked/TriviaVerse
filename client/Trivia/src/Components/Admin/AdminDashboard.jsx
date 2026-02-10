@@ -225,6 +225,12 @@ export default function AdminDashboard({
     const question_text = String(questionForm.question_text || '').trim();
     if (!question_text) return;
 
+    const explanation = String(questionForm.explanation || '').trim();
+    if (!explanation) {
+      setError('Explanation is required.');
+      return;
+    }
+
     const options = (questionForm.options || [])
       .map((t) => String(t || '').trim())
       .filter(Boolean);
@@ -248,11 +254,11 @@ export default function AdminDashboard({
       const payload = {
         question_text,
         difficulty_rating: clampInt(questionForm.difficulty_rating, 1, 10),
+        explanation,
         options: payloadOptions,
         modes: questionForm.showAdvanced ? modes : [],
       };
       if (questionForm.showAdvanced) {
-        payload.explanation = String(questionForm.explanation || '').trim() || null;
         payload.time_limit_sec = clampInt(questionForm.time_limit_sec, 3, 600);
         payload.points = clampInt(questionForm.points, 0, 100000);
       }

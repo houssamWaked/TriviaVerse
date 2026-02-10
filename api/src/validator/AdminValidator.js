@@ -53,7 +53,7 @@ export const addPoolBody = [
 export const createGlobalQuestionBody = [
   body('question_text').isString().trim().isLength({ min: 5, max: 300 }),
   body('difficulty_rating').optional().isInt({ min: 1, max: 10 }),
-  body('explanation').optional().isString().trim().isLength({ max: 600 }),
+  body('explanation').isString().trim().isLength({ min: 1, max: 2000 }),
   body('time_limit_sec').optional().isInt({ min: 3, max: 600 }),
   body('points').optional().isInt({ min: 0, max: 100000 }),
   body('options').isArray({ min: 2, max: 6 }),

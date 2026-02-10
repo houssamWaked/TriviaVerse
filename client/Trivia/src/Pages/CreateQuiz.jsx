@@ -15,6 +15,7 @@ function validateQuestionsForPublish(questions = []) {
     const opts = Array.isArray(q?.options) ? q.options : [];
     const optionCount = opts.length;
     const correctCount = opts.filter((o) => !!o.is_correct).length;
+    const hasExplanation = !!String(q?.explanation || '').trim();
 
     if (optionCount < 2) {
       issues.push(
@@ -27,6 +28,11 @@ function validateQuestionsForPublish(questions = []) {
           q?.order_index ?? '?',
           correctCount
         )
+      );
+    }
+    if (!hasExplanation) {
+      issues.push(
+        STRINGS.CREATE_QUIZ.validation.questionNeedsExplanation(q?.order_index ?? '?')
       );
     }
   }
@@ -850,12 +856,17 @@ export default function CreateQuiz({
                     onSubmit={async (e) => {
                       e.preventDefault();
                       setError('');
+                      const explanation = String(questionForm.explanation || '').trim();
+                      if (!explanation) {
+                        setError('Explanation is required.');
+                        return;
+                      }
                       setBusy(true);
                       try {
                         const order_index = (questions?.length || 0) + 1;
                         await api.addQuizQuestion(quiz.id, {
                           question_text: questionForm.question_text,
-                          explanation: String(questionForm.explanation || '').trim() || null,
+                          explanation,
                           time_limit_sec: Number(questionForm.time_limit_sec) || 30,
                           points: Number(questionForm.points) || 100,
                           order_index,
@@ -920,6 +931,7 @@ export default function CreateQuiz({
                         maxLength={2000}
                         placeholder={STRINGS.CREATE_QUIZ.placeholders.explanation}
                         disabled={busy}
+                        required
                       />
                     </label>
 
@@ -1008,10 +1020,14 @@ export default function CreateQuiz({
                             disabled={busy}
                             onClick={async () => {
                               setError('');
+                              const v = String(explanationDrafts[q.id] ?? q.explanation ?? '').trim();
+                              if (!v) {
+                                setError('Explanation is required.');
+                                return;
+                              }
                               setBusy(true);
                               try {
-                                const v = String(explanationDrafts[q.id] ?? q.explanation ?? '').trim();
-                                await api.patchQuestion(q.id, { explanation: v || null });
+                                await api.patchQuestion(q.id, { explanation: v });
                                 setExplanationDrafts((m) => ({ ...m, [q.id]: v }));
                                 await refreshQuestions(quiz.id);
                               } catch (err) {

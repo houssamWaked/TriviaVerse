@@ -785,6 +785,8 @@ export const STRINGS = {
         `Question ${orderIndex} needs at least 2 options.`,
       questionNeedsCorrect: (orderIndex, correctCount) =>
         `Question ${orderIndex} must have exactly 1 correct option (currently ${correctCount}).`,
+      questionNeedsExplanation: (orderIndex) =>
+        `Question ${orderIndex} needs an explanation (shown when a player answers wrong).`,
     },
   },
 
