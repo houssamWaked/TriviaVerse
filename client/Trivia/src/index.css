@@ -282,6 +282,125 @@ button:active {
   }
 }
 
+/* ===== Blitz mode (responsive layout) ===== */
+.tv-blitz-stage {
+  padding: 22px 22px 26px;
+}
+
+.tv-blitz-setup {
+  padding: 18px;
+}
+
+.tv-blitz-setup-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.tv-blitz-diff-pills {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tv-blitz-feature-grid {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.tv-blitz-cta {
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tv-blitz-btn--primary {
+  min-width: 210px;
+}
+.tv-blitz-btn--secondary {
+  min-width: 180px;
+}
+.tv-blitz-btn--ghost {
+  min-width: 220px;
+}
+
+.tv-blitz-duel-row {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.tv-blitz-duel-select {
+  min-width: 220px;
+  flex: 1 1 220px;
+}
+
+@media (max-width: 920px) {
+  .tv-blitz-setup-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tv-blitz-diff-pills {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tv-blitz-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .tv-blitz-stage {
+    padding: 14px 12px 18px;
+  }
+
+  .tv-blitz-setup {
+    padding: 14px;
+  }
+
+  .tv-blitz-diff-pills {
+    grid-template-columns: 1fr;
+  }
+
+  .tv-blitz-feature-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .tv-blitz-cta {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tv-blitz-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .tv-blitz-duel-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tv-blitz-duel-select {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .tv-blitz-duel-send {
+    width: 100%;
+  }
+}
+
 /* ===== Cookie consent banner (responsive) ===== */
 .tv-consent {
   position: fixed;

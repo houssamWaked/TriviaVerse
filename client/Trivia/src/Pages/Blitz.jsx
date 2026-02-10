@@ -128,12 +128,12 @@ export default function Blitz({
         </div>
 
         {/* STAGE */}
-        <div className="tv-card" style={BlitzStyle.stageCard}>
+        <div className="tv-card tv-blitz-stage" style={BlitzStyle.stageCard}>
           {!!error && <div style={BlitzStyle.errorInline}>{error}</div>}
 
           {/* TOP SETUP PANEL */}
-          <div className="tv-card" style={BlitzStyle.setupPanel}>
-            <div style={BlitzStyle.setupGrid}>
+          <div className="tv-card tv-blitz-setup" style={BlitzStyle.setupPanel}>
+            <div className="tv-blitz-setup-grid" style={BlitzStyle.setupGrid}>
               {/* HOW TO */}
               <div style={BlitzStyle.howToCol}>
                 <div style={BlitzStyle.panelTitle}>
@@ -162,7 +162,10 @@ export default function Blitz({
                   {STRINGS.BLITZ.difficultyTitle}
                 </div>
 
-                <div style={BlitzStyle.diffPillsRow}>
+                <div
+                  className="tv-blitz-diff-pills"
+                  style={BlitzStyle.diffPillsRow}
+                >
                   {diffButtons.map((d) => (
                     <button
                       key={d.key}
@@ -188,7 +191,7 @@ export default function Blitz({
           </div>
 
           {/* FEATURE CARDS */}
-          <div style={BlitzStyle.featureGrid}>
+          <div className="tv-blitz-feature-grid" style={BlitzStyle.featureGrid}>
             {[
               {
                 icon: ICONS.common.timer,
@@ -219,10 +222,10 @@ export default function Blitz({
           </div>
 
           {/* CTA ROW */}
-          <div style={BlitzStyle.ctaRow}>
+          <div className="tv-blitz-cta" style={BlitzStyle.ctaRow}>
             <button
               type="button"
-              className="tv-card tv-card--hover"
+              className="tv-card tv-card--hover tv-blitz-btn tv-blitz-btn--primary"
               style={BlitzStyle.startBtn}
               onClick={start}
               disabled={busy}
@@ -232,7 +235,7 @@ export default function Blitz({
 
             <button
               type="button"
-              className="tv-card tv-card--hover"
+              className="tv-card tv-card--hover tv-blitz-btn tv-blitz-btn--secondary"
               style={BlitzStyle.secondaryBtn}
               onClick={toggleDuel}
               disabled={busy || !onOpenDuel}
@@ -242,7 +245,7 @@ export default function Blitz({
 
             <button
               type="button"
-              className="tv-card tv-card--hover"
+              className="tv-card tv-card--hover tv-blitz-btn tv-blitz-btn--secondary"
               style={BlitzStyle.secondaryBtn}
               onClick={onNavigateHome}
               disabled={busy}
@@ -253,7 +256,7 @@ export default function Blitz({
             {!user ? (
               <button
                 type="button"
-                className="tv-card tv-card--hover"
+                className="tv-card tv-card--hover tv-blitz-btn tv-blitz-btn--ghost"
                 style={BlitzStyle.ghostBtn}
                 onClick={() => onRequireAuth?.('blitz')}
                 disabled={busy}
@@ -284,8 +287,9 @@ export default function Blitz({
                 </button>
               </div>
 
-              <div style={BlitzStyle.duelRow}>
+              <div className="tv-blitz-duel-row" style={BlitzStyle.duelRow}>
                 <select
+                  className="tv-blitz-duel-select"
                   style={BlitzStyle.duelSelect}
                   value={duelFriendId}
                   onChange={(e) => setDuelFriendId(e.target.value)}
@@ -301,7 +305,7 @@ export default function Blitz({
 
                 <button
                   type="button"
-                  className="tv-card tv-card--hover"
+                  className="tv-card tv-card--hover tv-blitz-duel-send"
                   style={BlitzStyle.duelSendBtn}
                   disabled={busy || !duelFriendId || !onOpenDuel}
                   onClick={async () => {

@@ -23,7 +23,6 @@ const BlitzStyle = {
   stageCard: {
     background: colors.neutral.white,
     borderRadius: 28,
-    padding: '22px 22px 26px',
     boxShadow: '0 26px 70px rgba(0,0,0,0.22)',
   },
 
@@ -41,7 +40,6 @@ const BlitzStyle = {
   /* Setup panel (sub-card inside stage) */
   setupPanel: {
     borderRadius: 22,
-    padding: 18,
     background:
       'linear-gradient(180deg, rgba(248,250,252,1) 0%, rgba(255,255,255,1) 100%)',
     border: `1px solid ${colors.neutral[200]}`,
@@ -49,10 +47,6 @@ const BlitzStyle = {
   },
 
   setupGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1.35fr 1fr',
-    gap: 18,
-    alignItems: 'start',
   },
 
   howToCol: {
@@ -103,9 +97,6 @@ const BlitzStyle = {
 
   diffPillsRow: {
     marginTop: 12,
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-    gap: 10,
   },
 
   diffPill: (selected) => ({
@@ -132,9 +123,6 @@ const BlitzStyle = {
   /* Feature cards row */
   featureGrid: {
     marginTop: 18,
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-    gap: 14,
   },
 
   featureCard: {
@@ -179,15 +167,10 @@ const BlitzStyle = {
   /* CTA row */
   ctaRow: {
     marginTop: 18,
-    display: 'flex',
-    justifyContent: 'center',
-    gap: 12,
-    flexWrap: 'wrap',
   },
 
   startBtn: {
     height: 52,
-    minWidth: 210,
     padding: '0 18px',
     borderRadius: 16,
     border: 'none',
@@ -201,7 +184,6 @@ const BlitzStyle = {
 
   secondaryBtn: {
     height: 52,
-    minWidth: 180,
     padding: '0 18px',
     borderRadius: 16,
     border: `1px solid ${colors.neutral[200]}`,
@@ -215,7 +197,6 @@ const BlitzStyle = {
 
   ghostBtn: {
     height: 52,
-    minWidth: 220,
     padding: '0 18px',
     borderRadius: 16,
     border: `1px solid ${colors.neutral[200]}`,
@@ -262,16 +243,10 @@ const BlitzStyle = {
 
   duelRow: {
     marginTop: 12,
-    display: 'flex',
-    gap: 10,
-    alignItems: 'center',
-    flexWrap: 'wrap',
   },
 
   duelSelect: {
     height: 44,
-    minWidth: 220,
-    flex: '1 1 220px',
     borderRadius: 16,
     border: `1px solid ${colors.neutral[200]}`,
     padding: '0 12px',
