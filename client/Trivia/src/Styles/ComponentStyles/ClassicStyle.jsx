@@ -90,9 +90,6 @@ const ClassicStyle = {
   /* CATEGORIES GRID (matches right image) */
   categoriesGrid: {
     marginTop: 24,
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-    gap: 16,
   },
 
   /* Responsive */
@@ -174,9 +171,6 @@ const ClassicStyle = {
   /* STATS */
   statsGrid: {
     marginTop: 22,
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-    gap: 16,
   },
   statsCard: {
     ...glass,

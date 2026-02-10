@@ -142,7 +142,7 @@ export default function Classic({
         )}
 
         {/* GRID */}
-        <div style={ClassicStyle.categoriesGrid}>
+        <div className="tv-classic-grid" style={ClassicStyle.categoriesGrid}>
           {categories.length === 0
             ? Array.from({ length: 12 }).map((_, idx) => (
                 <div
@@ -193,7 +193,7 @@ export default function Classic({
         </div>
 
         {/* STATS */}
-        <div style={ClassicStyle.statsGrid}>
+        <div className="tv-classic-stats-grid" style={ClassicStyle.statsGrid}>
           {[
             {
               value: String(categories.length || 0),

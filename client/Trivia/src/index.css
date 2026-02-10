@@ -235,6 +235,53 @@ button:active {
   }
 }
 
+/* ===== Classic mode (responsive grids) ===== */
+.tv-classic-grid {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 1100px) {
+  .tv-classic-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 920px) {
+  .tv-classic-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .tv-classic-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+.tv-classic-stats-grid {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 920px) {
+  .tv-classic-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .tv-classic-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
 /* ===== Cookie consent banner (responsive) ===== */
 .tv-consent {
   position: fixed;
