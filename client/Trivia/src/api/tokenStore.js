@@ -10,6 +10,8 @@
  * - Long-lived refresh tokens are handled server-side via httpOnly cookies.
  */
 
+const SESSION_KEY = 'tv_access_token_v1';
+
 let memoryToken = null;
 let bootstrapped = false;
 
@@ -22,7 +24,20 @@ function bootstrapLegacyToken() {
     if (legacy) {
       memoryToken = String(legacy);
       window.localStorage.removeItem('token');
+      try {
+        window.sessionStorage.setItem(SESSION_KEY, memoryToken);
+      } catch {
+        // ignore
+      }
+      return;
     }
+  } catch {
+    // ignore
+  }
+
+  try {
+    const fromSession = window.sessionStorage.getItem(SESSION_KEY);
+    if (fromSession) memoryToken = String(fromSession);
   } catch {
     // ignore
   }
@@ -36,6 +51,12 @@ export function getAuthToken() {
 export function setAuthToken(token) {
   bootstrapLegacyToken();
   memoryToken = token ? String(token) : null;
+  try {
+    if (memoryToken) window.sessionStorage.setItem(SESSION_KEY, memoryToken);
+    else window.sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    // ignore
+  }
 }
 
 export function clearAuthToken() {

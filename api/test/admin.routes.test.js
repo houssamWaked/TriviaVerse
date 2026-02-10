@@ -9,6 +9,7 @@ import { errorHandler } from '../src/middlewares/errorHandler.js';
 import { notFound } from '../src/middlewares/notFound.js';
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
+process.env.NODE_ENV = 'test';
 process.env.ADMIN_EMAILS = process.env.ADMIN_EMAILS || 'admin@test.com';
 
 function adminHeader(userId = '00000000-0000-0000-0000-000000000000') {

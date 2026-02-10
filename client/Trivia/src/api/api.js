@@ -362,18 +362,29 @@ export const api = {
   },
 
   // friends
-  listFriends: async () =>
-    cachedGet(endpoints.friends(), { ttlMs: 2 * 60_000, scope: 'user', prefer: 'localStorage' }),
-  listFriendRequests: async () =>
-    cachedGet(endpoints.friendRequests(), { ttlMs: 60_000, scope: 'user', prefer: 'localStorage' }),
-  sendFriendRequest: async (body) =>
-    (await http.post(endpoints.friendRequests(), body)).data,
-  acceptFriendRequest: async (requestId) =>
-    (await http.post(endpoints.friendRequestAccept(requestId), {})).data,
-  declineFriendRequest: async (requestId) =>
-    (await http.post(endpoints.friendRequestDecline(requestId), {})).data,
-  cancelFriendRequest: async (requestId) =>
-    (await http.delete(endpoints.friendRequestCancel(requestId))).data,
+  // Friends/requests are "live" UX and shouldn't be long-cached.
+  listFriends: async () => (await http.get(endpoints.friends())).data,
+  listFriendRequests: async () => (await http.get(endpoints.friendRequests())).data,
+  sendFriendRequest: async (body) => {
+    const data = (await http.post(endpoints.friendRequests(), body)).data;
+    invalidateUserCacheByPathPrefix('/api/friends');
+    return data;
+  },
+  acceptFriendRequest: async (requestId) => {
+    const data = (await http.post(endpoints.friendRequestAccept(requestId), {})).data;
+    invalidateUserCacheByPathPrefix('/api/friends');
+    return data;
+  },
+  declineFriendRequest: async (requestId) => {
+    const data = (await http.post(endpoints.friendRequestDecline(requestId), {})).data;
+    invalidateUserCacheByPathPrefix('/api/friends');
+    return data;
+  },
+  cancelFriendRequest: async (requestId) => {
+    const data = (await http.delete(endpoints.friendRequestCancel(requestId))).data;
+    invalidateUserCacheByPathPrefix('/api/friends');
+    return data;
+  },
   getFriendStats: async (friendUserId) =>
     cachedGet(endpoints.friendStats(friendUserId), { ttlMs: 10 * 60_000, scope: 'user', prefer: 'localStorage' }),
   getFriendProfile: async (friendUserId) =>

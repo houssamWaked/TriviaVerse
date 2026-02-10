@@ -7,10 +7,12 @@ export default function Footer() {
     <footer style={styles.footer}>
       <div style={styles.container}>
         <p style={styles.text}>
-          {STRINGS.FOOTER.madeWith} <span style={styles.heart}>{ICONS.common.heart}</span>{' '}
-          {STRINGS.FOOTER.by} <span style={styles.brand}>{STRINGS.COMMON.appName}</span>{' '}
-          {STRINGS.COMMON.separators.middot} {STRINGS.COMMON.separators.copyright}{' '}
-          {STRINGS.FOOTER.year}
+          {STRINGS.FOOTER.madeWith}{' '}
+          <span style={styles.heart}>{ICONS.common.heart}</span>{' '}
+          {STRINGS.FOOTER.by}{' '}
+          <span style={styles.brand}>{STRINGS.COMMON.appName}</span>{' '}
+          {STRINGS.COMMON.separators.middot}{' '}
+          {STRINGS.COMMON.separators.copyright} {STRINGS.FOOTER.year}
         </p>
 
         <p style={styles.tagline}>

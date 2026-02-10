@@ -1,59 +1,58 @@
-// Centralized color system for TriviaVerse UI
-// Matches gradients, buttons, cards, and game modes
+// Dark Blue theme for TriviaVerse
 
 const colors = {
   // ===== Brand / Primary =====
   primary: {
-    50: '#f5e9ff',
-    100: '#e6cfff',
-    200: '#d0a6ff',
-    300: '#ba7dff',
-    400: '#a455ff',
-    500: '#8b2cff', // main brand
-    600: '#7422d6',
-    700: '#5d1aad',
-    800: '#461284',
-    900: '#2f0a5b',
+    50: '#e8f1ff',
+    100: '#c7ddff',
+    200: '#9fc2ff',
+    300: '#77a7ff',
+    400: '#4f8cff',
+    500: '#2563eb', // main brand
+    600: '#1d4ed8',
+    700: '#1e40af',
+    800: '#1e3a8a',
+    900: '#172554',
   },
 
-  // ===== Secondary / Pink =====
+  // ===== Secondary / Teal =====
   secondary: {
-    50: '#ffe9f2',
-    100: '#ffd0e4',
-    200: '#ffa6cb',
-    300: '#ff7db2',
-    400: '#ff5599',
-    500: '#ff2c80',
-    600: '#d62269',
-    700: '#ad1a52',
-    800: '#84123b',
-    900: '#5b0a24',
+    50: '#e6fffa',
+    100: '#b2f5ea',
+    200: '#81e6d9',
+    300: '#4fd1c5',
+    400: '#38b2ac',
+    500: '#319795',
+    600: '#2c7a7b',
+    700: '#285e61',
+    800: '#234e52',
+    900: '#1d4044',
   },
 
   // ===== Accent Colors =====
   accent: {
-    yellow: '#ffcc00', // stars, rewards
-    orange: '#ff9f1c', // millionaire
-    green: '#22c55e', // correct / success
-    red: '#ef4444', // wrong / danger
-    blue: '#3b82f6', // info
+    yellow: '#facc15',
+    orange: '#fb923c',
+    green: '#22c55e',
+    red: '#ef4444',
+    blue: '#3b82f6',
   },
 
   // ===== Game Mode Colors =====
   modes: {
-    story: '#3b82f6', // blue
-    millionaire: '#f59e0b', // gold
-    classic: '#a855f7', // purple
-    blitz: '#ef4444', // red
-    custom: '#22c55e', // green
+    story: '#3b82f6',
+    millionaire: '#facc15',
+    classic: '#2563eb',
+    blitz: '#ef4444',
+    custom: '#22c55e',
   },
 
   // ===== Background Gradients =====
   gradients: {
-    main: 'linear-gradient(135deg, #8b2cff 0%, #ff2c80 100%)',
-    story: 'linear-gradient(135deg, #60a5fa 0%, #a855f7 100%)',
-    millionaire: 'linear-gradient(135deg, #fbbf24 0%, #f97316 100%)',
-    classic: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
+    main: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)',
+    story: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)',
+    millionaire: 'linear-gradient(135deg, #facc15 0%, #fb923c 100%)',
+    classic: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
     blitz: 'linear-gradient(135deg, #ef4444 0%, #f97316 100%)',
   },
 
@@ -61,22 +60,22 @@ const colors = {
   neutral: {
     white: '#ffffff',
     black: '#000000',
-    50: '#f9fafb',
-    100: '#f3f4f6',
-    200: '#e5e7eb',
-    300: '#d1d5db',
-    400: '#9ca3af',
-    500: '#6b7280',
-    600: '#4b5563',
-    700: '#374151',
-    800: '#1f2933',
-    900: '#111827',
+    50: '#f8fafc',
+    100: '#f1f5f9',
+    200: '#e2e8f0',
+    300: '#cbd5e1',
+    400: '#94a3b8',
+    500: '#64748b',
+    600: '#475569',
+    700: '#334155',
+    800: '#1e293b',
+    900: '#0f172a',
   },
 
   // ===== Status =====
   status: {
     success: '#22c55e',
-    warning: '#f59e0b',
+    warning: '#facc15',
     error: '#ef4444',
     info: '#3b82f6',
   },

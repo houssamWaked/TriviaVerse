@@ -9,6 +9,7 @@ import { errorHandler } from '../src/middlewares/errorHandler.js';
 import { notFound } from '../src/middlewares/notFound.js';
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
+process.env.NODE_ENV = 'test';
 
 function authHeader(userId = '00000000-0000-0000-0000-000000000000') {
   const token = jwt.sign({ sub: userId }, process.env.JWT_SECRET, { expiresIn: '1h' });
@@ -59,4 +60,3 @@ test('GET /api/friends returns friends', async () => {
   assert.equal(res.status, 200);
   assert.equal(Array.isArray(res.body.friends), true);
 });
-

@@ -117,7 +117,9 @@ export default function PlaySession({
     if (sessionMode !== 'blitz' && sessionMode !== 'story') return undefined;
     if (!Number.isFinite(blitzRemaining)) return undefined;
     if (finished) return undefined;
-    if (busy) return undefined;
+    // Blitz: freeze countdown while awaiting network/transition feedback.
+    // Story: keep the session timer moving so it doesn't "jump" after slow requests.
+    if (sessionMode === 'blitz' && busy) return undefined;
     // Blitz uses a per-question timer. Freeze the client countdown while showing
     // answer feedback so the 1s transition delay doesn't "steal" time visually.
     if (sessionMode === 'blitz' && answerResult) return undefined;
@@ -137,6 +139,7 @@ export default function PlaySession({
     if (sessionMode !== 'blitz' && sessionMode !== 'story') return;
     if (!Number.isFinite(blitzRemaining)) return;
     if (finished) return;
+    if (busy) return;
     if (timeUpRef.current) return;
     if (Number(blitzRemaining) > 0) return;
 
