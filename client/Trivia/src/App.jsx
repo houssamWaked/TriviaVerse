@@ -557,6 +557,7 @@ function App() {
           onRequireAuth={() => openAuth('login', 'blitz')}
           onNavigateHome={() => navigate('home')}
           onPlaySession={(sessionId) => navigate('play', { sessionId })}
+          onOpenDuel={(duelId) => navigate('duel-play', { duelId })}
         />
       ) : route.name === 'millionaire' ? (
         <Millionaire

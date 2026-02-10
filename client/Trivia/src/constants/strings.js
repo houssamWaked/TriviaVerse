@@ -101,9 +101,10 @@ export const STRINGS = {
     },
     duels: {
       title: 'Duels',
-      subtitle: 'Your 1v1 custom quiz history.',
+      subtitle: 'Your 1v1 history (custom quizzes + blitz).',
       vsPrefix: 'vs',
-      empty: 'No duels yet â€” start one from a quiz page.',
+      empty: 'No duels yet â€” start one from a quiz page or Blitz.',
+      blitzLabel: (difficulty) => `Blitz Duel${difficulty ? ` (${difficulty})` : ''}`,
       buttons: {
         open: 'Open',
         accept: 'Accept',
@@ -283,6 +284,14 @@ export const STRINGS = {
     formatSeconds: (seconds) => `${seconds}s`,
     buttons: {
       start: 'Start Blitz',
+      duel: 'Duel a Friend',
+    },
+    duel: {
+      title: 'Blitz Duel',
+      subtitle: 'Challenge a friend on the same blitz questions. Winner = correct, then speed.',
+      friendPlaceholder: 'Select a friend',
+      send: 'Send challenge',
+      noFriends: 'No friends found — add friends first.',
     },
   },
 

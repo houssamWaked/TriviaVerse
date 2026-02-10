@@ -226,6 +226,74 @@ const BlitzStyle = {
     fontWeight: 950,
     boxShadow: '0 12px 26px rgba(0,0,0,0.10)',
   },
+
+  duelCard: {
+    marginTop: 16,
+    borderRadius: 22,
+    padding: 16,
+    background: 'rgba(248,250,252,1)',
+    border: `1px solid ${colors.neutral[200]}`,
+    boxShadow: '0 18px 44px rgba(0,0,0,0.10)',
+    textAlign: 'left',
+  },
+
+  duelTop: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+
+  duelTitle: {
+    fontSize: 14,
+    fontWeight: 950,
+    color: colors.neutral[900],
+    letterSpacing: -0.2,
+  },
+
+  duelSub: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: 850,
+    color: colors.neutral[600],
+    lineHeight: 1.4,
+  },
+
+  duelRow: {
+    marginTop: 12,
+    display: 'flex',
+    gap: 10,
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+
+  duelSelect: {
+    height: 44,
+    minWidth: 220,
+    flex: '1 1 220px',
+    borderRadius: 16,
+    border: `1px solid ${colors.neutral[200]}`,
+    padding: '0 12px',
+    fontSize: 13,
+    fontWeight: 900,
+    background: colors.neutral.white,
+    color: colors.neutral[900],
+    outline: 'none',
+  },
+
+  duelSendBtn: {
+    height: 44,
+    padding: '0 14px',
+    borderRadius: 16,
+    border: 'none',
+    cursor: 'pointer',
+    background: colors.primary[700],
+    color: colors.neutral.white,
+    fontSize: 13,
+    fontWeight: 950,
+    boxShadow: '0 18px 44px rgba(139,44,255,0.22)',
+  },
 };
 
 export default BlitzStyle;

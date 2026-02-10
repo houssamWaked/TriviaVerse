@@ -4,18 +4,23 @@ import { STRINGS } from '@/constants/strings';
 import { api } from '@/api';
 import ModeStartStyle from '@/Styles/ComponentStyles/ModeStartStyle';
 import BlitzStyle from '@/Styles/ComponentStyles/BlitzStyle';
-import { getApiErrorMessage } from '@/utils/apiError';
+import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
 
 export default function Blitz({
   user,
   onRequireAuth,
   onNavigateHome,
   onPlaySession,
+  onOpenDuel,
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [config, setConfig] = useState(null);
   const [difficulty, setDifficulty] = useState('easy');
+
+  const [duelOpen, setDuelOpen] = useState(false);
+  const [duelFriends, setDuelFriends] = useState([]);
+  const [duelFriendId, setDuelFriendId] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -57,6 +62,27 @@ export default function Blitz({
       const res = await api.startBlitzSession({ difficulty });
       onPlaySession?.(res.session_id);
     } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleDuel = async () => {
+    if (!user) return onRequireAuth?.('blitz');
+
+    const next = !duelOpen;
+    setDuelOpen(next);
+    if (!next) return;
+    if (duelFriends.length > 0) return;
+
+    setBusy(true);
+    setError('');
+    try {
+      const res = await api.listFriends();
+      setDuelFriends(Array.isArray(res?.friends) ? res.friends : []);
+    } catch (err) {
+      if (isUnauthorized(err)) return onRequireAuth?.('blitz');
       setError(getApiErrorMessage(err));
     } finally {
       setBusy(false);
@@ -208,6 +234,16 @@ export default function Blitz({
               type="button"
               className="tv-card tv-card--hover"
               style={BlitzStyle.secondaryBtn}
+              onClick={toggleDuel}
+              disabled={busy || !onOpenDuel}
+            >
+              {ICONS.common.bolt} {STRINGS.BLITZ.buttons.duel}
+            </button>
+
+            <button
+              type="button"
+              className="tv-card tv-card--hover"
+              style={BlitzStyle.secondaryBtn}
               onClick={onNavigateHome}
               disabled={busy}
             >
@@ -226,6 +262,78 @@ export default function Blitz({
               </button>
             ) : null}
           </div>
+
+          {duelOpen && (
+            <div className="tv-card" style={BlitzStyle.duelCard}>
+              <div style={BlitzStyle.duelTop}>
+                <div>
+                  <div style={BlitzStyle.duelTitle}>{STRINGS.BLITZ.duel.title}</div>
+                  <div style={BlitzStyle.duelSub}>{STRINGS.BLITZ.duel.subtitle}</div>
+                </div>
+                <button
+                  type="button"
+                  className="tv-card tv-card--hover"
+                  style={BlitzStyle.secondaryBtn}
+                  onClick={() => {
+                    setDuelOpen(false);
+                    setDuelFriendId('');
+                  }}
+                  disabled={busy}
+                >
+                  {STRINGS.COMMON.buttons.close}
+                </button>
+              </div>
+
+              <div style={BlitzStyle.duelRow}>
+                <select
+                  style={BlitzStyle.duelSelect}
+                  value={duelFriendId}
+                  onChange={(e) => setDuelFriendId(e.target.value)}
+                  disabled={busy}
+                >
+                  <option value="">{STRINGS.BLITZ.duel.friendPlaceholder}</option>
+                  {(duelFriends || []).map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.username}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  type="button"
+                  className="tv-card tv-card--hover"
+                  style={BlitzStyle.duelSendBtn}
+                  disabled={busy || !duelFriendId || !onOpenDuel}
+                  onClick={async () => {
+                    if (!user) return onRequireAuth?.('blitz');
+                    setBusy(true);
+                    setError('');
+                    try {
+                      const created = await api.createDuel({
+                        friend_user_id: duelFriendId,
+                        mode: 'blitz',
+                        difficulty,
+                      });
+                      setDuelOpen(false);
+                      setDuelFriendId('');
+                      onOpenDuel?.(created?.id);
+                    } catch (err) {
+                      if (isUnauthorized(err)) return onRequireAuth?.('blitz');
+                      setError(getApiErrorMessage(err));
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  {STRINGS.BLITZ.duel.send}
+                </button>
+              </div>
+
+              {duelFriends.length === 0 && !busy && (
+                <div style={BlitzStyle.duelSub}>{STRINGS.BLITZ.duel.noFriends}</div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

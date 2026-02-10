@@ -2,7 +2,9 @@
  * Duel service (async 1v1 challenges).
  *
  * Rules:
- * - Custom quiz only.
+ * - Supports:
+ *   - Custom quiz duels (mode = 'custom')
+ *   - Blitz duels (mode = 'blitz', fixed question set)
  * - Winner is decided by:
  *   1) number of correct answers (higher wins)
  *   2) total answer time in seconds (lower wins)
@@ -67,11 +69,15 @@ export class DuelService {
     this.sessionStartService = sessionStartService;
   }
 
-  async createChallenge(userId, { friend_user_id, quiz_id }) {
+  async createChallenge(userId, { friend_user_id, quiz_id, mode, difficulty, category_id }) {
     const opponentUserId = asId(friend_user_id);
     const quizId = asId(quiz_id);
+    const duelMode = String(mode || 'custom').trim().toLowerCase();
     if (!opponentUserId) throw new AppError('Invalid friend_user_id', 400, 'INVALID_INPUT');
-    if (!quizId) throw new AppError('Invalid quiz_id', 400, 'INVALID_INPUT');
+    if (duelMode !== 'custom' && duelMode !== 'blitz') {
+      throw new AppError('Invalid mode', 400, 'INVALID_INPUT');
+    }
+    if (duelMode === 'custom' && !quizId) throw new AppError('Invalid quiz_id', 400, 'INVALID_INPUT');
     if (opponentUserId === userId) {
       throw new AppError('Cannot challenge yourself', 400, 'INVALID_INPUT');
     }
@@ -79,25 +85,69 @@ export class DuelService {
     const ok = await this.friendRepository.areFriends(userId, opponentUserId);
     if (!ok) throw new AppError('Forbidden', 403, 'FORBIDDEN');
 
-    const quiz = await this.quizRepository.findById(quizId);
-    if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
-    if (quiz.status !== 'published') {
-      throw new AppError('Quiz must be published for duels', 400, 'INVALID_INPUT');
+    let quiz = null;
+    let challenger_session_id = null;
+    let duelPayload = null;
+
+    if (duelMode === 'custom') {
+      quiz = await this.quizRepository.findById(quizId);
+      if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
+      if (quiz.status !== 'published') {
+        throw new AppError('Quiz must be published for duels', 400, 'INVALID_INPUT');
+      }
+
+      const start = await this.sessionStartService.startCustomQuizSession(userId, quizId);
+      challenger_session_id = start.session_id;
+
+      duelPayload = {
+        quiz_id: quizId,
+        challenger_user_id: userId,
+        opponent_user_id: opponentUserId,
+        challenger_session_id,
+        status: 'pending',
+        current_index: 1,
+        challenger_points: 0,
+        opponent_points: 0,
+        summary_json: {},
+      };
+    } else {
+      // Blitz duels: create a fixed question set by snapshotting a short blitz session.
+      const start = await this.sessionStartService.startBlitzDuelSession(userId, {
+        category_id: category_id ?? null,
+        difficulty: difficulty ?? null,
+        total_questions: 20,
+      });
+      challenger_session_id = start.session_id;
+
+      duelPayload = {
+        mode: 'blitz',
+        quiz_id: null,
+        category_id: category_id ?? null,
+        difficulty: difficulty ?? null,
+        challenger_user_id: userId,
+        opponent_user_id: opponentUserId,
+        challenger_session_id,
+        status: 'pending',
+        current_index: 1,
+        challenger_points: 0,
+        opponent_points: 0,
+        summary_json: {},
+      };
     }
 
-    const start = await this.sessionStartService.startCustomQuizSession(userId, quizId);
-
-    const duel = await this.duelRepository.create({
-      quiz_id: quizId,
-      challenger_user_id: userId,
-      opponent_user_id: opponentUserId,
-      challenger_session_id: start.session_id,
-      status: 'pending',
-      current_index: 1,
-      challenger_points: 0,
-      opponent_points: 0,
-      summary_json: {},
-    });
+    let duel = null;
+    try {
+      duel = await this.duelRepository.create(duelPayload);
+    } catch (err) {
+      if (duelMode === 'blitz' && err?.code === 'DB_SCHEMA_MISMATCH') {
+        throw new AppError(
+          'Blitz duels are not configured on the server. Apply `TriviaVerse/api/sql/duels.sql`.',
+          501,
+          'NOT_CONFIGURED'
+        );
+      }
+      throw err;
+    }
     if (!duel) throw new AppError('Failed to create duel', 500, 'DB_ERROR');
 
     return await this._decorateForUser(userId, duel, { quiz, users: null });
@@ -109,17 +159,29 @@ export class DuelService {
     if (duel.opponent_user_id !== userId) throw new AppError('Forbidden', 403, 'FORBIDDEN');
     if (duel.status !== 'pending') throw new AppError('Duel is not pending', 409, 'CONFLICT');
 
-    const quiz = await this.quizRepository.findById(duel.quiz_id);
-    if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
-    if (quiz.status !== 'published') {
-      throw new AppError('Quiz must be published for duels', 400, 'INVALID_INPUT');
-    }
+    const duelMode = String(duel?.mode || 'custom').trim().toLowerCase();
+    let quiz = null;
 
-    const start = await this.sessionStartService.startCustomQuizSession(userId, duel.quiz_id);
+    let opponent_session_id = null;
+    if (duelMode === 'custom') {
+      quiz = await this.quizRepository.findById(duel.quiz_id);
+      if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
+      if (quiz.status !== 'published') {
+        throw new AppError('Quiz must be published for duels', 400, 'INVALID_INPUT');
+      }
+
+      const start = await this.sessionStartService.startCustomQuizSession(userId, duel.quiz_id);
+      opponent_session_id = start.session_id;
+    } else if (duelMode === 'blitz') {
+      // No need to create a second session; both players answer against the challenger's session snapshots.
+      opponent_session_id = null;
+    } else {
+      throw new AppError('Invalid duel mode', 500, 'DB_ERROR');
+    }
 
     const started_at = new Date(Date.now() + 3000).toISOString();
     const updated = await this.duelRepository.update(duel.id, {
-      opponent_session_id: start.session_id,
+      opponent_session_id,
       status: 'active',
       accepted_at: isoNow(),
       started_at,

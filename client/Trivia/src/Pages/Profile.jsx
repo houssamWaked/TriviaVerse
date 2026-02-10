@@ -432,7 +432,10 @@ export default function Profile({
                     </div>
 
                     <div style={ProfileStyle.meta}>
-                      {d?.quiz?.title || STRINGS.COMMON.separators.emDash}
+                      {d?.quiz?.title ||
+                        (String(d?.mode || '').toLowerCase() === 'blitz'
+                          ? STRINGS.PROFILE.duels.blitzLabel(d?.difficulty || null)
+                          : STRINGS.COMMON.separators.emDash)}
                       {STRINGS.COMMON.separators.dot} {ICONS.common.trophy}{' '}
                       {d?.challenger_points ?? 0}:{d?.opponent_points ?? 0}
                       {resultText ? ` ${STRINGS.COMMON.separators.dot} ${resultText}` : ''}

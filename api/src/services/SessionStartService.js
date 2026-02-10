@@ -744,6 +744,53 @@ export class SessionStartService {
     };
   }
 
+  async startBlitzDuelSession(
+    userId,
+    { category_id = null, difficulty = null, total_questions = 20 } = {}
+  ) {
+    if (!userId) throw new AppError('Login required', 401, 'UNAUTHORIZED');
+
+    const count = Math.min(50, Math.max(5, Number(total_questions) || 20));
+    const questions = await this.listQuestionsForModeByDifficulty('blitz', count, difficulty);
+    if (questions.length < count) {
+      throw new AppError(
+        `Not enough ${difficulty || ''} blitz questions available (have ${questions.length}, need ${count}).`,
+        400,
+        'NOT_ENOUGH_QUESTIONS'
+      );
+    }
+    if (questions.length === 0) {
+      throw new AppError('No questions available for this mode', 400, 'NO_POOL');
+    }
+
+    const perQuestionTimeLimitSec = 15;
+    const adjustedQuestions = questions.map((q) => ({
+      ...q,
+      time_limit_sec: perQuestionTimeLimitSec,
+    }));
+
+    const session = await this.gameSessionRepository.create({
+      user_id: userId,
+      mode: 'blitz',
+      category_id: category_id ?? null,
+      difficulty: difficulty ?? null,
+      total_questions: adjustedQuestions.length,
+      status: 'in_progress',
+    });
+    if (!session) throw new AppError('Failed to create session', 500, 'DB_ERROR');
+
+    await this.snapshotSessionQuestions(session.id, adjustedQuestions);
+
+    return {
+      session_id: session.id,
+      mode: 'blitz',
+      time_limit_sec: perQuestionTimeLimitSec,
+      strikes: 3,
+      total_questions: adjustedQuestions.length,
+      status: session.status,
+    };
+  }
+
   async startCustomQuizSession(userId, quizId) {
     const quiz = await this.quizRepository.findById(quizId);
     if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
