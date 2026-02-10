@@ -15,76 +15,209 @@ function toAppError(error) {
 }
 
 export class UserRepository {
+  constructor() {
+    this._banColumnsSupported = null;
+  }
+
+  baseSelectColumns() {
+    return 'id, username, email, password_hash, avatar_url, email_verified_at, created_at';
+  }
+
+  selectColumns() {
+    if (this._banColumnsSupported === false) return this.baseSelectColumns();
+    return `${this.baseSelectColumns()}, is_banned, banned_reason, banned_at`;
+  }
+
+  isSchemaMissingColumn(error) {
+    const code = String(error?.code || '').trim();
+    return code === '42703';
+  }
+
   async findByIds(ids = []) {
     const unique = Array.from(new Set((ids || []).filter(Boolean)));
     if (unique.length === 0) return [];
 
-    const { data, error } = await supabase
-      .from('users')
-      .select('id, username, email, password_hash, avatar_url, email_verified_at, created_at')
-      .in('id', unique);
-
-    if (error) throw toAppError(error);
-    return (data || []).map((r) => new User(r));
+    const res = await supabase.from('users').select(this.selectColumns()).in('id', unique);
+    if (res.error && this.isSchemaMissingColumn(res.error)) {
+      this._banColumnsSupported = false;
+      const retry = await supabase.from('users').select(this.selectColumns()).in('id', unique);
+      if (retry.error) throw toAppError(retry.error);
+      return (retry.data || []).map((r) => new User(r));
+    }
+    if (res.error) throw toAppError(res.error);
+    return (res.data || []).map((r) => new User(r));
   }
 
   async findById(id) {
-    const { data, error } = await supabase
-      .from('users')
-      .select('id, username, email, password_hash, avatar_url, email_verified_at, created_at')
-      .eq('id', id)
-      .limit(1);
-
-    if (error) throw toAppError(error);
-    return data?.[0] ? new User(data[0]) : null;
+    const res = await supabase.from('users').select(this.selectColumns()).eq('id', id).limit(1);
+    if (res.error && this.isSchemaMissingColumn(res.error)) {
+      this._banColumnsSupported = false;
+      const retry = await supabase.from('users').select(this.selectColumns()).eq('id', id).limit(1);
+      if (retry.error) throw toAppError(retry.error);
+      return retry.data?.[0] ? new User(retry.data[0]) : null;
+    }
+    if (res.error) throw toAppError(res.error);
+    return res.data?.[0] ? new User(res.data[0]) : null;
   }
 
   async findByEmail(email) {
-    const { data, error } = await supabase
+    const res = await supabase
       .from('users')
-      .select('id, username, email, password_hash, avatar_url, email_verified_at, created_at')
+      .select(this.selectColumns())
       .eq('email', email)
       .limit(1);
 
-    if (error) throw toAppError(error);
-    return data?.[0] ? new User(data[0]) : null;
+    if (res.error && this.isSchemaMissingColumn(res.error)) {
+      this._banColumnsSupported = false;
+      const retry = await supabase
+        .from('users')
+        .select(this.selectColumns())
+        .eq('email', email)
+        .limit(1);
+      if (retry.error) throw toAppError(retry.error);
+      return retry.data?.[0] ? new User(retry.data[0]) : null;
+    }
+
+    if (res.error) throw toAppError(res.error);
+    return res.data?.[0] ? new User(res.data[0]) : null;
   }
 
   async findByUsername(username) {
     const u = String(username || '').trim();
     if (!u) return null;
-    const { data, error } = await supabase
+    const res = await supabase
       .from('users')
-      .select('id, username, email, password_hash, avatar_url, email_verified_at, created_at')
+      .select(this.selectColumns())
       .eq('username', u)
       .limit(1);
 
-    if (error) throw toAppError(error);
-    return data?.[0] ? new User(data[0]) : null;
+    if (res.error && this.isSchemaMissingColumn(res.error)) {
+      this._banColumnsSupported = false;
+      const retry = await supabase
+        .from('users')
+        .select(this.selectColumns())
+        .eq('username', u)
+        .limit(1);
+      if (retry.error) throw toAppError(retry.error);
+      return retry.data?.[0] ? new User(retry.data[0]) : null;
+    }
+
+    if (res.error) throw toAppError(res.error);
+    return res.data?.[0] ? new User(res.data[0]) : null;
   }
 
   async create({ username, email, password_hash }) {
     const payload = { username: username?.trim(), email: email?.trim(), password_hash };
-    const { data, error } = await supabase
-      .from('users')
-      .insert(payload)
-      .select('id, username, email, password_hash, avatar_url, email_verified_at, created_at')
-      .limit(1);
+    const res = await supabase.from('users').insert(payload).select(this.selectColumns()).limit(1);
 
-    if (error) throw toAppError(error);
-    if (!data?.[0]) throw new AppError('Failed to create user', 500, 'DB_ERROR');
-    return new User(data[0]);
+    if (res.error && this.isSchemaMissingColumn(res.error)) {
+      this._banColumnsSupported = false;
+      const retry = await supabase
+        .from('users')
+        .insert(payload)
+        .select(this.selectColumns())
+        .limit(1);
+      if (retry.error) throw toAppError(retry.error);
+      if (!retry.data?.[0]) throw new AppError('Failed to create user', 500, 'DB_ERROR');
+      return new User(retry.data[0]);
+    }
+
+    if (res.error) throw toAppError(res.error);
+    if (!res.data?.[0]) throw new AppError('Failed to create user', 500, 'DB_ERROR');
+    return new User(res.data[0]);
   }
 
   async markEmailVerified(userId) {
-    const { data, error } = await supabase
+    const res = await supabase
       .from('users')
       .update({ email_verified_at: new Date().toISOString() })
       .eq('id', userId)
-      .select('id, username, email, password_hash, avatar_url, email_verified_at, created_at')
+      .select(this.selectColumns())
       .limit(1);
 
-    if (error) throw toAppError(error);
-    return data?.[0] ? new User(data[0]) : null;
+    if (res.error && this.isSchemaMissingColumn(res.error)) {
+      this._banColumnsSupported = false;
+      const retry = await supabase
+        .from('users')
+        .update({ email_verified_at: new Date().toISOString() })
+        .eq('id', userId)
+        .select(this.selectColumns())
+        .limit(1);
+      if (retry.error) throw toAppError(retry.error);
+      return retry.data?.[0] ? new User(retry.data[0]) : null;
+    }
+
+    if (res.error) throw toAppError(res.error);
+    return res.data?.[0] ? new User(res.data[0]) : null;
+  }
+
+  async banUser(userId, { reason = null, adminEmail = null } = {}) {
+    if (this._banColumnsSupported === false) {
+      throw new AppError(
+        'Users table schema mismatch (missing ban columns). Apply `TriviaVerse/api/sql/005_quiz_reports_and_bans.sql`.',
+        500,
+        'DB_SCHEMA_MISMATCH'
+      );
+    }
+
+    const patch = {
+      is_banned: true,
+      banned_reason: reason ? String(reason).trim().slice(0, 400) : null,
+      banned_at: new Date().toISOString(),
+      banned_by_admin_email: adminEmail ? String(adminEmail).trim().toLowerCase() : null,
+    };
+
+    const res = await supabase
+      .from('users')
+      .update(patch)
+      .eq('id', userId)
+      .select(this.selectColumns())
+      .limit(1);
+
+    if (res.error && this.isSchemaMissingColumn(res.error)) {
+      this._banColumnsSupported = false;
+      throw new AppError(
+        'Users table schema mismatch (missing ban columns). Apply `TriviaVerse/api/sql/005_quiz_reports_and_bans.sql`.',
+        500,
+        'DB_SCHEMA_MISMATCH'
+      );
+    }
+    if (res.error) throw toAppError(res.error);
+    return res.data?.[0] ? new User(res.data[0]) : null;
+  }
+
+  async unbanUser(userId, { adminEmail = null } = {}) {
+    if (this._banColumnsSupported === false) {
+      throw new AppError(
+        'Users table schema mismatch (missing ban columns). Apply `TriviaVerse/api/sql/005_quiz_reports_and_bans.sql`.',
+        500,
+        'DB_SCHEMA_MISMATCH'
+      );
+    }
+
+    const patch = {
+      is_banned: false,
+      banned_reason: null,
+      banned_at: null,
+      banned_by_admin_email: adminEmail ? String(adminEmail).trim().toLowerCase() : null,
+    };
+
+    const res = await supabase
+      .from('users')
+      .update(patch)
+      .eq('id', userId)
+      .select(this.selectColumns())
+      .limit(1);
+
+    if (res.error && this.isSchemaMissingColumn(res.error)) {
+      this._banColumnsSupported = false;
+      throw new AppError(
+        'Users table schema mismatch (missing ban columns). Apply `TriviaVerse/api/sql/005_quiz_reports_and_bans.sql`.',
+        500,
+        'DB_SCHEMA_MISMATCH'
+      );
+    }
+    if (res.error) throw toAppError(res.error);
+    return res.data?.[0] ? new User(res.data[0]) : null;
   }
 }

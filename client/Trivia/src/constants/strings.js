@@ -551,6 +551,7 @@ export const STRINGS = {
       play: 'Play',
       duel: 'Duel',
       edit: 'Edit',
+      report: 'Report',
       loginToView: 'Login to view',
     },
     duel: {
@@ -803,6 +804,43 @@ export const STRINGS = {
       story: {
         title: 'Build Story Mode',
         desc: 'Create levels, fill pools, edit quickly.',
+      },
+      reports: {
+        title: 'Moderation Reports',
+        desc: 'Review reported custom quizzes and take action.',
+      },
+    },
+    reports: {
+      title: 'Reports',
+      subtitle: 'Review reported custom quizzes and take action.',
+      labels: { status: 'Status' },
+      status: { open: 'Open', resolved: 'Resolved' },
+      empty: 'No reports found.',
+      fallbackQuizTitle: 'Unknown quiz',
+      meta: {
+        reason: 'Reason',
+        reporter: 'Reporter',
+        owner: 'Owner',
+        createdAt: 'Created',
+      },
+      actions: {
+        resolve: 'Resolve',
+        deleteQuiz: 'Delete quiz',
+        banUser: 'Ban user',
+      },
+      confirm: {
+        deleteQuiz: (title) =>
+          `Delete quiz \"${title}\"?\n\nThis will remove its questions, ratings, scores, and reports.`,
+        banUser: (name) => `Ban user \"${name}\"?\n\nThey will be blocked from logging in.`,
+      },
+      prompts: {
+        banReason: 'Ban reason (optional):',
+        banReasonDefaultPrefix: 'Reported quiz reason:',
+      },
+      toasts: {
+        resolved: 'Report resolved.',
+        deletedQuiz: 'Quiz deleted.',
+        bannedUser: 'User banned.',
       },
     },
     modeCards: {

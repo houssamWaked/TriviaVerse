@@ -56,6 +56,7 @@ export const endpoints = {
   quizPublish: (quizId) => `/api/quizzes/${quizId}/publish`,
   quizShare: (quizId) => `/api/quizzes/${quizId}/share`,
   quizRatings: (quizId) => `/api/quizzes/${quizId}/ratings`,
+  quizReport: (quizId) => `/api/quizzes/${quizId}/report`,
   quizAccess: (quizId) => `/api/quizzes/${quizId}/access`,
   quizAccessUser: (quizId, userId) => `/api/quizzes/${quizId}/access/${userId}`,
   customQuizStart: (quizId) => `/api/quizzes/${quizId}/sessions/start`,
@@ -105,6 +106,11 @@ export const endpoints = {
   adminStoryLevelPoolIds: (levelId) => `/api/admin/story/levels/${levelId}/pool/ids`,
   adminRemoveStoryLevelPool: (levelId) => `/api/admin/story/levels/${levelId}/pool`,
   adminReplaceStoryLevelPool: (levelId) => `/api/admin/story/levels/${levelId}/pool`,
+  adminQuizReports: () => '/api/admin/reports',
+  adminResolveQuizReport: (reportId) => `/api/admin/reports/${reportId}/resolve`,
+  adminDeleteCustomQuiz: (quizId) => `/api/admin/quizzes/${quizId}`,
+  adminBanUser: (userId) => `/api/admin/users/${userId}/ban`,
+  adminUnbanUser: (userId) => `/api/admin/users/${userId}/unban`,
 
   // classic category pools (classic mode only)
   adminClassicCategories: () => '/api/admin/classic/categories',

@@ -72,6 +72,7 @@ import { FriendService } from './services/FriendService.js';
 import { AdminService } from './services/AdminService.js';
 import { MeService } from './services/MeService.js';
 import { DuelService } from './services/DuelService.js';
+import { QuizReportService } from './services/QuizReportService.js';
 
 import { CategoryRepository } from './domain/repositories/CategoryRepository.js';
 import { UserRepository } from './domain/repositories/UserRepository.js';
@@ -99,6 +100,7 @@ import { ClassicCategoryPoolRepository } from './domain/repositories/ClassicCate
 import { DuelRepository } from './domain/repositories/DuelRepository.js';
 import { DuelAnswerRepository } from './domain/repositories/DuelAnswerRepository.js';
 import { DuelClaimRepository } from './domain/repositories/DuelClaimRepository.js';
+import { QuizReportRepository } from './domain/repositories/QuizReportRepository.js';
 
 const app = express();
 
@@ -177,6 +179,7 @@ const classicCategoryPoolRepository = new ClassicCategoryPoolRepository();
 const duelRepository = new DuelRepository();
 const duelAnswerRepository = new DuelAnswerRepository();
 const duelClaimRepository = new DuelClaimRepository();
+const quizReportRepository = new QuizReportRepository();
 
 // services
 const categoryService = new CategoryService(
@@ -208,6 +211,10 @@ const quizBuilderService = new QuizBuilderService(
   storyLevelPoolRepository,
   sessionQuestionRepository
 );
+const quizReportService = new QuizReportService({
+  quizRepository,
+  quizReportRepository,
+});
 const storyService = new StoryService(storyLevelRepository, userStoryProgressRepository);
 const sessionStartService = new SessionStartService({
   gameSessionRepository,
@@ -261,6 +268,13 @@ const adminService = new AdminService({
   sessionQuestionRepository,
   userStoryProgressRepository,
   storySessionRepository,
+  quizRepository,
+  quizAccessRepository,
+  quizRatingRepository,
+  quizScoreRepository,
+  gameSessionRepository,
+  quizReportRepository,
+  userRepository,
 });
 
 // controllers
@@ -268,7 +282,11 @@ const categoryController = new CategoryController(categoryService);
 const authController = new AuthController(authService);
 const publicController = new PublicController(publicService);
 const leaderboardController = new LeaderboardController(leaderboardService);
-const quizBuilderController = new QuizBuilderController(quizBuilderService, sessionStartService);
+const quizBuilderController = new QuizBuilderController(
+  quizBuilderService,
+  sessionStartService,
+  quizReportService
+);
 const storyController = new StoryController(storyService, sessionStartService);
 const millionaireController = new MillionaireController(
   millionaireLadderRepository,

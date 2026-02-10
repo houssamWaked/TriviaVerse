@@ -2,9 +2,10 @@
  * Quiz builder controller.
  */
 export class QuizBuilderController {
-  constructor(quizBuilderService, sessionStartService) {
+  constructor(quizBuilderService, sessionStartService, quizReportService) {
     this.quizBuilderService = quizBuilderService;
     this.sessionStartService = sessionStartService;
+    this.quizReportService = quizReportService;
   }
 
   listQuizzes = async (req, res) => {
@@ -143,5 +144,10 @@ export class QuizBuilderController {
   deleteQuiz = async (req, res) => {
     const data = await this.quizBuilderService.deleteQuiz(req.user.id, req.params.quiz_id);
     res.status(200).json(data);
+  };
+
+  reportQuiz = async (req, res) => {
+    const data = await this.quizReportService.reportQuiz(req.user.id, req.params.quiz_id, req.body);
+    res.status(201).json(data);
   };
 }

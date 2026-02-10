@@ -290,6 +290,7 @@ export const api = {
     invalidatePublicCacheByPathPrefix('/api/public/home-metrics');
     return data;
   },
+  reportQuiz: async (quizId, body) => (await http.post(endpoints.quizReport(quizId), body)).data,
   listQuizAccess: async (quizId) =>
     cachedGet(endpoints.quizAccess(quizId), { ttlMs: 2 * 60_000, scope: 'user', prefer: 'localStorage' }),
   addQuizAccess: async (quizId, body) => {
@@ -579,6 +580,38 @@ export const api = {
   adminSeedClassicCategoryPool: async (categoryId, body) => {
     const data = (await http.post(endpoints.adminSeedClassicCategoryPool(categoryId), body)).data;
     invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
+
+  // moderation
+  adminListQuizReports: async (params) =>
+    cachedGet(endpoints.adminQuizReports(), {
+      params,
+      ttlMs: 5_000,
+      scope: 'user',
+      prefer: 'localStorage',
+    }),
+  adminResolveQuizReport: async (reportId) => {
+    const data = (await http.post(endpoints.adminResolveQuizReport(reportId), {})).data;
+    invalidateUserCacheByPathPrefix('/api/admin/reports');
+    return data;
+  },
+  adminDeleteCustomQuiz: async (quizId) => {
+    const data = (await http.delete(endpoints.adminDeleteCustomQuiz(quizId))).data;
+    invalidateUserCacheByPathPrefix('/api/admin/reports');
+    invalidatePublicCacheByPathPrefix(`/api/public/quizzes/${quizId}`);
+    invalidatePublicCacheByPathPrefix('/api/public/quizzes/top');
+    invalidatePublicCacheByPathPrefix('/api/public/home-metrics');
+    return data;
+  },
+  adminBanUser: async (userId, body) => {
+    const data = (await http.post(endpoints.adminBanUser(userId), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin/reports');
+    return data;
+  },
+  adminUnbanUser: async (userId) => {
+    const data = (await http.post(endpoints.adminUnbanUser(userId), {})).data;
+    invalidateUserCacheByPathPrefix('/api/admin/reports');
     return data;
   },
 };

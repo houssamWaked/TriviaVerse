@@ -42,7 +42,7 @@ export default function AdminDashboard({
   onNavigateHome,
   onNavigateCreateQuiz,
 }) {
-  const [workspace, setWorkspace] = useState('story'); // story | modes | questions
+  const [workspace, setWorkspace] = useState('story'); // story | modes | questions | reports
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -86,6 +86,11 @@ export default function AdminDashboard({
   const [classicCategoryForm, setClassicCategoryForm] = useState({ name: '', icon: '' });
   const [classicCategorySeedCounts, setClassicCategorySeedCounts] = useState({});
 
+  const [reportsStatus, setReportsStatus] = useState('open'); // open | resolved
+  const [reports, setReports] = useState([]);
+  const [reportsLimit] = useState(50);
+  const [reportsOffset, setReportsOffset] = useState(0);
+
   const [pool, setPool] = useState({
     open: false,
     kind: null, // 'mode' | 'level'
@@ -116,6 +121,24 @@ export default function AdminDashboard({
   const clearMessages = () => {
     setError('');
     setSuccess('');
+  };
+
+  const loadReports = async ({ status = reportsStatus, offset = 0 } = {}) => {
+    const s = String(status || 'open').trim();
+    const off = Math.max(0, Number(offset) || 0);
+
+    setBusy(true);
+    clearMessages();
+    try {
+      const res = await api.adminListQuizReports({ status: s, limit: reportsLimit, offset: off });
+      setReports(Array.isArray(res?.entries) ? res.entries : []);
+      setReportsStatus(s);
+      setReportsOffset(off);
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const loadDashboard = async () => {
@@ -164,6 +187,13 @@ export default function AdminDashboard({
     loadDashboard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!user]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (workspace !== 'reports') return;
+    loadReports({ status: reportsStatus, offset: 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspace, !!user]);
 
   const createLevel = async () => {
     const title = String(levelForm.title || '').trim();
@@ -665,6 +695,11 @@ export default function AdminDashboard({
                 icon: ICONS.common.openBook,
                 ...STRINGS.ADMIN.flows.story,
               },
+              {
+                key: 'reports',
+                icon: ICONS.common.finishFlag,
+                ...STRINGS.ADMIN.flows.reports,
+              },
             ].map((a) => (
               <button
                 key={a.key}
@@ -1008,6 +1043,220 @@ export default function AdminDashboard({
                       );
                     })
                   )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {workspace === 'reports' && (
+            <div style={AdminStyle.grid}>
+              <div style={AdminStyle.section}>
+                <h3 style={AdminStyle.sectionTitle}>{STRINGS.ADMIN.reports.title}</h3>
+                <div style={AdminStyle.sectionSub}>{STRINGS.ADMIN.reports.subtitle}</div>
+
+                <div style={AdminDashboardStyle.rowMt12}>
+                  <label style={AdminDashboardStyle.fieldFlex1NoMt}>
+                    <span style={AdminStyle.label}>{STRINGS.ADMIN.reports.labels.status}</span>
+                    <select
+                      style={AdminStyle.select}
+                      value={reportsStatus}
+                      onChange={async (e) => {
+                        const next = String(e.target.value || 'open').trim();
+                        await loadReports({ status: next, offset: 0 });
+                      }}
+                      disabled={busy}
+                    >
+                      <option value="open">{STRINGS.ADMIN.reports.status.open}</option>
+                      <option value="resolved">{STRINGS.ADMIN.reports.status.resolved}</option>
+                    </select>
+                  </label>
+
+                  <button
+                    type="button"
+                    className="tv-card tv-card--hover"
+                    style={AdminStyle.btn}
+                    onClick={() => loadReports({ status: reportsStatus, offset: 0 })}
+                    disabled={busy}
+                    title={STRINGS.ADMIN.actions.refreshList}
+                  >
+                    {STRINGS.ADMIN.actions.refreshList}
+                  </button>
+
+                  <span style={AdminStyle.pill}>
+                    {STRINGS.ADMIN.pills.offset} {reportsOffset}
+                  </span>
+                </div>
+
+                <div style={AdminDashboardStyle.listMt12}>
+                  {reports.length === 0 ? (
+                    <div style={AdminDashboardStyle.emptyText}>{STRINGS.ADMIN.reports.empty}</div>
+                  ) : (
+                    reports.map((r) => {
+                      const quizId = r?.quiz?.id || r?.quiz_id || '';
+                      const quizTitle = r?.quiz?.title || STRINGS.ADMIN.reports.fallbackQuizTitle;
+                      const ownerId = r?.owner?.id || r?.quiz?.owner_user_id || '';
+                      const reporterName =
+                        r?.reporter?.username ||
+                        r?.reporter?.email ||
+                        STRINGS.COMMON.separators.emDash;
+                      const ownerName =
+                        r?.owner?.username || r?.owner?.email || STRINGS.COMMON.separators.emDash;
+                      const createdAt = r?.created_at ? new Date(r.created_at).toLocaleString() : '';
+
+                      return (
+                        <div key={r.id} style={AdminStyle.listItem}>
+                          <div style={AdminStyle.listItemTitle}>
+                            {quizTitle} ({quizId})
+                          </div>
+
+                          <div style={AdminStyle.listItemMeta}>
+                            <span style={AdminStyle.pill}>
+                              {STRINGS.ADMIN.reports.meta.reason}: {r.reason || 'other'}
+                            </span>
+                            <span style={AdminStyle.pill}>
+                              {STRINGS.ADMIN.reports.meta.reporter}: {reporterName}
+                            </span>
+                            <span style={AdminStyle.pill}>
+                              {STRINGS.ADMIN.reports.meta.owner}: {ownerName}
+                            </span>
+                            {createdAt ? (
+                              <span style={AdminStyle.pill}>
+                                {STRINGS.ADMIN.reports.meta.createdAt}: {createdAt}
+                              </span>
+                            ) : null}
+                          </div>
+
+                          {r?.message ? (
+                            <div style={AdminStyle.smallHelp}>{r.message}</div>
+                          ) : null}
+
+                          <div style={AdminDashboardStyle.rowMt12}>
+                            <button
+                              type="button"
+                              className="tv-card tv-card--hover"
+                              style={AdminStyle.btnPrimaryFull}
+                              disabled={busy || r?.status === 'resolved'}
+                              onClick={async () => {
+                                setBusy(true);
+                                clearMessages();
+                                try {
+                                  await api.adminResolveQuizReport(r.id);
+                                  setSuccess(STRINGS.ADMIN.reports.toasts.resolved);
+                                  await loadReports({ status: reportsStatus, offset: 0 });
+                                } catch (err) {
+                                  setError(getApiErrorMessage(err));
+                                } finally {
+                                  setBusy(false);
+                                }
+                              }}
+                            >
+                              {STRINGS.ADMIN.reports.actions.resolve}
+                            </button>
+
+                            <button
+                              type="button"
+                              className="tv-card tv-card--hover"
+                              style={AdminStyle.btnDanger}
+                              disabled={busy || !quizId}
+                              onClick={async () => {
+                                // eslint-disable-next-line no-alert
+                                const ok = window.confirm(
+                                  STRINGS.ADMIN.reports.confirm.deleteQuiz(quizTitle)
+                                );
+                                if (!ok) return;
+
+                                setBusy(true);
+                                clearMessages();
+                                try {
+                                  await api.adminDeleteCustomQuiz(quizId);
+                                  setSuccess(STRINGS.ADMIN.reports.toasts.deletedQuiz);
+                                  await loadReports({ status: reportsStatus, offset: 0 });
+                                } catch (err) {
+                                  setError(getApiErrorMessage(err));
+                                } finally {
+                                  setBusy(false);
+                                }
+                              }}
+                            >
+                              {STRINGS.ADMIN.reports.actions.deleteQuiz}
+                            </button>
+
+                            <button
+                              type="button"
+                              className="tv-card tv-card--hover"
+                              style={AdminStyle.btn}
+                              disabled={busy || !ownerId}
+                              onClick={async () => {
+                                // eslint-disable-next-line no-alert
+                                const ok = window.confirm(
+                                  STRINGS.ADMIN.reports.confirm.banUser(ownerName)
+                                );
+                                if (!ok) return;
+
+                                // eslint-disable-next-line no-alert
+                                const reason = window.prompt(
+                                  STRINGS.ADMIN.reports.prompts.banReason,
+                                  `${STRINGS.ADMIN.reports.prompts.banReasonDefaultPrefix} ${r.reason || 'other'}`
+                                );
+                                if (reason === null) return;
+
+                                setBusy(true);
+                                clearMessages();
+                                try {
+                                  const body = String(reason || '').trim()
+                                    ? { reason: String(reason).trim() }
+                                    : {};
+                                  await api.adminBanUser(ownerId, body);
+                                  setSuccess(STRINGS.ADMIN.reports.toasts.bannedUser);
+                                  await loadReports({ status: reportsStatus, offset: 0 });
+                                } catch (err) {
+                                  setError(getApiErrorMessage(err));
+                                } finally {
+                                  setBusy(false);
+                                }
+                              }}
+                            >
+                              {STRINGS.ADMIN.reports.actions.banUser}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div style={AdminDashboardStyle.rowMt14}>
+                  <button
+                    type="button"
+                    className="tv-card tv-card--hover"
+                    style={AdminStyle.btn}
+                    onClick={() =>
+                      loadReports({
+                        status: reportsStatus,
+                        offset: Math.max(0, reportsOffset - reportsLimit),
+                      })
+                    }
+                    disabled={busy || reportsOffset <= 0}
+                  >
+                    {STRINGS.ADMIN.actions.prev}
+                  </button>
+                  <button
+                    type="button"
+                    className="tv-card tv-card--hover"
+                    style={AdminStyle.btn}
+                    onClick={() =>
+                      loadReports({
+                        status: reportsStatus,
+                        offset: reportsOffset + reportsLimit,
+                      })
+                    }
+                    disabled={busy || reports.length < reportsLimit}
+                  >
+                    {STRINGS.ADMIN.actions.next}
+                  </button>
+                  <span style={AdminStyle.pill}>
+                    {STRINGS.ADMIN.pills.showingBare} {reports.length}
+                  </span>
                 </div>
               </div>
             </div>

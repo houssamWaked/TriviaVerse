@@ -6,6 +6,38 @@ export class AdminController {
     this.adminService = adminService;
   }
 
+  listQuizReports = async (req, res) => {
+    const data = await this.adminService.listQuizReports(req.query);
+    res.status(200).json(data);
+  };
+
+  resolveQuizReport = async (req, res) => {
+    const data = await this.adminService.resolveQuizReport(req.params.report_id, {
+      adminEmail: req.user?.email || null,
+    });
+    res.status(200).json(data);
+  };
+
+  deleteCustomQuizAsAdmin = async (req, res) => {
+    const data = await this.adminService.deleteCustomQuizAsAdmin(req.params.quiz_id);
+    res.status(200).json(data);
+  };
+
+  banUser = async (req, res) => {
+    const data = await this.adminService.banUser(req.params.user_id, {
+      reason: req.body?.reason || null,
+      adminEmail: req.user?.email || null,
+    });
+    res.status(200).json(data);
+  };
+
+  unbanUser = async (req, res) => {
+    const data = await this.adminService.unbanUser(req.params.user_id, {
+      adminEmail: req.user?.email || null,
+    });
+    res.status(200).json(data);
+  };
+
   listStoryLevels = async (req, res) => {
     const data = await this.adminService.listStoryLevels();
     res.status(200).json(data);

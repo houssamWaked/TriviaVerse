@@ -21,6 +21,7 @@ import {
   patchQuizValidator,
   questionIdParam,
   quizIdParam,
+  reportQuizBody,
   shareQuizValidator,
 } from '../validator/QuizValidator.js';
 import {
@@ -121,6 +122,15 @@ export default function createQuizBuilderRouter(quizBuilderController) {
     shareQuizValidator,
     validateRequest,
     asyncHandler(quizBuilderController.shareQuiz)
+  );
+
+  router.post(
+    '/:quiz_id/report',
+    requireAuth,
+    quizIdParam,
+    reportQuizBody,
+    validateRequest,
+    asyncHandler(quizBuilderController.reportQuiz)
   );
 
   // quiz questions

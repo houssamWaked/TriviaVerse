@@ -174,3 +174,18 @@ export const shareQuizValidator = [
     .isIn(['unlisted'])
     .withMessage('visibility must be unlisted'),
 ];
+
+export const reportQuizBody = [
+  body('reason')
+    .optional()
+    .isString()
+    .trim()
+    .isIn(['spam', 'hate', 'copyright', 'wrong_answers', 'other'])
+    .withMessage('reason is invalid'),
+  body('message')
+    .optional({ nullable: true })
+    .isString()
+    .trim()
+    .isLength({ min: 0, max: 2000 })
+    .withMessage('message must be at most 2000 characters'),
+];

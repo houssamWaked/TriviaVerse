@@ -16,11 +16,16 @@ import {
   levelIdParam,
   categoryIdParam,
   questionIdParam,
+  reportIdParam,
+  quizIdParam,
+  userIdParam,
   modeParam,
   searchQuestionsQuery,
   listQuestionsQuery,
   listPoolQuery,
+  listReportsQuery,
   seedPoolBody,
+  banUserBody,
 } from '../validator/AdminValidator.js';
 
 export default function createAdminRouter(adminController) {
@@ -271,6 +276,48 @@ export default function createAdminRouter(adminController) {
     seedPoolBody,
     validateRequest,
     asyncHandler(adminController.seedClassicCategoryPool)
+  );
+
+  // moderation
+  router.get(
+    '/reports',
+    requireAdmin,
+    listReportsQuery,
+    validateRequest,
+    asyncHandler(adminController.listQuizReports)
+  );
+
+  router.post(
+    '/reports/:report_id/resolve',
+    requireAdmin,
+    reportIdParam,
+    validateRequest,
+    asyncHandler(adminController.resolveQuizReport)
+  );
+
+  router.delete(
+    '/quizzes/:quiz_id',
+    requireAdmin,
+    quizIdParam,
+    validateRequest,
+    asyncHandler(adminController.deleteCustomQuizAsAdmin)
+  );
+
+  router.post(
+    '/users/:user_id/ban',
+    requireAdmin,
+    userIdParam,
+    banUserBody,
+    validateRequest,
+    asyncHandler(adminController.banUser)
+  );
+
+  router.post(
+    '/users/:user_id/unban',
+    requireAdmin,
+    userIdParam,
+    validateRequest,
+    asyncHandler(adminController.unbanUser)
   );
 
   return router;

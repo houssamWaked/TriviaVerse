@@ -23,6 +23,13 @@ export class AdminService {
     sessionQuestionRepository,
     userStoryProgressRepository,
     storySessionRepository,
+    quizRepository,
+    quizAccessRepository,
+    quizRatingRepository,
+    quizScoreRepository,
+    gameSessionRepository,
+    quizReportRepository,
+    userRepository,
   }) {
     this.storyLevelRepository = storyLevelRepository;
     this.storyLevelPoolRepository = storyLevelPoolRepository;
@@ -34,6 +41,166 @@ export class AdminService {
     this.sessionQuestionRepository = sessionQuestionRepository;
     this.userStoryProgressRepository = userStoryProgressRepository;
     this.storySessionRepository = storySessionRepository;
+
+    // moderation (optional; only used for new admin endpoints)
+    this.quizRepository = quizRepository;
+    this.quizAccessRepository = quizAccessRepository;
+    this.quizRatingRepository = quizRatingRepository;
+    this.quizScoreRepository = quizScoreRepository;
+    this.gameSessionRepository = gameSessionRepository;
+    this.quizReportRepository = quizReportRepository;
+    this.userRepository = userRepository;
+  }
+
+  async listQuizReports(query = {}) {
+    if (!this.quizReportRepository) {
+      throw new AppError('Quiz reports are not configured', 501, 'NOT_CONFIGURED');
+    }
+
+    const status = String(query.status || 'open').trim();
+    const limit = Math.min(200, Math.max(1, Number(query.limit) || 50));
+    const offset = Math.max(0, Number(query.offset) || 0);
+
+    const rows = await this.quizReportRepository.list({ status, limit, offset });
+
+    const quizIds = Array.from(new Set(rows.map((r) => r.quiz_id).filter(Boolean)));
+    const reporterIds = Array.from(new Set(rows.map((r) => r.reporter_user_id).filter(Boolean)));
+
+    const quizzes = this.quizRepository ? await this.quizRepository.findByIds(quizIds) : [];
+    const quizMap = new Map((quizzes || []).map((q) => [q.id, q]));
+
+    const ownerIds = Array.from(
+      new Set((quizzes || []).map((q) => q.owner_user_id).filter(Boolean))
+    );
+    const users = this.userRepository
+      ? await this.userRepository.findByIds(Array.from(new Set([...reporterIds, ...ownerIds])))
+      : [];
+    const userMap = new Map((users || []).map((u) => [u.id, u]));
+
+    return {
+      entries: (rows || []).map((r) => {
+        const quiz = quizMap.get(r.quiz_id) || null;
+        const reporter = userMap.get(r.reporter_user_id) || null;
+        const owner = quiz?.owner_user_id ? userMap.get(quiz.owner_user_id) || null : null;
+        return {
+          id: r.id,
+          quiz_id: r.quiz_id,
+          reporter_user_id: r.reporter_user_id,
+          reason: r.reason || 'other',
+          message: r.message || null,
+          status: r.status,
+          created_at: r.created_at,
+          resolved_at: r.resolved_at || null,
+          quiz: quiz
+            ? {
+                id: quiz.id,
+                title: quiz.title,
+                status: quiz.status,
+                visibility: quiz.visibility,
+                owner_user_id: quiz.owner_user_id,
+              }
+            : null,
+          reporter: reporter
+            ? { id: reporter.id, username: reporter.username, email: reporter.email }
+            : null,
+          owner: owner ? { id: owner.id, username: owner.username, email: owner.email } : null,
+        };
+      }),
+    };
+  }
+
+  async resolveQuizReport(reportId, { adminEmail = null } = {}) {
+    if (!this.quizReportRepository) {
+      throw new AppError('Quiz reports are not configured', 501, 'NOT_CONFIGURED');
+    }
+    const id = String(reportId || '').trim();
+    if (!id) throw new AppError('Report not found', 404, 'NOT_FOUND');
+
+    const updated = await this.quizReportRepository.resolve(id, { adminEmail });
+    if (!updated) throw new AppError('Report not found', 404, 'NOT_FOUND');
+    return { success: true };
+  }
+
+  async deleteCustomQuizAsAdmin(quizId) {
+    const qid = String(quizId || '').trim();
+    if (!qid) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
+    if (!this.quizRepository) throw new AppError('Not configured', 501, 'NOT_CONFIGURED');
+
+    const quiz = await this.quizRepository.findById(qid);
+    if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
+
+    // Reduce chance of FK violations if game_sessions references quizzes.
+    try {
+      await this.gameSessionRepository?.clearQuizIdForQuiz(qid);
+    } catch {
+      // best-effort; continue with deletion attempt
+    }
+
+    // Clean related tables if configured (safe to ignore when missing).
+    try {
+      await this.quizAccessRepository?.deleteByQuizId(qid);
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+    }
+
+    try {
+      await this.quizRatingRepository?.deleteByQuizId(qid);
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+    }
+
+    try {
+      await this.quizScoreRepository?.deleteByQuizId(qid);
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+    }
+
+    const questions = await this.quizQuestionRepository.listByQuizId(qid);
+    const questionIds = questions.map((q) => q.id).filter(Boolean);
+
+    try {
+      await this.storyLevelPoolRepository?.deleteByQuizQuestionIds(questionIds);
+    } catch {
+      // best-effort
+    }
+    try {
+      await this.sessionQuestionRepository?.clearSourceQuestionIds(questionIds);
+    } catch {
+      // best-effort
+    }
+
+    await this.questionOptionRepository.deleteByQuestionIds(questionIds);
+    await this.quizQuestionRepository.deleteByQuizId(qid);
+
+    try {
+      await this.quizReportRepository?.deleteByQuizId(qid);
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+    }
+
+    const ok = await this.quizRepository.delete(qid);
+    if (!ok) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
+    return { success: true };
+  }
+
+  async banUser(userId, { reason = null, adminEmail = null } = {}) {
+    if (!this.userRepository) throw new AppError('Not configured', 501, 'NOT_CONFIGURED');
+    const uid = String(userId || '').trim();
+    if (!uid) throw new AppError('User not found', 404, 'NOT_FOUND');
+
+    const updated = await this.userRepository.banUser(uid, { reason, adminEmail });
+    if (!updated) throw new AppError('User not found', 404, 'NOT_FOUND');
+    return { success: true };
+  }
+
+  async unbanUser(userId, { adminEmail = null } = {}) {
+    if (!this.userRepository) throw new AppError('Not configured', 501, 'NOT_CONFIGURED');
+    const uid = String(userId || '').trim();
+    if (!uid) throw new AppError('User not found', 404, 'NOT_FOUND');
+
+    const updated = await this.userRepository.unbanUser(uid, { adminEmail });
+    if (!updated) throw new AppError('User not found', 404, 'NOT_FOUND');
+    return { success: true };
   }
 
   async assertNotInStoryPool(questionIds = []) {

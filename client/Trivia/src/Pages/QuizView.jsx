@@ -24,6 +24,7 @@ export default function QuizView({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [needsLogin, setNeedsLogin] = useState(false);
   const [data, setData] = useState(null);
   const [ratings, setRatings] = useState(null);
@@ -33,9 +34,14 @@ export default function QuizView({
   const [duelFriends, setDuelFriends] = useState([]);
   const [duelFriendId, setDuelFriendId] = useState('');
 
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('spam');
+  const [reportMessage, setReportMessage] = useState('');
+
   const load = async () => {
     setBusy(true);
     setError('');
+    setSuccess('');
     setNeedsLogin(false);
     try {
       const [details, summary, lb] = await Promise.all([
@@ -74,9 +80,32 @@ export default function QuizView({
 
     setBusy(true);
     setError('');
+    setSuccess('');
     try {
       const next = await api.rateQuiz(quizId, { rating: value });
       setRatings(next);
+    } catch (err) {
+      if (isUnauthorized(err)) return onRequireAuth?.('quiz');
+      setError(getApiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitReport = async () => {
+    if (!user) return onRequireAuth?.('quiz');
+    if (!quizId) return;
+    setBusy(true);
+    setError('');
+    setSuccess('');
+    try {
+      await api.reportQuiz(quizId, {
+        reason: reportReason,
+        message: reportMessage,
+      });
+      setReportOpen(false);
+      setReportMessage('');
+      setSuccess('Report submitted. Thank you!');
     } catch (err) {
       if (isUnauthorized(err)) return onRequireAuth?.('quiz');
       setError(getApiErrorMessage(err));
@@ -130,6 +159,7 @@ export default function QuizView({
               if (!user) return onRequireAuth?.('quiz');
               const next = !duelOpen;
               setDuelOpen(next);
+              if (next) setReportOpen(false);
               if (next && duelFriends.length === 0) {
                 setBusy(true);
                 setError('');
@@ -159,7 +189,30 @@ export default function QuizView({
               {STRINGS.QUIZ_VIEW.buttons.edit} {ICONS.common.edit}
             </button>
           )}
+
+          {!canEdit && (
+            <button
+              type="button"
+              className="tv-card tv-card--hover"
+              style={QuizViewStyle.btnWhite}
+              disabled={busy}
+              onClick={() => {
+                if (!user) return onRequireAuth?.('quiz');
+                setReportOpen((v) => !v);
+                setDuelOpen(false);
+              }}
+              title="Report this quiz"
+            >
+              {STRINGS.QUIZ_VIEW.buttons.report} {ICONS.common.finishFlag}
+            </button>
+          )}
         </div>
+
+        {!!success && (
+          <div className="tv-card" style={QuizViewStyle.successCard}>
+            {success}
+          </div>
+        )}
 
         {!!error && (
           <div className="tv-card" style={QuizViewStyle.errorCard}>
@@ -183,6 +236,61 @@ export default function QuizView({
           </div>
         ) : (
           <>
+            {reportOpen && (
+              <div className="tv-card" style={QuizViewStyle.reportCard}>
+                <div style={QuizViewStyle.reportTitle}>
+                  {ICONS.common.finishFlag} Report this quiz
+                </div>
+                <div style={QuizViewStyle.reportSub}>
+                  Tell us what’s wrong. Admins will review it.
+                </div>
+
+                <div style={QuizViewStyle.reportRow}>
+                  <select
+                    style={QuizViewStyle.select}
+                    value={reportReason}
+                    onChange={(e) => setReportReason(e.target.value)}
+                    disabled={busy}
+                  >
+                    <option value="spam">Spam</option>
+                    <option value="hate">Hate / abuse</option>
+                    <option value="copyright">Copyright</option>
+                    <option value="wrong_answers">Wrong answers</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <textarea
+                  style={QuizViewStyle.reportTextarea}
+                  value={reportMessage}
+                  onChange={(e) => setReportMessage(e.target.value)}
+                  placeholder="Add details (optional)…"
+                  disabled={busy}
+                />
+
+                <div style={QuizViewStyle.reportActions}>
+                  <button
+                    type="button"
+                    className="tv-card tv-card--hover"
+                    style={QuizViewStyle.btnPrimary}
+                    onClick={submitReport}
+                    disabled={busy}
+                  >
+                    Submit report
+                  </button>
+                  <button
+                    type="button"
+                    className="tv-card tv-card--hover"
+                    style={QuizViewStyle.btnWhite}
+                    onClick={() => setReportOpen(false)}
+                    disabled={busy}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
             {duelOpen && (
               <div className="tv-card" style={QuizViewStyle.duelCard}>
                 <div style={QuizViewStyle.duelTop}>

@@ -119,6 +119,12 @@ export class AuthService {
       throw new AppError('Invalid email or password', 401, 'UNAUTHORIZED');
     }
 
+    if (user.is_banned) {
+      throw new AppError('Account banned', 403, 'BANNED', {
+        reason: user.banned_reason || undefined,
+      });
+    }
+
     if (!user.email_verified_at) {
       const verifyToken = signEmailVerificationToken(user);
       await this.#deliverVerification(user, verifyToken);
@@ -145,6 +151,7 @@ export class AuthService {
 
     const user = await this.userRepository.findById(userId);
     if (!user) throw new AppError('Invalid refresh token', 401, 'UNAUTHORIZED');
+    if (user.is_banned) throw new AppError('Account banned', 403, 'BANNED');
     if (!user.email_verified_at) {
       throw new AppError('Email not verified', 403, 'EMAIL_NOT_VERIFIED');
     }

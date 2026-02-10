@@ -21,6 +21,28 @@ export const questionIdParam = [
   param('question_id').isUUID().withMessage('question_id must be a uuid'),
 ];
 
+export const reportIdParam = [
+  param('report_id').isUUID().withMessage('report_id must be a uuid'),
+];
+
+export const quizIdParam = [
+  param('quiz_id').isUUID().withMessage('quiz_id must be a uuid'),
+];
+
+export const userIdParam = [
+  param('user_id').isUUID().withMessage('user_id must be a uuid'),
+];
+
+export const listReportsQuery = [
+  query('status').optional().isIn(['open', 'resolved']),
+  query('limit').optional().isInt({ min: 1, max: 200 }),
+  query('offset').optional().isInt({ min: 0, max: 100000 }),
+];
+
+export const banUserBody = [
+  body('reason').optional({ nullable: true }).isString().trim().isLength({ max: 400 }),
+];
+
 export const seedPoolBody = [body('random_count').optional().isInt({ min: 1, max: 50 })];
 
 export const addPoolBody = [
