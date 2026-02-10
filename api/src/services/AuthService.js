@@ -48,7 +48,10 @@ export class AuthService {
         });
 
         if (this.#isProd()) {
-          throw new AppError('Failed to send verification email', 502, 'EMAIL_SEND_FAILED');
+          throw new AppError('Failed to send verification email', 502, 'EMAIL_SEND_FAILED', {
+            provider_status: error?.status ?? undefined,
+            provider_message: String(error?.message || '').slice(0, 300) || undefined,
+          });
         }
       } else {
         return;
