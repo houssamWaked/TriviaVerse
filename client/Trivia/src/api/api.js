@@ -232,6 +232,8 @@ export const api = {
   // sessions
   getCurrentQuestion: async (sessionId) =>
     (await http.get(endpoints.sessionCurrent(sessionId))).data,
+  getSessionReview: async (sessionId) =>
+    (await http.get(endpoints.sessionReview(sessionId))).data,
   submitAnswer: async (sessionId, body) =>
     (await http.post(endpoints.sessionAnswer(sessionId), body)).data,
   useLifeline: async (sessionId, body) =>

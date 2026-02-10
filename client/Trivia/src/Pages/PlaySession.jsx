@@ -65,6 +65,9 @@ export default function PlaySession({
   const [correctCount, setCorrectCount] = useState(0);
   const [shareMessage, setShareMessage] = useState('');
   const [storyOutcome, setStoryOutcome] = useState(null);
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+  const [review, setReview] = useState(null);
 
   const questionStartRef = useRef(Date.now());
   const submitSeqRef = useRef(0);
@@ -113,6 +116,9 @@ export default function PlaySession({
     setCorrectCount(0);
     setShareMessage('');
     setStoryOutcome(null);
+    setReviewBusy(false);
+    setReviewError('');
+    setReview(null);
     setSessionMode('');
     setDisabledOptionIds([]);
     setAudiencePoll(null);
@@ -124,6 +130,38 @@ export default function PlaySession({
     loadCurrent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!finished) return undefined;
+
+    setReviewBusy(true);
+    setReviewError('');
+
+    api
+      .getSessionReview(sessionId)
+      .then((data) => {
+        if (!alive) return;
+        setReview(data || null);
+      })
+      .catch((err) => {
+        if (!alive) return;
+        if (isUnauthorized(err)) {
+          setReviewError('Login required to view your answer explanations.');
+          return;
+        }
+        setReviewError(getApiErrorMessage(err));
+      })
+      .finally(() => {
+        if (!alive) return;
+        setReviewBusy(false);
+      });
+
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finished, sessionId]);
 
   useEffect(() => {
     if (sessionMode !== 'blitz') return undefined;
@@ -680,6 +718,45 @@ export default function PlaySession({
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div className="tv-card tv-results__reviewCard">
+              <div className="tv-results__reviewTitle">
+                {ICONS.common.book} Answer review
+              </div>
+
+              {reviewBusy ? (
+                <div className="tv-results__reviewEmpty">Loading…</div>
+              ) : reviewError ? (
+                <div className="tv-results__reviewEmpty">{reviewError}</div>
+              ) : (
+                (() => {
+                  const items = Array.isArray(review?.questions) ? review.questions : [];
+                  const wrong = items.filter((q) => q && q.is_correct === false);
+                  if (wrong.length === 0) {
+                    return <div className="tv-results__reviewEmpty">No wrong answers — nice!</div>;
+                  }
+                  return (
+                    <div className="tv-results__reviewList">
+                      {wrong.map((q) => (
+                        <div key={q.session_question_id || q.question_number} className="tv-results__reviewItem">
+                          <div className="tv-results__reviewQ">
+                            Q{q.question_number}: {q.question_text}
+                          </div>
+                          <div className="tv-results__reviewMeta">
+                            Your answer: {q.chosen_label ? `${q.chosen_label}. ` : ''}
+                            {q.chosen_text || '—'} • Correct: {q.correct_label ? `${q.correct_label}. ` : ''}
+                            {q.correct_text || '—'}
+                          </div>
+                          {!!q.explanation && (
+                            <div className="tv-results__reviewExplanation">{q.explanation}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()
+              )}
             </div>
 
             <div className="tv-results__actions">

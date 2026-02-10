@@ -106,6 +106,7 @@ export class SessionService {
     sessionLifelineRepository,
     leaderboardRepository,
     userStatsRepository,
+    quizQuestionRepository,
     quizScoreRepository,
     quizRatingRepository,
     storyLevelRepository,
@@ -119,6 +120,7 @@ export class SessionService {
     this.sessionLifelineRepository = sessionLifelineRepository;
     this.leaderboardRepository = leaderboardRepository;
     this.userStatsRepository = userStatsRepository;
+    this.quizQuestionRepository = quizQuestionRepository;
     this.quizScoreRepository = quizScoreRepository;
     this.quizRatingRepository = quizRatingRepository;
     this.storyLevelRepository = storyLevelRepository;
@@ -300,6 +302,121 @@ export class SessionService {
     return payload;
   }
 
+  async getReview(sessionId, userId) {
+    const cached = sessionCache.get(sessionId);
+    if (cached?.mode && cached.is_guest) {
+      const questions = Array.isArray(cached.questions) ? cached.questions : [];
+      const ans = cached.answers_by_session_question_id || {};
+
+      const items = questions.map((q) => {
+        const sessionQuestionId = String(q?.session_question_id || '');
+        const record = sessionQuestionId ? ans[sessionQuestionId] : null;
+        const chosenOptionId = record?.chosen_option_id ?? null;
+        const correctOptionId = record?.correct_option_id ?? null;
+
+        const opts = Array.isArray(q?.options) ? q.options : [];
+        const chosen = chosenOptionId
+          ? opts.find((o) => String(o.id) === String(chosenOptionId)) || null
+          : null;
+        const correct = correctOptionId
+          ? opts.find((o) => String(o.id) === String(correctOptionId)) || null
+          : null;
+
+        const isCorrect = record?.is_correct ?? null;
+
+        return {
+          session_question_id: sessionQuestionId || null,
+          question_number: q?.question_number ?? null,
+          question_text: q?.question_text ?? null,
+          is_correct: isCorrect,
+          chosen_option_id: chosenOptionId,
+          chosen_label: chosen?.label ?? null,
+          chosen_text: chosen?.text ?? null,
+          correct_option_id: correctOptionId,
+          correct_label: correct?.label ?? null,
+          correct_text: correct?.text ?? null,
+          explanation:
+            isCorrect === false ? (q?.explanation != null ? String(q.explanation) : null) : null,
+        };
+      });
+
+      return {
+        session_id: sessionId,
+        mode: cached.mode,
+        quiz_id: null,
+        questions: items,
+      };
+    }
+
+    const session = await this.assertSessionOwner(sessionId, userId);
+    const questions = await this.sessionQuestionRepository.listBySessionId(sessionId);
+    const sqIds = questions.map((q) => q.id).filter(Boolean);
+
+    const [options, answers, sourceRows] = await Promise.all([
+      this.sessionOptionRepository.listBySessionQuestionIds(sqIds),
+      this.sessionAnswerRepository.listBySessionQuestionIds(sqIds),
+      this.quizQuestionRepository?.listByIds
+        ? this.quizQuestionRepository.listByIds(
+            questions.map((q) => q.source_question_id).filter(Boolean)
+          )
+        : Promise.resolve([]),
+    ]);
+
+    const optionsBySqId = new Map();
+    for (const o of options || []) {
+      const sid = o.session_question_id;
+      if (!sid) continue;
+      if (!optionsBySqId.has(sid)) optionsBySqId.set(sid, []);
+      optionsBySqId.get(sid).push(o);
+    }
+
+    const answerBySqId = new Map((answers || []).map((a) => [a.session_question_id, a]));
+    const sourceById = new Map((sourceRows || []).map((r) => [r.id, r]));
+
+    const labelFor = (o) => {
+      const idx = Math.max(1, Number(o?.order_index) || 1) - 1;
+      return LABELS[idx] || String(o?.order_index ?? '');
+    };
+
+    const items = questions.map((sq) => {
+      const opts = (optionsBySqId.get(sq.id) || []).slice().sort((a, b) => {
+        const x = Number(a.order_index) || 0;
+        const y = Number(b.order_index) || 0;
+        return x - y;
+      });
+      const correct = opts.find((o) => !!o.is_correct_snapshot) || null;
+      const answer = answerBySqId.get(sq.id) || null;
+      const chosen = answer?.chosen_option_id
+        ? opts.find((o) => String(o.id) === String(answer.chosen_option_id)) || null
+        : null;
+
+      const isCorrect = answer?.is_correct ?? null;
+      const explanation =
+        isCorrect === false ? (sourceById.get(sq.source_question_id)?.explanation ?? null) : null;
+
+      return {
+        session_question_id: sq.id,
+        question_number: sq.order_index,
+        question_text: sq.question_text_snapshot,
+        is_correct: isCorrect,
+        chosen_option_id: chosen?.id ?? (answer?.chosen_option_id ?? null),
+        chosen_label: chosen ? labelFor(chosen) : null,
+        chosen_text: chosen?.option_text_snapshot ?? null,
+        correct_option_id: correct?.id ?? null,
+        correct_label: correct ? labelFor(correct) : null,
+        correct_text: correct?.option_text_snapshot ?? null,
+        explanation: explanation != null ? String(explanation) : null,
+      };
+    });
+
+    return {
+      session_id: sessionId,
+      mode: session.mode,
+      quiz_id: session.quiz_id ?? null,
+      questions: items,
+    };
+  }
+
   async submitAnswer(sessionId, userId, body) {
     const cached = sessionCache.get(sessionId);
     if (cached?.mode) {
@@ -347,6 +464,14 @@ export class SessionService {
           throw new AppError('Already answered', 409, 'CONFLICT');
         }
         cached.answered_session_question_id_set.add(String(current.session_question_id));
+
+        if (!cached.answers_by_session_question_id) cached.answers_by_session_question_id = {};
+        cached.answers_by_session_question_id[String(current.session_question_id)] = {
+          chosen_option_id: body.chosen_option_id,
+          correct_option_id: correctId,
+          is_correct,
+          answered_in_sec: body.answered_in_sec ?? null,
+        };
       } else {
         await this.sessionAnswerRepository.create({
           session_question_id: current.session_question_id,
@@ -361,7 +486,8 @@ export class SessionService {
         cached.strike_count = strikes;
         if (strikes >= BLITZ_MAX_STRIKES) {
           cached.status = 'abandoned';
-          sessionCache.del(sessionId);
+          if (isGuest) sessionCache.set(sessionId, cached);
+          else sessionCache.del(sessionId);
           if (!isGuest) {
             try {
               await this.gameSessionRepository.updateStatus(sessionId, 'abandoned');
@@ -373,6 +499,7 @@ export class SessionService {
             is_correct: false,
             chosen_option_id: body.chosen_option_id,
             correct_option_id: correctId,
+            ...(current?.explanation != null ? { explanation: String(current.explanation) } : {}),
             score_total: cached.score_total ?? 0,
             next_question_available: false,
             finished: true,
@@ -393,6 +520,7 @@ export class SessionService {
             is_correct: false,
             chosen_option_id: body.chosen_option_id,
             correct_option_id: correctId,
+            ...(current?.explanation != null ? { explanation: String(current.explanation) } : {}),
             current_prize: cached.score_total ?? 0,
             next_question_available: false,
             finished: true,
@@ -506,10 +634,13 @@ export class SessionService {
 
       sessionCache.set(sessionId, cached);
 
+      const explanation =
+        !is_correct && current?.explanation != null ? String(current.explanation) : null;
       const base = {
         is_correct,
         chosen_option_id: body.chosen_option_id,
         correct_option_id: correctId,
+        ...(explanation ? { explanation } : {}),
         score_total: cached.score_total ?? 0,
         next_question_available,
         ...(next ? { next_question: { ...next, score_total: cached.score_total ?? 0 } } : {}),
@@ -582,6 +713,16 @@ export class SessionService {
       answered_in_sec: body.answered_in_sec ?? null,
     });
 
+    let explanation = null;
+    if (!is_correct && this.quizQuestionRepository?.findById) {
+      try {
+        const src = await this.quizQuestionRepository.findById(sessionQuestion.source_question_id);
+        explanation = src?.explanation ?? null;
+      } catch {
+        // ignore
+      }
+    }
+
     if (session.mode === 'blitz') {
       const strikesBefore = (answersBefore || []).filter((a) => a && a.is_correct === false).length;
       const strikes = strikesBefore + (is_correct ? 0 : 1);
@@ -593,6 +734,7 @@ export class SessionService {
           is_correct: false,
           chosen_option_id: chosen.id,
           correct_option_id: correctOptionId,
+          ...(explanation != null ? { explanation: String(explanation) } : {}),
           score_total: session.score_total ?? 0,
           time_remaining_sec: 0,
           next_question_available: false,
@@ -659,6 +801,7 @@ export class SessionService {
           is_correct: false,
           chosen_option_id: chosen.id,
           correct_option_id: correctOptionId,
+          ...(explanation != null ? { explanation: String(explanation) } : {}),
           current_prize: session.score_total ?? 0,
           next_question_available: false,
           finished: true,
@@ -815,6 +958,7 @@ export class SessionService {
       is_correct,
       chosen_option_id: chosen.id,
       correct_option_id: correctOptionId,
+      ...(!is_correct && explanation != null ? { explanation: String(explanation) } : {}),
       score_total: updatedSession?.score_total ?? session.score_total,
       next_question_available,
       ...(next_question ? { next_question } : {}),
@@ -1018,7 +1162,7 @@ export class SessionService {
     const cached = sessionCache.get(sessionId);
     if (cached?.mode && cached.is_guest) {
       cached.status = status;
-      sessionCache.del(sessionId);
+      sessionCache.set(sessionId, cached);
       return { status };
     }
 
@@ -1059,10 +1203,11 @@ export class SessionService {
               const passed = outcome.passed;
               const stars = outcome.stars;
 
-              const perfect = outcome.total_count > 0 ? outcome.correct_count >= outcome.total_count : false;
-              const alreadyPerfect = (existing?.stars_earned ?? 0) >= 3;
-              storyXpEligible = Boolean(passed && perfect && !alreadyPerfect);
-              storyXpValue = scoreTotal;
+              // Award XP for every passed story level.
+              // Use `story_levels.xp_reward` when available; otherwise fall back to the session score.
+              const xpReward = Number(level?.xp_reward);
+              storyXpEligible = Boolean(passed);
+              storyXpValue = Number.isFinite(xpReward) ? xpReward : scoreTotal;
 
               await this.userStoryProgressRepository.upsertResult(session.user_id, level.id, {
                 score_total: scoreTotal,

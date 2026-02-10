@@ -336,6 +336,10 @@ export class DuelService {
     const opts = await this.sessionOptionRepository.listBySessionQuestionId(current.id);
     const claim = await this.duelClaimRepository.findByDuelAndQuestionIndex(fresh.id, idx);
     const answers = await this.duelAnswerRepository.listByDuelAndQuestionIndex(fresh.id, idx);
+    const distinctUsers = new Set(answers.map((a) => a.user_id).filter(Boolean));
+    const bothAnswered = distinctUsers.size >= 2;
+    const canRevealCorrectOption = bothAnswered;
+    const correctOpt = opts.find((o) => !!o.is_correct_snapshot) || null;
 
     const meRole = fresh.challenger_user_id === userId ? 'challenger' : 'opponent';
 
@@ -353,10 +357,12 @@ export class DuelService {
           label: String.fromCharCode(65 + i),
           text: o.option_text_snapshot,
         })),
+        correct_option_id: canRevealCorrectOption ? correctOpt?.id ?? null : null,
         started_at: fresh.question_started_at,
         claim,
         answers: answers.map((a) => ({
           user_id: a.user_id,
+          session_option_id: a.session_option_id,
           is_correct: a.is_correct,
           answered_ms: a.answered_ms,
           created_at: a.created_at,
@@ -454,7 +460,7 @@ export class DuelService {
     const distinctUsers = new Set(answers.map((a) => a.user_id).filter(Boolean));
     const bothAnswered = distinctUsers.size >= 2;
 
-    if (!claim && !bothAnswered && !timedOut) return duel;
+    if (!bothAnswered && !timedOut) return duel;
 
     if (idx >= total) {
       const allAnswers = await this.duelAnswerRepository.listByDuelId(duel.id, 1000);

@@ -22,6 +22,7 @@ export const endpoints = {
   blitzConfig: () => '/api/public/blitz/config?v=2',
   blitzStart: () => '/api/public/blitz/sessions/start',
   sessionCurrent: (sessionId) => `/api/public/sessions/${sessionId}/current`,
+  sessionReview: (sessionId) => `/api/public/sessions/${sessionId}/review`,
   sessionAnswer: (sessionId) => `/api/public/sessions/${sessionId}/answer`,
   sessionUseLifeline: (sessionId) => `/api/public/sessions/${sessionId}/lifelines/use`,
   sessionFinish: (sessionId) => `/api/public/sessions/${sessionId}/finish`,

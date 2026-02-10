@@ -241,6 +241,7 @@ const sessionService = new SessionService({
   sessionLifelineRepository,
   leaderboardRepository,
   userStatsRepository,
+  quizQuestionRepository,
   quizScoreRepository,
   quizRatingRepository,
   storyLevelRepository,

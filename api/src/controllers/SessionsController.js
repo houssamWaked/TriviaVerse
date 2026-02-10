@@ -11,6 +11,11 @@ export class SessionsController {
     res.status(200).json(data);
   };
 
+  review = async (req, res) => {
+    const data = await this.sessionService.getReview(req.params.session_id, req.user?.id || null);
+    res.status(200).json(data);
+  };
+
   answer = async (req, res) => {
     const data = await this.sessionService.submitAnswer(
       req.params.session_id,

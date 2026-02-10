@@ -59,11 +59,13 @@ export default function CreateQuiz({
   const [questions, setQuestions] = useState([]);
   const [questionForm, setQuestionForm] = useState({
     question_text: '',
+    explanation: '',
     time_limit_sec: 30,
     points: 100,
   });
 
   const [optionDrafts, setOptionDrafts] = useState({});
+  const [explanationDrafts, setExplanationDrafts] = useState({});
   const [accessBusy, setAccessBusy] = useState(false);
   const [accessUsername, setAccessUsername] = useState('');
   const [accessList, setAccessList] = useState([]);
@@ -853,11 +855,12 @@ export default function CreateQuiz({
                         const order_index = (questions?.length || 0) + 1;
                         await api.addQuizQuestion(quiz.id, {
                           question_text: questionForm.question_text,
+                          explanation: String(questionForm.explanation || '').trim() || null,
                           time_limit_sec: Number(questionForm.time_limit_sec) || 30,
                           points: Number(questionForm.points) || 100,
                           order_index,
                         });
-                        setQuestionForm((v) => ({ ...v, question_text: '' }));
+                        setQuestionForm((v) => ({ ...v, question_text: '', explanation: '' }));
                         await refreshQuestions(quiz.id);
                       } catch (err) {
                         if (isUnauthorized(err)) return onRequireAuth?.();
@@ -899,6 +902,23 @@ export default function CreateQuiz({
                         }
                         min={3}
                         max={600}
+                        disabled={busy}
+                      />
+                    </label>
+
+                    <label style={{ ...CreateQuizPageStyle.fieldFlex1, flexBasis: '100%' }}>
+                      <span style={CreateQuizPageStyle.label}>{STRINGS.CREATE_QUIZ.labels.explanation}</span>
+                      <textarea
+                        style={CreateQuizPageStyle.textarea}
+                        value={questionForm.explanation}
+                        onChange={(e) =>
+                          setQuestionForm((v) => ({
+                            ...v,
+                            explanation: e.target.value,
+                          }))
+                        }
+                        maxLength={2000}
+                        placeholder={STRINGS.CREATE_QUIZ.placeholders.explanation}
                         disabled={busy}
                       />
                     </label>
@@ -965,6 +985,46 @@ export default function CreateQuiz({
                         <div style={CreateQuizPageStyle.questionText}>
                           {q.question_text}
                         </div>
+
+                        <label style={{ ...CreateQuizPageStyle.field, marginTop: 12 }}>
+                          <span style={CreateQuizPageStyle.label}>{STRINGS.CREATE_QUIZ.labels.explanation}</span>
+                          <textarea
+                            style={CreateQuizPageStyle.textarea}
+                            value={
+                              explanationDrafts[q.id] ??
+                              (q.explanation == null ? '' : String(q.explanation))
+                            }
+                            onChange={(e) =>
+                              setExplanationDrafts((m) => ({ ...m, [q.id]: e.target.value }))
+                            }
+                            maxLength={2000}
+                            placeholder={STRINGS.CREATE_QUIZ.placeholders.explanation}
+                            disabled={busy}
+                          />
+                          <button
+                            type="button"
+                            className="tv-card tv-card--hover"
+                            style={CreateQuizPageStyle.secondaryBtnWhite}
+                            disabled={busy}
+                            onClick={async () => {
+                              setError('');
+                              setBusy(true);
+                              try {
+                                const v = String(explanationDrafts[q.id] ?? q.explanation ?? '').trim();
+                                await api.patchQuestion(q.id, { explanation: v || null });
+                                setExplanationDrafts((m) => ({ ...m, [q.id]: v }));
+                                await refreshQuestions(quiz.id);
+                              } catch (err) {
+                                if (isUnauthorized(err)) return onRequireAuth?.();
+                                setError(getApiErrorMessage(err));
+                              } finally {
+                                setBusy(false);
+                              }
+                            }}
+                          >
+                            {STRINGS.CREATE_QUIZ.buttons.saveChanges}
+                          </button>
+                        </label>
 
                         <div style={CreateQuizPageStyle.options}>
                           {opts.map((o) => (

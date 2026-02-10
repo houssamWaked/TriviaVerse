@@ -99,6 +99,13 @@ export const addQuestionValidator = [
     .trim()
     .isLength({ min: 5, max: 600 })
     .withMessage('question_text must be between 5 and 600 characters'),
+  body('explanation')
+    .optional({ nullable: true })
+    .isString()
+    .withMessage('explanation must be a string')
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage('explanation must be at most 2000 characters'),
   body('time_limit_sec')
     .optional()
     .isInt({ min: 3, max: 600 })
@@ -121,6 +128,13 @@ export const patchQuestionValidator = [
     .trim()
     .isLength({ min: 5, max: 600 })
     .withMessage('question_text must be between 5 and 600 characters'),
+  body('explanation')
+    .optional({ nullable: true })
+    .isString()
+    .withMessage('explanation must be a string')
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage('explanation must be at most 2000 characters'),
   body('time_limit_sec')
     .optional()
     .isInt({ min: 3, max: 600 })

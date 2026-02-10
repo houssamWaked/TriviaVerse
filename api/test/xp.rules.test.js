@@ -108,10 +108,10 @@ test('XP: blitz and millionaire award no XP', async () => {
   }
 });
 
-test('XP: story awards XP once on first perfect completion', async () => {
+test('XP: story awards xp_reward when level is passed', async () => {
   const session = { id: 's', user_id: 'u', mode: 'story' };
   const storyMeta = { session_id: 's', level_id: 'lvl', level_number: 1 };
-  const storyLevel = { id: 'lvl', pass_score_min: 10 };
+  const storyLevel = { id: 'lvl', pass_score_min: 10, xp_reward: 50 };
   const storyQuestions = [{ id: 'q1', points_snapshot: 50 }, { id: 'q2', points_snapshot: 50 }];
   const storyAnswersPerfect = [
     { session_question_id: 'q1', is_correct: true },
@@ -119,7 +119,6 @@ test('XP: story awards XP once on first perfect completion', async () => {
   ];
   const updated = { ...session, status: 'completed', score_total: 100 };
 
-  // first time: not perfect before
   const h1 = createServiceHarness({
     session,
     updated,
@@ -130,33 +129,21 @@ test('XP: story awards XP once on first perfect completion', async () => {
     storyExistingProgress: { best_score: 0, is_completed: false, stars_earned: 0 },
   });
   await h1.svc.finish('s', 'u', 'completed');
-  assert.deepEqual(h1.calls.addXp, [{ userId: 'u', xpDelta: 100 }]);
-
-  // second time: already perfect before => no XP
-  const h2 = createServiceHarness({
-    session,
-    updated,
-    storyMeta,
-    storyLevel,
-    storyQuestions,
-    storyAnswers: storyAnswersPerfect,
-    storyExistingProgress: { best_score: 100, is_completed: true, stars_earned: 3 },
-  });
-  await h2.svc.finish('s', 'u', 'completed');
-  assert.equal(h2.calls.addXp.length, 0);
+  assert.deepEqual(h1.calls.addXp, [{ userId: 'u', xpDelta: 50 }]);
 });
 
-test('XP: story awards no XP when completed with a strike (not perfect)', async () => {
+test('XP: story awards no XP when level is not passed', async () => {
   const session = { id: 's', user_id: 'u', mode: 'story' };
   const storyMeta = { session_id: 's', level_id: 'lvl', level_number: 1 };
-  const storyLevel = { id: 'lvl', pass_score_min: 10 };
+  const storyLevel = { id: 'lvl', pass_score_min: 10, xp_reward: 50 };
   const storyQuestions = Array.from({ length: 10 }, (_, i) => ({
     id: `q${i + 1}`,
     points_snapshot: 10,
   }));
-  const storyAnswersNotPerfect = Array.from({ length: 10 }, (_, i) => ({
+  // 6/10 correct => 60% => not passed (pass is >= 70%)
+  const storyAnswersNotPassed = Array.from({ length: 10 }, (_, i) => ({
     session_question_id: `q${i + 1}`,
-    is_correct: i < 9,
+    is_correct: i < 6,
   }));
   const updated = { ...session, status: 'completed', score_total: 50 };
 
@@ -166,7 +153,7 @@ test('XP: story awards no XP when completed with a strike (not perfect)', async 
     storyMeta,
     storyLevel,
     storyQuestions,
-    storyAnswers: storyAnswersNotPerfect,
+    storyAnswers: storyAnswersNotPassed,
     storyExistingProgress: { best_score: 0, is_completed: false, stars_earned: 0 },
   });
   await svc.finish('s', 'u', 'completed');

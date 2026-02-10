@@ -24,6 +24,7 @@ export default function DuelPlay({ user, duelId, onRequireAuth, onBack }) {
 
   const [selectedOptionId, setSelectedOptionId] = useState(null);
   const pollRef = useRef(null);
+  const lastQuestionIndexRef = useRef(null);
 
   const load = async () => {
     if (!duelId) return;
@@ -74,6 +75,25 @@ export default function DuelPlay({ user, duelId, onRequireAuth, onBack }) {
     const list = Array.isArray(question?.answers) ? question.answers : [];
     return list.some((a) => a.user_id === myUserId);
   }, [question?.answers, myUserId]);
+
+  const myAnswer = useMemo(() => {
+    if (!myUserId) return null;
+    const list = Array.isArray(question?.answers) ? question.answers : [];
+    return list.find((a) => a.user_id === myUserId) || null;
+  }, [question?.answers, myUserId]);
+
+  useEffect(() => {
+    const idx = question?.question_index ?? null;
+    if (idx == null) return;
+    if (lastQuestionIndexRef.current == null) {
+      lastQuestionIndexRef.current = idx;
+      return;
+    }
+    if (Number(lastQuestionIndexRef.current) !== Number(idx)) {
+      lastQuestionIndexRef.current = idx;
+      setSelectedOptionId(null);
+    }
+  }, [question?.question_index]);
 
   const claim = question?.claim || null;
   const claimText = useMemo(() => {
@@ -171,21 +191,104 @@ export default function DuelPlay({ user, duelId, onRequireAuth, onBack }) {
                 {(question.options || []).map((o) => {
                   const disabled = busy || myAnswered || msUntilStart > 0 || isCompleted;
                   const selected = selectedOptionId === o.id;
+                  const reveal = !!myAnswer;
+                  const chosenId = myAnswer?.session_option_id ?? selectedOptionId;
+                  const isChosen = chosenId != null && String(o.id) === String(chosenId);
+                  const isCorrectOption =
+                    question?.correct_option_id != null &&
+                    String(o.id) === String(question.correct_option_id);
+                  const isCorrectChosen = reveal && isChosen && myAnswer?.is_correct === true;
+                  const isWrongChosen = reveal && isChosen && myAnswer?.is_correct === false;
+
+                  const base = DuelPlayStyle.optionBtnState(selected, disabled);
+                  const revealStyle = reveal
+                    ? isCorrectChosen
+                      ? {
+                          background:
+                            'linear-gradient(90deg, rgba(34,197,94,0.16) 0%, rgba(34,197,94,0.08) 100%)',
+                          border: '1px solid rgba(34,197,94,0.45)',
+                        }
+                      : isWrongChosen
+                        ? {
+                            background:
+                              'linear-gradient(90deg, rgba(239,68,68,0.16) 0%, rgba(239,68,68,0.08) 100%)',
+                            border: '1px solid rgba(239,68,68,0.45)',
+                          }
+                        : isCorrectOption
+                          ? {
+                              background:
+                                'linear-gradient(90deg, rgba(34,197,94,0.10) 0%, rgba(34,197,94,0.06) 100%)',
+                              border: '1px solid rgba(34,197,94,0.28)',
+                            }
+                          : {
+                              opacity: 0.72,
+                              filter: 'saturate(0.85) brightness(1.02)',
+                            }
+                    : null;
+
+                  const resultIcon = reveal
+                    ? isCorrectChosen
+                      ? ICONS.common.tick
+                      : isWrongChosen
+                        ? ICONS.common.close
+                        : isCorrectOption
+                          ? ICONS.common.tick
+                          : null
+                    : null;
                   return (
                     <button
                       key={o.id}
                       type="button"
                       className="tv-card tv-card--hover"
-                      style={DuelPlayStyle.optionBtnState(selected, disabled)}
+                      style={{ ...base, ...(revealStyle || {}) }}
                       disabled={disabled}
                       onClick={() => answer(o.id)}
                     >
                       <span style={DuelPlayStyle.optionLabel}>{o.label}</span>
                       <span style={DuelPlayStyle.optionText}>{o.text}</span>
+                      {!!resultIcon && (
+                        <span
+                          style={{
+                            marginLeft: 'auto',
+                            fontSize: 18,
+                            fontWeight: 950,
+                          }}
+                          aria-hidden="true"
+                        >
+                          {resultIcon}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
               </div>
+
+              {!!myAnswer && (
+                <div
+                  style={{
+                    ...DuelPlayStyle.toast,
+                    ...(myAnswer.is_correct ? DuelPlayStyle.toastOk : DuelPlayStyle.toastBad),
+                  }}
+                >
+                  {myAnswer.is_correct ? (
+                    <>
+                      {ICONS.common.tick} {STRINGS.PLAY_SESSION.results.correctShort}
+                    </>
+                  ) : (
+                    <>
+                      {ICONS.common.close} {STRINGS.PLAY_SESSION.results.wrongShort}
+                    </>
+                  )}
+                  {question?.correct_option_id ? (
+                    <span style={{ color: 'inherit', opacity: 0.9 }}>
+                      {' '}• Correct:{' '}
+                      {(question.options || []).find(
+                        (x) => String(x.id) === String(question.correct_option_id)
+                      )?.label || ''}
+                    </span>
+                  ) : null}
+                </div>
+              )}
 
               {!!claimText && (
                 <div

@@ -218,6 +218,7 @@ export class QuizBuilderService {
     const created = await this.quizQuestionRepository.create({
       quiz_id: quizId,
       question_text: payload.question_text,
+      explanation: payload.explanation ?? null,
       time_limit_sec: payload.time_limit_sec ?? 30,
       points: payload.points ?? 100,
       order_index: payload.order_index ?? 1,
@@ -235,6 +236,7 @@ export class QuizBuilderService {
 
     const updated = await this.quizQuestionRepository.update(questionId, {
       question_text: patch.question_text ?? undefined,
+      explanation: patch.explanation ?? undefined,
       time_limit_sec: patch.time_limit_sec ?? undefined,
       points: patch.points ?? undefined,
       order_index: patch.order_index ?? undefined,

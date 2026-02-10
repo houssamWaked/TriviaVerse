@@ -25,6 +25,14 @@ export default function createSessionsRouter(sessionsController) {
     asyncHandler(sessionsController.current)
   );
 
+  router.get(
+    '/:session_id/review',
+    optionalAuth,
+    sessionIdParam,
+    validateRequest,
+    asyncHandler(sessionsController.review)
+  );
+
   router.post(
     '/:session_id/answer',
     optionalAuth,

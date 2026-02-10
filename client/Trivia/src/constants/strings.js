@@ -736,6 +736,7 @@ export const STRINGS = {
       visibility: 'Visibility',
       search: 'Search',
       questionText: 'Question text',
+      explanation: 'Explanation (shown if wrong)',
       timeSec: 'Time (sec)',
       points: 'Points',
     },
@@ -745,6 +746,7 @@ export const STRINGS = {
       keywords: 'e.g. england, history, othman',
       accessUsername: 'Username (e.g. coolplayer123)',
       optionText: 'Option text',
+      explanation: 'Explain why the correct answer is correct...',
     },
     help: {
       myQuizzesHint: "Open any quiz you’ve created (by name, not UUID).",

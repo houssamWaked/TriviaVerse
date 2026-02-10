@@ -372,6 +372,17 @@ export class SessionStartService {
       sessionQuestions.map((q) => q.id)
     );
 
+    let sourceById = new Map();
+    try {
+      if (this.quizQuestionRepository?.listByIds) {
+        const sourceIds = sessionQuestions.map((q) => q.source_question_id).filter(Boolean);
+        const sources = await this.quizQuestionRepository.listByIds(sourceIds);
+        sourceById = new Map((sources || []).map((q) => [q.id, q]));
+      }
+    } catch {
+      // Cache is an optimization; ignore schema/config issues and continue without explanations.
+    }
+
     const bySqId = new Map();
     for (const o of options) {
       const sid = o.session_question_id;
@@ -399,6 +410,7 @@ export class SessionStartService {
         question_number: sq.order_index,
         total_questions: session.total_questions,
         question_text: sq.question_text_snapshot,
+        explanation: sourceById.get(sq.source_question_id)?.explanation ?? null,
         time_limit_sec: sq.time_limit_snapshot,
         points: sq.points_snapshot ?? 0,
         options: opts.map((o) => ({
@@ -493,6 +505,7 @@ export class SessionStartService {
         question_number: i + 1,
         total_questions: questions.length,
         question_text: q.question_text,
+        explanation: q.explanation ?? null,
         time_limit_sec: q.time_limit_sec ?? 30,
         points: q.points ?? 0,
         options: opts.map((o) => ({
@@ -517,6 +530,7 @@ export class SessionStartService {
       current_index: 0,
       questions: cachedQuestions,
       correct_option_id_by_session_question_id: correctBySessionQuestionId,
+      answers_by_session_question_id: {},
       lifelines: [],
     });
 

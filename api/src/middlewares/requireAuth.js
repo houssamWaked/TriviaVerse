@@ -21,7 +21,14 @@ export function requireAuth(req, res, next) {
 
   const decoded = verifyAccessToken(token);
   const userId = decoded.sub;
+  const isTest = process.env.NODE_ENV === 'test';
   const isProd = process.env.NODE_ENV === 'production';
+
+  // Unit tests mount routers without a real Supabase database; avoid network calls.
+  if (isTest) {
+    req.user = { id: userId };
+    return next();
+  }
 
   // Enforce bans server-side (tokens issued before a ban should stop working).
   supabase
