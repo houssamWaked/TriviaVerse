@@ -498,6 +498,7 @@ function App() {
               params: { sessionId: route.sessionId, from: route.from || '' },
             })
           }
+          onNavigateHome={() => navigate('home')}
           onBack={() => (route.from === 'story' ? navigate('story') : navigate('quizzes'))}
         />
       ) : route.name === 'friends' ? (

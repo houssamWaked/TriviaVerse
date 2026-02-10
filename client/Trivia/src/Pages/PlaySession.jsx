@@ -24,6 +24,7 @@ export default function PlaySession({
   user,
   onRequireAuth,
   onBack,
+  onNavigateHome,
   backLabel = STRINGS.COMMON.buttons.back,
   variant = 'default', // 'default' | 'story'
   storyLevelNumber = null,
@@ -52,6 +53,7 @@ export default function PlaySession({
   const [speedBonus, setSpeedBonus] = useState(0);
   const [answeredCount, setAnsweredCount] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
+  const [shareMessage, setShareMessage] = useState('');
 
   const questionStartRef = useRef(Date.now());
   const submitSeqRef = useRef(0);
@@ -98,6 +100,7 @@ export default function PlaySession({
     setScoreTotal(0);
     setAnsweredCount(0);
     setCorrectCount(0);
+    setShareMessage('');
     setSessionMode('');
     setDisabledOptionIds([]);
     setAudiencePoll(null);
@@ -205,6 +208,101 @@ export default function PlaySession({
     if (!answeredCount) return 0;
     return clampPct(Math.round((correctCount / answeredCount) * 100));
   }, [answeredCount, correctCount]);
+
+  const modeLabel = useMemo(() => {
+    const m = String(sessionMode || '').toLowerCase();
+    if (m === 'story') return 'Story Mode';
+    if (m === 'classic') return 'Classic Mode';
+    if (m === 'blitz') return 'Blitz Mode';
+    if (m === 'millionaire') return 'Millionaire';
+    if (m === 'custom') return 'Custom Quiz';
+    return m ? `${m[0].toUpperCase()}${m.slice(1)}` : 'Game';
+  }, [sessionMode]);
+
+  const scoreDisplay = useMemo(() => {
+    if (String(sessionMode || '').toLowerCase() === 'millionaire') {
+      return formatMoney(scoreTotal);
+    }
+    return String(scoreTotal);
+  }, [sessionMode, scoreTotal]);
+
+  const shareText = useMemo(() => {
+    const parts = [];
+    parts.push(`🎮 I just scored ${scoreDisplay} in ${modeLabel}!`);
+    if (isStory && Number.isFinite(Number(storyLevelNumber))) {
+      parts.push(`Level ${Number(storyLevelNumber)}`);
+    }
+    parts.push('Can you beat me on TriviaVerse? 🚀');
+    return parts.join(' ');
+  }, [isStory, modeLabel, scoreDisplay, storyLevelNumber]);
+
+  const shareUrl = useMemo(() => {
+    try {
+      return window.location?.origin || '';
+    } catch {
+      return '';
+    }
+  }, []);
+
+  const doShare = async () => {
+    const payloadText = shareUrl ? `${shareText}\n${shareUrl}` : shareText;
+    setShareMessage('');
+
+    try {
+      if (navigator?.share) {
+        await navigator.share({
+          title: 'TriviaVerse',
+          text: shareText,
+          url: shareUrl || undefined,
+        });
+        setShareMessage('Shared!');
+        return;
+      }
+    } catch {
+      // fall back to clipboard
+    }
+
+    try {
+      await navigator.clipboard.writeText(payloadText);
+      setShareMessage('Copied to clipboard!');
+    } catch {
+      setShareMessage('Copy failed — your browser blocked clipboard access.');
+    }
+  };
+
+  const playAgain = async () => {
+    setShareMessage('');
+
+    const mode = String(sessionMode || '').toLowerCase();
+    if (isStory && Number.isFinite(Number(storyLevelNumber))) {
+      setBusy(true);
+      setError('');
+      try {
+        const res = await api.startStorySession({
+          level_number: Number(storyLevelNumber),
+        });
+        const sid = res?.session_id;
+        if (sid) {
+          window.location.hash = `#/play/${encodeURIComponent(String(sid))}?from=story&level=${encodeURIComponent(
+            String(storyLevelNumber)
+          )}`;
+        } else {
+          window.location.hash = '#/story';
+        }
+      } catch (err) {
+        if (isUnauthorized(err)) return onRequireAuth?.('play');
+        setError(getApiErrorMessage(err));
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
+    if (mode === 'classic') window.location.hash = '#/classic';
+    else if (mode === 'blitz') window.location.hash = '#/blitz';
+    else if (mode === 'millionaire') window.location.hash = '#/millionaire';
+    else window.location.hash = '#/quizzes';
+  };
 
   const storyEmoji = useMemo(() => {
     if (!answerResult) return '🤔';
@@ -380,7 +478,7 @@ export default function PlaySession({
           isStory ? PlaySessionStyle.containerStory : PlaySessionStyle.container
         }
       >
-        {!isStory ? (
+        {!finished && !isStory ? (
           <div style={PlaySessionStyle.topRow}>
             <button
               type="button"
@@ -389,7 +487,7 @@ export default function PlaySession({
               onClick={onBack}
               disabled={busy}
             >
-              {STRINGS.COMMON.symbols.leftArrow} {STRINGS.COMMON.buttons.back}
+              {STRINGS.COMMON.symbols.leftArrow} {backLabel}
             </button>
 
             <div style={PlaySessionStyle.pills}>
@@ -407,7 +505,7 @@ export default function PlaySession({
               </span>
             </div>
           </div>
-        ) : question ? (
+        ) : !finished && question ? (
           <div style={PlaySessionStyle.storyTop}>
             <div style={PlaySessionStyle.storyTopRow}>
               <div style={PlaySessionStyle.storyCount}>
@@ -448,23 +546,116 @@ export default function PlaySession({
         )}
 
         {finished && !question ? (
-          <div className="tv-card" style={PlaySessionStyle.doneCard}>
-            <h2 style={PlaySessionStyle.doneTitle}>
-              {STRINGS.PLAY_SESSION.done.title}
-            </h2>
-            <p style={PlaySessionStyle.doneText}>
-              {sessionMode === 'millionaire'
-                ? STRINGS.PLAY_SESSION.done.finalPrize(formatMoney(scoreTotal))
-                : STRINGS.PLAY_SESSION.done.finalScore(scoreTotal)}
-            </p>
-            <button
-              type="button"
-              className="tv-card tv-card--hover"
-              style={PlaySessionStyle.primaryBtnMain}
-              onClick={onBack}
-            >
-              {backLabel}
-            </button>
+          <div className="tv-results">
+            <div className="tv-results__hero">
+              <div className="tv-results__heroIcons" aria-hidden="true">
+                <span className="tv-results__heroIcon">
+                  {ICONS.common.rocket}
+                </span>
+                <span className="tv-results__heroIcon">{ICONS.common.book}</span>
+              </div>
+
+              <h1 className="tv-results__title">KEEP GOING!</h1>
+              <div className="tv-results__subtitle">Every try makes you better!</div>
+
+              <div className="tv-card tv-results__shareCard">
+                <div className="tv-results__shareTitle">
+                  {ICONS.common.phone} Share your score with friends!
+                </div>
+                <div className="tv-results__sharePreview">
+                  {ICONS.common.gamepad} I just scored{' '}
+                  <span className="tv-results__shareScore">{scoreDisplay}</span>{' '}
+                  in <span className="tv-results__shareMode">{modeLabel}</span>
+                  {isStory && Number.isFinite(Number(storyLevelNumber))
+                    ? ` (Level ${Number(storyLevelNumber)})`
+                    : ''}
+                  !
+                  <div className="tv-results__shareHint">
+                    Can you beat me on TriviaVerse? {ICONS.common.rocket}
+                  </div>
+                </div>
+              </div>
+
+              <div className="tv-results__keepPlaying">
+                {ICONS.common.rocket} Keep playing to improve! {ICONS.common.rocket}
+              </div>
+            </div>
+
+            <div className="tv-card tv-results__card">
+              <div className="tv-results__modeLine">{modeLabel}</div>
+              {isStory && Number.isFinite(Number(storyLevelNumber)) ? (
+                <div className="tv-results__levelLine">
+                  Level {Number(storyLevelNumber)} {ICONS.common.star}
+                </div>
+              ) : null}
+
+              <div className="tv-results__scorePanel">
+                <div className="tv-results__scoreLabel">YOUR SCORE</div>
+                <div className="tv-results__scoreValue">{scoreDisplay}</div>
+                <div className="tv-results__scoreMeta">
+                  {ICONS.common.target} {accuracyPct}% Accuracy!
+                </div>
+              </div>
+
+              <div className="tv-results__statsGrid">
+                <div className="tv-results__stat tv-results__stat--blue">
+                  <div className="tv-results__statIcon">{ICONS.common.target}</div>
+                  <div className="tv-results__statValue">
+                    {correctCount}/{answeredCount}
+                  </div>
+                  <div className="tv-results__statLabel">
+                    Correct! {ICONS.common.tick}
+                  </div>
+                </div>
+                <div className="tv-results__stat tv-results__stat--purple">
+                  <div className="tv-results__statIcon">{ICONS.common.trophy}</div>
+                  <div className="tv-results__statValue">{accuracyPct}%</div>
+                  <div className="tv-results__statLabel">
+                    Accuracy! {ICONS.common.target}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="tv-results__actions">
+              <button
+                type="button"
+                className="tv-card tv-card--hover tv-results__btn"
+                onClick={() =>
+                  onNavigateHome
+                    ? onNavigateHome()
+                    : (window.location.hash = '#/')
+                }
+                disabled={busy}
+              >
+                🏠 Home
+              </button>
+              <button
+                type="button"
+                className="tv-card tv-card--hover tv-results__btn"
+                onClick={playAgain}
+                disabled={busy}
+              >
+                {ICONS.common.refresh} Again!
+              </button>
+              <button
+                type="button"
+                className="tv-card tv-card--hover tv-results__btn tv-results__btn--share"
+                onClick={doShare}
+                disabled={busy}
+              >
+                {ICONS.common.rocket} Share!
+              </button>
+            </div>
+
+            {!!shareMessage && (
+              <div className="tv-results__shareMessage">{shareMessage}</div>
+            )}
+
+            {/* Hidden but useful for quick manual copy from DevTools if needed */}
+            <span className="tv-results__shareText" aria-hidden="true">
+              {shareText}
+            </span>
           </div>
         ) : !question ? (
           <div style={PlaySessionStyle.loading}>
