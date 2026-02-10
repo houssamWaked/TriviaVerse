@@ -3,6 +3,41 @@ import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
 import AuthModalStyle from '@/Styles/ComponentStyles/AuthModalStyle';
 
+function useMediaQuery(query) {
+  const getMatch = () => {
+    if (
+      typeof window === 'undefined' ||
+      typeof window.matchMedia !== 'function'
+    )
+      return false;
+    return window.matchMedia(query).matches;
+  };
+
+  const [matches, setMatches] = useState(getMatch);
+
+  useEffect(() => {
+    if (
+      typeof window === 'undefined' ||
+      typeof window.matchMedia !== 'function'
+    )
+      return undefined;
+    const mql = window.matchMedia(query);
+    const onChange = () => setMatches(mql.matches);
+
+    onChange();
+    if (typeof mql.addEventListener === 'function') {
+      mql.addEventListener('change', onChange);
+      return () => mql.removeEventListener('change', onChange);
+    }
+
+    // Safari < 14
+    mql.addListener(onChange);
+    return () => mql.removeListener(onChange);
+  }, [query]);
+
+  return matches;
+}
+
 export default function AuthModal({
   open,
   mode = 'signup',
@@ -57,6 +92,7 @@ export default function AuthModal({
   if (!open) return null;
 
   const isLogin = mode === 'login';
+  const isCompact = useMediaQuery('(max-width: 720px)');
 
   const reset = ({ keepEmail = false } = {}) =>
     setValues((v) => ({
@@ -90,7 +126,7 @@ export default function AuthModal({
   };
 
   const canResend = !!String(values.email || '').trim();
-  const showResend = isLogin && (!!errorCode || canResend);
+  const showResend = isLogin && errorCode === 'EMAIL_NOT_VERIFIED';
 
   const resend = async () => {
     if (loading || resendBusy) return;
@@ -118,62 +154,82 @@ export default function AuthModal({
 
   return (
     <div style={AuthModalStyle.overlay} onMouseDown={onOverlayMouseDown}>
-      <div style={AuthModalStyle.card}>
-        <button type="button" style={AuthModalStyle.closeBtn} onClick={close}>
+      <div
+        style={{
+          ...AuthModalStyle.card,
+          maxWidth: isCompact ? 560 : AuthModalStyle.card.maxWidth,
+        }}
+      >
+        <button
+          type="button"
+          style={{
+            ...AuthModalStyle.closeBtn,
+            ...(isCompact
+              ? {
+                  border: '1px solid rgba(17,24,39,0.12)',
+                  background: 'rgba(17,24,39,0.06)',
+                  color: 'rgba(17,24,39,0.92)',
+                }
+              : null),
+          }}
+          onClick={close}
+        >
           {ICONS.common.close}
         </button>
 
-        <div style={AuthModalStyle.left}>
-          <div>
-            <div style={AuthModalStyle.leftBadge}>
-              <span style={AuthModalStyle.leftBadgeIcon}>
-                {ICONS.brand.sparkles}
-              </span>
-              <span style={AuthModalStyle.leftBadgeText}>{STRINGS.AUTH.badge}</span>
-            </div>
-
-            <h2 style={AuthModalStyle.leftTitle}>
-              {STRINGS.AUTH.welcomePrefix}{' '}
-              <span style={AuthModalStyle.brand}>{STRINGS.COMMON.appName}</span>
-            </h2>
-            <p style={AuthModalStyle.leftSubtitle}>{STRINGS.AUTH.leftSubtitle}</p>
-
-            <div style={AuthModalStyle.perks}>
-              <div style={AuthModalStyle.perkRow}>
-                <span style={AuthModalStyle.perkIcon}>{ICONS.common.trophy}</span>
-                <span style={AuthModalStyle.perkText}>
-                  {STRINGS.AUTH.perks.leaderboard}
-                </span>
-              </div>
-              <div style={AuthModalStyle.perkRow}>
-                <span style={AuthModalStyle.perkIcon}>{ICONS.common.gift}</span>
-                <span style={AuthModalStyle.perkText}>
-                  {STRINGS.AUTH.perks.badges}
-                </span>
-              </div>
-              <div style={AuthModalStyle.perkRow}>
-                <span style={AuthModalStyle.perkIcon}>
+        {!isCompact && (
+          <div style={AuthModalStyle.left}>
+            <div>
+              <div style={AuthModalStyle.leftBadge}>
+                <span style={AuthModalStyle.leftBadgeIcon}>
                   {ICONS.brand.sparkles}
                 </span>
-                <span style={AuthModalStyle.perkText}>
-                  {STRINGS.AUTH.perks.createQuiz}
-                </span>
+                <span style={AuthModalStyle.leftBadgeText}>{STRINGS.AUTH.badge}</span>
+              </div>
+
+              <h2 style={AuthModalStyle.leftTitle}>
+                {STRINGS.AUTH.welcomePrefix}{' '}
+                <span style={AuthModalStyle.brand}>{STRINGS.COMMON.appName}</span>
+              </h2>
+              <p style={AuthModalStyle.leftSubtitle}>{STRINGS.AUTH.leftSubtitle}</p>
+
+              <div style={AuthModalStyle.perks}>
+                <div style={AuthModalStyle.perkRow}>
+                  <span style={AuthModalStyle.perkIcon}>{ICONS.common.trophy}</span>
+                  <span style={AuthModalStyle.perkText}>
+                    {STRINGS.AUTH.perks.leaderboard}
+                  </span>
+                </div>
+                <div style={AuthModalStyle.perkRow}>
+                  <span style={AuthModalStyle.perkIcon}>{ICONS.common.gift}</span>
+                  <span style={AuthModalStyle.perkText}>
+                    {STRINGS.AUTH.perks.badges}
+                  </span>
+                </div>
+                <div style={AuthModalStyle.perkRow}>
+                  <span style={AuthModalStyle.perkIcon}>
+                    {ICONS.brand.sparkles}
+                  </span>
+                  <span style={AuthModalStyle.perkText}>
+                    {STRINGS.AUTH.perks.createQuiz}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div style={AuthModalStyle.leftFooter}>
-            <span style={AuthModalStyle.leftFooterDot}>{ICONS.common.dot}</span>
-            <span>{STRINGS.AUTH.leftFooter}</span>
-          </div>
+            <div style={AuthModalStyle.leftFooter}>
+              <span style={AuthModalStyle.leftFooterDot}>{ICONS.common.dot}</span>
+              <span>{STRINGS.AUTH.leftFooter}</span>
+            </div>
 
-          <span style={AuthModalStyle.sparkleTopRight}>
-            {ICONS.common.star}
-          </span>
-          <span style={AuthModalStyle.sparkleBottomLeft}>
-            {ICONS.brand.sparkles}
-          </span>
-        </div>
+            <span style={AuthModalStyle.sparkleTopRight}>
+              {ICONS.common.star}
+            </span>
+            <span style={AuthModalStyle.sparkleBottomLeft}>
+              {ICONS.brand.sparkles}
+            </span>
+          </div>
+        )}
 
         <div style={AuthModalStyle.right}>
           <div style={AuthModalStyle.header}>
@@ -186,10 +242,18 @@ export default function AuthModal({
             {!!error && <p style={AuthModalStyle.errorBanner}>{error}</p>}
           </div>
 
-          <div style={AuthModalStyle.tabRow}>
+          <div
+            style={{
+              ...AuthModalStyle.tabRow,
+              ...(isCompact ? { width: '100%', justifyContent: 'center' } : null),
+            }}
+          >
             <button
               type="button"
-              style={AuthModalStyle.tabBtnState(mode === 'signup')}
+              style={{
+                ...AuthModalStyle.tabBtnState(mode === 'signup'),
+                ...(isCompact ? { flex: 1 } : null),
+              }}
               onClick={() => {
                 setResendMessage('');
                 reset({ keepEmail: true });
@@ -201,7 +265,10 @@ export default function AuthModal({
             </button>
             <button
               type="button"
-              style={AuthModalStyle.tabBtnState(mode === 'login')}
+              style={{
+                ...AuthModalStyle.tabBtnState(mode === 'login'),
+                ...(isCompact ? { flex: 1 } : null),
+              }}
               onClick={() => {
                 setResendMessage('');
                 reset({ keepEmail: true });

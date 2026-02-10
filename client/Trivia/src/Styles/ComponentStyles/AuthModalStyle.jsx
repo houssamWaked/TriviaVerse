@@ -10,7 +10,7 @@ const AuthModalStyle = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 22,
+    padding: 'clamp(10px, 3.5vw, 22px)',
   },
 
   card: {
@@ -47,7 +47,7 @@ const AuthModalStyle = {
   left: {
     flex: '1 1 360px',
     minHeight: 420,
-    padding: '40px 38px',
+    padding: 'clamp(22px, 5vw, 40px) clamp(18px, 5vw, 38px)',
     background: colors.gradients.main,
     color: colors.neutral.white,
     position: 'relative',
@@ -152,7 +152,7 @@ const AuthModalStyle = {
 
   right: {
     flex: '1 1 360px',
-    padding: '38px 36px',
+    padding: 'clamp(20px, 5vw, 38px) clamp(18px, 5vw, 36px)',
     background: colors.neutral.white,
     display: 'flex',
     flexDirection: 'column',
