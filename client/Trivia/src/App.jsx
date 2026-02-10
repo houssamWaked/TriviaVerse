@@ -161,6 +161,7 @@ function App() {
   const [authBusy, setAuthBusy] = React.useState(false);
   const [authError, setAuthError] = React.useState('');
   const [authErrorCode, setAuthErrorCode] = React.useState('');
+  const [authErrorDetails, setAuthErrorDetails] = React.useState(null);
   const [postAuthRoute, setPostAuthRoute] = React.useState(null);
 
   React.useEffect(() => {
@@ -293,6 +294,7 @@ function App() {
   const openAuth = (mode = 'signup', nextRoute = null) => {
     setAuthError('');
     setAuthErrorCode('');
+    setAuthErrorDetails(null);
     setAuthMode(mode);
     setPostAuthRoute(nextRoute);
     setAuthOpen(true);
@@ -314,6 +316,7 @@ function App() {
     setAuthBusy(true);
     setAuthError('');
     setAuthErrorCode('');
+    setAuthErrorDetails(null);
     try {
       const result = await api.login(body);
       essentialCacheClearByPrefix('user:');
@@ -329,6 +332,9 @@ function App() {
     } catch (err) {
       setAuthError(getApiErrorMessage(err));
       setAuthErrorCode(err?.response?.data?.code || '');
+      setAuthErrorDetails(
+        err?.response?.data?.details?.errors || err?.response?.data?.errors || null
+      );
     } finally {
       setAuthBusy(false);
     }
@@ -338,6 +344,7 @@ function App() {
     setAuthBusy(true);
     setAuthError('');
     setAuthErrorCode('');
+    setAuthErrorDetails(null);
     try {
       const result = await api.register(body);
       if (result?.token) {
@@ -352,17 +359,24 @@ function App() {
         }
         setPostAuthRoute(null);
       } else {
+        const deliveryFailed = result?.email_delivery?.ok === false;
         setAuthError(
           result?.needs_email_verification
-            ? 'Check your email to verify your account, then log in.'
+            ? deliveryFailed
+              ? 'Account created, but verification email could not be sent right now. Please press “Resend verification email”, then log in.'
+              : 'Check your email to verify your account, then log in.'
             : STRINGS.COMMON.errors.generic
         );
         setAuthErrorCode(result?.needs_email_verification ? 'EMAIL_NOT_VERIFIED' : '');
+        setAuthErrorDetails(null);
         setAuthMode('login');
       }
     } catch (err) {
       setAuthError(getApiErrorMessage(err));
       setAuthErrorCode(err?.response?.data?.code || '');
+      setAuthErrorDetails(
+        err?.response?.data?.details?.errors || err?.response?.data?.errors || null
+      );
     } finally {
       setAuthBusy(false);
     }
@@ -608,6 +622,7 @@ function App() {
         loading={authBusy}
         error={authError}
         errorCode={authErrorCode}
+        errorDetails={authErrorDetails}
       />
     </div>
   );

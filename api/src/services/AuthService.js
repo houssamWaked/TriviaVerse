@@ -16,6 +16,23 @@ import {
   verifyEmailVerificationToken,
 } from '../utils/emailVerification.js';
 
+const EMAIL_SEND_THROTTLE_MS = Number(process.env.EMAIL_SEND_THROTTLE_MS || 60_000);
+const lastVerificationAttemptMsByEmail = new Map();
+
+function markVerificationAttempt(email) {
+  const key = String(email || '').trim().toLowerCase();
+  if (!key) return;
+  lastVerificationAttemptMsByEmail.set(key, Date.now());
+}
+
+function isVerificationThrottled(email) {
+  const key = String(email || '').trim().toLowerCase();
+  if (!key) return false;
+  const last = lastVerificationAttemptMsByEmail.get(key);
+  if (!Number.isFinite(last)) return false;
+  return Date.now() - last < Math.max(0, Number(EMAIL_SEND_THROTTLE_MS) || 0);
+}
+
 export class AuthService {
   constructor(userRepository, userStatsRepository) {
     this.userRepository = userRepository;
@@ -31,6 +48,15 @@ export class AuthService {
 
     const redirectTo = buildEmailVerificationRedirectUrl(token);
     if (supabasePublic && redirectTo) {
+      if (isVerificationThrottled(user?.email)) {
+        throw new AppError(
+          'Too many verification emails. Please wait and try again.',
+          429,
+          'EMAIL_RATE_LIMITED'
+        );
+      }
+      markVerificationAttempt(user?.email);
+
       const { error } = await supabasePublic.auth.signInWithOtp({
         email: user.email,
         options: {
@@ -48,6 +74,17 @@ export class AuthService {
         });
 
         if (this.#isProd()) {
+          if (Number(error?.status) === 429) {
+            throw new AppError(
+              'Too many verification emails. Please wait and try again.',
+              429,
+              'EMAIL_RATE_LIMITED',
+              {
+                provider_status: error?.status ?? undefined,
+                provider_message: String(error?.message || '').slice(0, 300) || undefined,
+              }
+            );
+          }
           throw new AppError('Failed to send verification email', 502, 'EMAIL_SEND_FAILED', {
             provider_status: error?.status ?? undefined,
             provider_message: String(error?.message || '').slice(0, 300) || undefined,
@@ -98,11 +135,28 @@ export class AuthService {
     await this.userStatsRepository.createDefault(user.id);
 
     const verifyToken = signEmailVerificationToken(user);
-    await this.#deliverVerification(user, verifyToken);
+    let email_delivery = { ok: true };
+    try {
+      await this.#deliverVerification(user, verifyToken);
+    } catch (err) {
+      // In production, don't fail signup just because email delivery is rate-limited
+      // or the provider is temporarily down. The user can retry via "Resend verification".
+      if (this.#isProd() && (err?.code === 'EMAIL_SEND_FAILED' || err?.code === 'EMAIL_RATE_LIMITED')) {
+        // eslint-disable-next-line no-console
+        console.warn('[auth] Verification email delivery failed during register (continuing)', {
+          code: err?.code,
+          message: err?.message,
+        });
+        email_delivery = { ok: false, code: err?.code };
+      } else {
+        throw err;
+      }
+    }
 
     const payload = {
       user: UserDTO.fromEntity(user),
       needs_email_verification: true,
+      ...(email_delivery?.ok === false ? { email_delivery } : {}),
     };
     if (!this.#isProd()) {
       payload.verification_url = buildEmailVerificationUrl(verifyToken);
@@ -129,16 +183,14 @@ export class AuthService {
     }
 
     if (!user.email_verified_at) {
-      const verifyToken = signEmailVerificationToken(user);
-      await this.#deliverVerification(user, verifyToken);
       throw new AppError(
         'Email not verified. Please check your inbox for the verification link.',
         403,
         'EMAIL_NOT_VERIFIED',
         !this.#isProd()
           ? {
-              verification_url: buildEmailVerificationUrl(verifyToken),
-              verification_token: verifyToken,
+              verification_url: buildEmailVerificationUrl(signEmailVerificationToken(user)),
+              verification_token: signEmailVerificationToken(user),
             }
           : undefined
       );

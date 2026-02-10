@@ -239,6 +239,10 @@ const AuthModalStyle = {
     outline: 'none',
     boxShadow: '0 10px 24px rgba(0,0,0,0.06)',
   },
+  inputError: {
+    border: `1px solid ${colors.accent.red}`,
+    boxShadow: `0 10px 24px rgba(244, 63, 94, 0.14)`,
+  },
   errorText: {
     fontSize: 12,
     fontWeight: 800,

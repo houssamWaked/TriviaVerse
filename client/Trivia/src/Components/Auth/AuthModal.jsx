@@ -50,6 +50,7 @@ export default function AuthModal({
   loading = false,
   error = '',
   errorCode = '',
+  errorDetails = null,
 }) {
   const emailRef = useRef(null);
   const [values, setValues] = useState({
@@ -94,6 +95,16 @@ export default function AuthModal({
   if (!open) return null;
 
   const isLogin = mode === 'login';
+  const detailsList = Array.isArray(errorDetails) ? errorDetails : [];
+  const fieldErrors = useRef(new Map());
+  fieldErrors.current = new Map(
+    detailsList
+      .map((e) => [String(e?.field || '').trim(), String(e?.message || '').trim()])
+      .filter(([f, m]) => f && m)
+  );
+
+  const bannerText =
+    detailsList.length > 0 ? String(error || '').split('\n')[0] : error;
 
   const reset = ({ keepEmail = false } = {}) =>
     setValues((v) => ({
@@ -240,7 +251,7 @@ export default function AuthModal({
             <p style={AuthModalStyle.subtitle}>
               {isLogin ? STRINGS.AUTH.subtitle.login : STRINGS.AUTH.subtitle.signup}
             </p>
-            {!!error && <p style={AuthModalStyle.errorBanner}>{error}</p>}
+            {!!bannerText && <p style={AuthModalStyle.errorBanner}>{bannerText}</p>}
           </div>
 
           <div
@@ -286,7 +297,10 @@ export default function AuthModal({
               <label style={AuthModalStyle.field}>
                 <span style={AuthModalStyle.label}>{STRINGS.AUTH.fields.username}</span>
                 <input
-                  style={AuthModalStyle.input}
+                  style={{
+                    ...AuthModalStyle.input,
+                    ...(fieldErrors.current.has('username') ? AuthModalStyle.inputError : null),
+                  }}
                   value={values.username}
                   onChange={(e) =>
                     setValues((v) => ({ ...v, username: e.target.value }))
@@ -298,6 +312,11 @@ export default function AuthModal({
                   disabled={loading}
                   required
                 />
+                {fieldErrors.current.has('username') ? (
+                  <span style={AuthModalStyle.errorText}>
+                    {fieldErrors.current.get('username')}
+                  </span>
+                ) : null}
               </label>
             )}
 
@@ -305,7 +324,10 @@ export default function AuthModal({
               <span style={AuthModalStyle.label}>{STRINGS.AUTH.fields.email}</span>
               <input
                 ref={emailRef}
-                style={AuthModalStyle.input}
+                style={{
+                  ...AuthModalStyle.input,
+                  ...(fieldErrors.current.has('email') ? AuthModalStyle.inputError : null),
+                }}
                 value={values.email}
                 onChange={(e) => {
                   setResendMessage('');
@@ -317,12 +339,20 @@ export default function AuthModal({
                 disabled={loading || resendBusy}
                 required
               />
+              {fieldErrors.current.has('email') ? (
+                <span style={AuthModalStyle.errorText}>
+                  {fieldErrors.current.get('email')}
+                </span>
+              ) : null}
             </label>
 
             <label style={AuthModalStyle.field}>
               <span style={AuthModalStyle.label}>{STRINGS.AUTH.fields.password}</span>
               <input
-                style={AuthModalStyle.input}
+                style={{
+                  ...AuthModalStyle.input,
+                  ...(fieldErrors.current.has('password') ? AuthModalStyle.inputError : null),
+                }}
                 value={values.password}
                 onChange={(e) =>
                   setValues((v) => ({ ...v, password: e.target.value }))
@@ -334,6 +364,11 @@ export default function AuthModal({
                 disabled={loading || resendBusy}
                 required
               />
+              {fieldErrors.current.has('password') ? (
+                <span style={AuthModalStyle.errorText}>
+                  {fieldErrors.current.get('password')}
+                </span>
+              ) : null}
             </label>
 
             {!isLogin && (
