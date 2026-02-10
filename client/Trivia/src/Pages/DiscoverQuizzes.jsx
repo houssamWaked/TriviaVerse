@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
 import { api } from '@/api';
@@ -19,6 +19,16 @@ export default function DiscoverQuizzes({ user, onOpenQuiz, onNavigateHome }) {
   const [error, setError] = useState('');
   const [results, setResults] = useState([]);
 
+  const reqSeqRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const canSeePrivate = !!user;
 
   const placeholder = canSeePrivate
@@ -26,14 +36,20 @@ export default function DiscoverQuizzes({ user, onOpenQuiz, onNavigateHome }) {
     : STRINGS.DISCOVER_QUIZZES.placeholder.loggedOut;
 
   const loadTop = useCallback(async () => {
-    setBusy(true);
-    setError('');
+    const seq = (reqSeqRef.current += 1);
+    if (mountedRef.current) {
+      setBusy(true);
+      setError('');
+    }
     try {
       const data = await api.getTopQuizzes(20);
+      if (!mountedRef.current || reqSeqRef.current !== seq) return;
       setResults(Array.isArray(data?.results) ? data.results : []);
     } catch (err) {
+      if (!mountedRef.current || reqSeqRef.current !== seq) return;
       setError(getApiErrorMessage(err));
     } finally {
+      if (!mountedRef.current || reqSeqRef.current !== seq) return;
       setBusy(false);
     }
   }, []);
@@ -46,14 +62,20 @@ export default function DiscoverQuizzes({ user, onOpenQuiz, onNavigateHome }) {
         return;
       }
 
-      setBusy(true);
-      setError('');
+      const seq = (reqSeqRef.current += 1);
+      if (mountedRef.current) {
+        setBusy(true);
+        setError('');
+      }
       try {
         const data = await api.searchQuizzes(term, 30);
+        if (!mountedRef.current || reqSeqRef.current !== seq) return;
         setResults(Array.isArray(data?.results) ? data.results : []);
       } catch (err) {
+        if (!mountedRef.current || reqSeqRef.current !== seq) return;
         setError(getApiErrorMessage(err));
       } finally {
+        if (!mountedRef.current || reqSeqRef.current !== seq) return;
         setBusy(false);
       }
     },
@@ -63,7 +85,7 @@ export default function DiscoverQuizzes({ user, onOpenQuiz, onNavigateHome }) {
   useEffect(() => {
     const term = String(q || '').trim();
     if (!term) return undefined;
-    const t = window.setTimeout(() => doSearch(term), 250);
+    const t = window.setTimeout(() => doSearch(term), 150);
     return () => window.clearTimeout(t);
   }, [q, canSeePrivate, doSearch]);
 
@@ -122,7 +144,7 @@ export default function DiscoverQuizzes({ user, onOpenQuiz, onNavigateHome }) {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={placeholder}
-              disabled={busy}
+              disabled={false}
             />
             <button
               type="button"
@@ -138,7 +160,7 @@ export default function DiscoverQuizzes({ user, onOpenQuiz, onNavigateHome }) {
               className="tv-card tv-card--hover"
               style={DiscoverQuizzesStyle.btnWhite}
               onClick={onNavigateHome}
-              disabled={busy}
+              disabled={false}
             >
               {STRINGS.COMMON.buttons.home}
             </button>
