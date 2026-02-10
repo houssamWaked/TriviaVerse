@@ -10,6 +10,7 @@ export default class QuizDTO {
     cover_image_url,
     visibility,
     status,
+    keywords,
     created_at,
     published_at,
   }) {
@@ -20,6 +21,7 @@ export default class QuizDTO {
     this.cover_image_url = cover_image_url;
     this.visibility = visibility;
     this.status = status;
+    this.keywords = keywords ?? null;
     this.created_at = created_at;
     this.published_at = published_at;
   }
@@ -28,4 +30,3 @@ export default class QuizDTO {
     return new QuizDTO(row);
   }
 }
-

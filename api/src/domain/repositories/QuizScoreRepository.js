@@ -20,12 +20,64 @@ function toAppError(error) {
   if (!error) return null;
   const code = String(error.code || '').trim();
   if (code === '42P01') {
-    return new AppError('Quiz scores table is not configured', 501, 'NOT_CONFIGURED');
+    return new AppError(
+      'Quiz scores table is not configured. Apply `TriviaVerse/api/sql/002_quiz_scores.sql`.',
+      501,
+      'NOT_CONFIGURED'
+    );
+  }
+  if (code === '42P10') {
+    return new AppError(
+      'Quiz scores table schema mismatch: missing unique constraint on (quiz_id, user_id). Apply `TriviaVerse/api/sql/002_quiz_scores.sql`.',
+      500,
+      'DB_SCHEMA_MISMATCH'
+    );
   }
   return new AppError(error.message || 'Database error', 500, 'DB_ERROR');
 }
 
 export class QuizScoreRepository {
+  async countPlayersByQuizIds(quizIds = []) {
+    const ids = Array.from(new Set((quizIds || []).filter(Boolean))).slice(0, 200);
+    const counts = new Map();
+    if (ids.length === 0) return counts;
+
+    // Prefer RPC (fast GROUP BY); fallback to JS counting if RPC isn't installed.
+    {
+      const { data, error } = await supabase.rpc('custom_quiz_play_counts', {
+        quiz_ids: ids,
+      });
+
+      if (!error && Array.isArray(data)) {
+        for (const r of data) {
+          if (!r?.quiz_id) continue;
+          counts.set(String(r.quiz_id), Number(r.played_count) || 0);
+        }
+        return counts;
+      }
+
+      const code = String(error?.code || '').trim();
+      // 42883: function does not exist
+      if (code && code !== '42883') {
+        throw toAppError(error);
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('quiz_scores')
+      .select('quiz_id')
+      .in('quiz_id', ids);
+    if (error) throw toAppError(error);
+
+    for (const r of data || []) {
+      const id = r?.quiz_id;
+      if (!id) continue;
+      const key = String(id);
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return counts;
+  }
+
   async findByQuizAndUser(quizId, userId) {
     const { data, error } = await supabase
       .from('quiz_scores')

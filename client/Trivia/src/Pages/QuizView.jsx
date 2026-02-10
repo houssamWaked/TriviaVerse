@@ -329,7 +329,10 @@ export default function QuizView({
                   className="tv-card tv-card--hover"
                   style={QuizViewStyle.btnWhite}
                   disabled={busy}
-                  onClick={load}
+                  onClick={() => {
+                    api.invalidatePublicQuizLeaderboard?.(quizId);
+                    load();
+                  }}
                 >
                   {STRINGS.COMMON.buttons.refresh} {ICONS.common.refresh}
                 </button>
@@ -352,7 +355,11 @@ export default function QuizView({
                 ))}
 
                 {(!leaderboard?.entries || leaderboard.entries.length === 0) && (
-                  <div style={QuizViewStyle.lbEmpty}>{STRINGS.QUIZ_VIEW.leaderboard.empty}</div>
+                  <div style={QuizViewStyle.lbEmpty}>
+                    {leaderboard?.not_configured
+                      ? STRINGS.QUIZ_VIEW.leaderboard.notConfigured
+                      : STRINGS.QUIZ_VIEW.leaderboard.empty}
+                  </div>
                 )}
               </div>
             </div>

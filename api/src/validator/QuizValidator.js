@@ -31,6 +31,14 @@ export const createQuizValidator = [
     .isLength({ max: 1000 })
     .withMessage('description must be at most 1000 characters'),
 
+  body('keywords')
+    .optional({ nullable: true })
+    .isString()
+    .withMessage('keywords must be a string')
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('keywords must be at most 200 characters'),
+
   body('cover_image_url')
     .optional({ nullable: true })
     .isString()
@@ -61,6 +69,14 @@ export const patchQuizValidator = [
     .trim()
     .isLength({ max: 1000 })
     .withMessage('description must be at most 1000 characters'),
+
+  body('keywords')
+    .optional({ nullable: true })
+    .isString()
+    .withMessage('keywords must be a string')
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('keywords must be at most 200 characters'),
 
   body('cover_image_url')
     .optional({ nullable: true })
@@ -158,4 +174,3 @@ export const shareQuizValidator = [
     .isIn(['unlisted'])
     .withMessage('visibility must be unlisted'),
 ];
-

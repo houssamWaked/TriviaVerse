@@ -135,6 +135,10 @@ export const api = {
       prefer: 'localStorage',
       cache: 'essential',
     }),
+  invalidatePublicQuizLeaderboard: (quizId) => {
+    invalidatePublicCacheByPathPrefix(`/api/public/quizzes/${quizId}/leaderboard`);
+    return true;
+  },
 
   // auth
   register: async (body) => (await http.post(endpoints.register(), body)).data,
@@ -232,8 +236,18 @@ export const api = {
     (await http.post(endpoints.sessionAnswer(sessionId), body)).data,
   useLifeline: async (sessionId, body) =>
     (await http.post(endpoints.sessionUseLifeline(sessionId), body)).data,
-  finishSession: async (sessionId, body) =>
-    (await http.post(endpoints.sessionFinish(sessionId), body)).data,
+  finishSession: async (sessionId, body) => {
+    const data = (await http.post(endpoints.sessionFinish(sessionId), body)).data;
+
+    // If a custom quiz just finished, its per-quiz leaderboard should update immediately.
+    if (data?.status === 'completed' && data?.session?.mode === 'custom' && data?.session?.quiz_id) {
+      invalidatePublicCacheByPathPrefix(
+        `/api/public/quizzes/${data.session.quiz_id}/leaderboard`
+      );
+    }
+
+    return data;
+  },
 
   // quiz builder
   listMyQuizzes: async () =>

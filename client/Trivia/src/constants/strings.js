@@ -571,6 +571,7 @@ export const STRINGS = {
       title: 'Leaderboard',
       myBestPrefix: 'Your best:',
       empty: 'No scores yet — be the first to play!',
+      notConfigured: 'Leaderboard is not configured yet.',
     },
     questions: {
       none: 'No questions yet.',
@@ -721,6 +722,7 @@ export const STRINGS = {
     labels: {
       title: 'Title',
       description: 'Description',
+      keywords: 'Keywords (tags)',
       visibility: 'Visibility',
       search: 'Search',
       questionText: 'Question text',
@@ -730,11 +732,13 @@ export const STRINGS = {
     placeholders: {
       quizTitleSearch: 'Type a quiz title...',
       quizId: 'Quiz ID (UUID)',
+      keywords: 'e.g. england, history, othman',
       accessUsername: 'Username (e.g. coolplayer123)',
       optionText: 'Option text',
     },
     help: {
       myQuizzesHint: "Open any quiz you’ve created (by name, not UUID).",
+      keywordsHint: 'Add keywords so your quiz shows up in search. Separate with commas or spaces.',
       privateAccessHint: 'Add usernames that can view this private quiz.',
     },
     empty: {

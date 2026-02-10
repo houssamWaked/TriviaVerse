@@ -89,6 +89,13 @@ export class QuizDiscoveryService {
       if (err?.code !== 'NOT_CONFIGURED') throw err;
     }
 
+    let playedCounts = new Map();
+    try {
+      playedCounts = await this.quizScoreRepository.countPlayersByQuizIds(quizIds);
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+    }
+
     const ownerIds = Array.from(new Set(visibleRows.map((r) => r.owner_user_id).filter(Boolean)));
     const owners = await this.userRepository.findByIds(ownerIds);
     const ownerMap = new Map(owners.map((u) => [u.id, u]));
@@ -98,13 +105,18 @@ export class QuizDiscoveryService {
         const quiz = QuizDTO.fromRow(row);
         const owner = ownerMap.get(quiz.owner_user_id);
         const ratings = ratingsSummary.get(quiz.id) || { ratings_avg: 0, ratings_count: 0 };
+        const played_count = playedCounts.get(quiz.id) || 0;
         return {
           ...quiz,
           owner: owner ? { id: owner.id, username: owner.username, avatar_url: owner.avatar_url } : null,
           ...ratings,
+          played_count,
         };
       })
       .sort((a, b) => {
+        if ((b.played_count || 0) !== (a.played_count || 0)) {
+          return (b.played_count || 0) - (a.played_count || 0);
+        }
         if (b.ratings_avg !== a.ratings_avg) return b.ratings_avg - a.ratings_avg;
         if (b.ratings_count !== a.ratings_count) return b.ratings_count - a.ratings_count;
         const bt = new Date(b.published_at || b.created_at || 0).getTime();
@@ -163,6 +175,13 @@ export class QuizDiscoveryService {
       if (err?.code !== 'NOT_CONFIGURED') throw err;
     }
 
+    let playedCounts = new Map();
+    try {
+      playedCounts = await this.quizScoreRepository.countPlayersByQuizIds(quizIds);
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+    }
+
     const ownerIds = Array.from(
       new Set(visibleRows.map((r) => r.owner_user_id).filter(Boolean))
     );
@@ -174,15 +193,20 @@ export class QuizDiscoveryService {
         const quiz = QuizDTO.fromRow(row);
         const owner = ownerMap.get(quiz.owner_user_id);
         const ratings = ratingsSummary.get(quiz.id) || { ratings_avg: 0, ratings_count: 0 };
+        const played_count = playedCounts.get(quiz.id) || 0;
         return {
           ...quiz,
           owner: owner
             ? { id: owner.id, username: owner.username, avatar_url: owner.avatar_url }
             : null,
           ...ratings,
+          played_count,
         };
       })
       .sort((a, b) => {
+        if ((b.played_count || 0) !== (a.played_count || 0)) {
+          return (b.played_count || 0) - (a.played_count || 0);
+        }
         if (b.ratings_avg !== a.ratings_avg) return b.ratings_avg - a.ratings_avg;
         if (b.ratings_count !== a.ratings_count) return b.ratings_count - a.ratings_count;
         const bt = new Date(b.published_at || b.created_at || 0).getTime();
@@ -284,7 +308,9 @@ export class QuizDiscoveryService {
     try {
       rows = await this.quizScoreRepository.listTopByQuizId(quizId, limit);
     } catch (err) {
-      if (err?.code === 'NOT_CONFIGURED') return { quiz_id: quizId, entries: [] };
+      if (err?.code === 'NOT_CONFIGURED' || err?.code === 'DB_SCHEMA_MISMATCH') {
+        return { quiz_id: quizId, entries: [], not_configured: true };
+      }
       throw err;
     }
 

@@ -1141,6 +1141,8 @@ export class SessionService {
     const updated = await this.gameSessionRepository.updateStatus(sessionId, status);
     if (!updated) throw new AppError('Session not found', 404, 'NOT_FOUND');
 
+    const warnings = [];
+
     let storyXpEligible = false;
     let storyXpValue = 0;
 
@@ -1207,7 +1209,11 @@ export class SessionService {
           score_value: updated.score_total ?? 0,
         });
       } catch (err) {
-        if (err?.code !== 'NOT_CONFIGURED') throw err;
+        if (err?.code === 'NOT_CONFIGURED' || err?.code === 'DB_SCHEMA_MISMATCH') {
+          warnings.push({ code: err.code, message: err.message });
+        } else {
+          throw err;
+        }
       }
     }
 
@@ -1262,6 +1268,16 @@ export class SessionService {
     }
 
     sessionCache.del(sessionId);
-    return { status: updated.status };
+    return {
+      status: updated.status,
+      session: {
+        id: sessionId,
+        mode: session.mode,
+        quiz_id: session.quiz_id ?? null,
+        difficulty: session.difficulty ?? null,
+        score_total: updated.score_total ?? null,
+      },
+      warnings,
+    };
   }
 }

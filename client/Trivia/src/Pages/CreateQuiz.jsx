@@ -48,6 +48,7 @@ export default function CreateQuiz({
   const [quizForm, setQuizForm] = useState({
     title: STRINGS.CREATE_QUIZ.defaults.title,
     description: STRINGS.CREATE_QUIZ.defaults.description,
+    keywords: '',
     visibility: STRINGS.CREATE_QUIZ.defaults.visibility,
   });
 
@@ -92,6 +93,7 @@ export default function CreateQuiz({
         setQuizEdit({
           title: loaded.title || '',
           description: loaded.description || '',
+          keywords: loaded.keywords || '',
           visibility: loaded.visibility || 'private',
         });
         setQuizIdInput(loaded.id);
@@ -363,6 +365,7 @@ export default function CreateQuiz({
                       setQuizEdit({
                         title: created.title || '',
                         description: created.description || '',
+                        keywords: created.keywords || '',
                         visibility: created.visibility || 'private',
                       });
                       setQuizIdInput(created.id);
@@ -402,6 +405,25 @@ export default function CreateQuiz({
                       maxLength={1000}
                       disabled={busy}
                     />
+                  </label>
+
+                  <label style={CreateQuizPageStyle.field}>
+                    <span style={CreateQuizPageStyle.label}>
+                      {STRINGS.CREATE_QUIZ.labels.keywords}
+                    </span>
+                    <input
+                      style={CreateQuizPageStyle.input}
+                      value={quizForm.keywords}
+                      onChange={(e) =>
+                        setQuizForm((v) => ({ ...v, keywords: e.target.value }))
+                      }
+                      placeholder={STRINGS.CREATE_QUIZ.placeholders.keywords}
+                      maxLength={200}
+                      disabled={busy}
+                    />
+                    <div style={CreateQuizPageStyle.panelHint}>
+                      {STRINGS.CREATE_QUIZ.help.keywordsHint}
+                    </div>
                   </label>
 
                   <label style={CreateQuizPageStyle.field}>
@@ -587,12 +609,14 @@ export default function CreateQuiz({
                           const updated = await api.patchQuiz(quiz.id, {
                             title: quizEdit.title,
                             description: quizEdit.description || null,
+                            keywords: quizEdit.keywords || null,
                             visibility: quizEdit.visibility,
                           });
                           setQuiz(updated);
                           setQuizEdit({
                             title: updated.title || '',
                             description: updated.description || '',
+                            keywords: updated.keywords || '',
                             visibility: updated.visibility || 'private',
                           });
                           await refreshMyQuizzes();
@@ -634,6 +658,25 @@ export default function CreateQuiz({
                           maxLength={1000}
                           disabled={busy}
                         />
+                      </label>
+
+                      <label style={CreateQuizPageStyle.field}>
+                        <span style={CreateQuizPageStyle.label}>
+                          {STRINGS.CREATE_QUIZ.labels.keywords}
+                        </span>
+                        <input
+                          style={CreateQuizPageStyle.input}
+                          value={quizEdit.keywords}
+                          onChange={(e) =>
+                            setQuizEdit((v) => ({ ...v, keywords: e.target.value }))
+                          }
+                          placeholder={STRINGS.CREATE_QUIZ.placeholders.keywords}
+                          maxLength={200}
+                          disabled={busy}
+                        />
+                        <div style={CreateQuizPageStyle.panelHint}>
+                          {STRINGS.CREATE_QUIZ.help.keywordsHint}
+                        </div>
                       </label>
 
                       <label style={CreateQuizPageStyle.field}>

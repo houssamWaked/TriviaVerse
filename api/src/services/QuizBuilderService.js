@@ -6,6 +6,25 @@ import QuizDTO from '../domain/dto/QuizDTO.js';
 import QuizQuestionDTO from '../domain/dto/QuizQuestionDTO.js';
 import QuestionOptionDTO from '../domain/dto/QuestionOptionDTO.js';
 
+function normalizeKeywords(input) {
+  if (input == null) return null;
+  const raw = String(input || '').trim();
+  if (!raw) return null;
+
+  // Split by comma/space, allow alnum + _ - only (safe for PostgREST `.or` filters).
+  const tokens = raw
+    .split(/[\s,]+/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .map((t) => t.replace(/[^a-z0-9_-]/gi, ''))
+    .map((t) => t.toLowerCase())
+    .filter(Boolean);
+
+  const unique = Array.from(new Set(tokens)).slice(0, 12);
+  const clipped = unique.map((t) => t.slice(0, 24)).filter(Boolean);
+  return clipped.length ? clipped.join(' ') : null;
+}
+
 export class QuizBuilderService {
   constructor(
     quizRepository,
@@ -61,10 +80,12 @@ export class QuizBuilderService {
   }
 
   async createQuiz(userId, payload) {
+    const keywords = normalizeKeywords(payload.keywords);
     const quiz = await this.quizRepository.create({
       owner_user_id: userId,
       title: payload.title,
       description: payload.description ?? null,
+      ...(keywords ? { keywords } : {}),
       cover_image_url: payload.cover_image_url ?? null,
       visibility: payload.visibility || 'private',
       status: 'draft',
@@ -90,12 +111,18 @@ export class QuizBuilderService {
     if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
     if (quiz.owner_user_id !== userId) throw new AppError('Forbidden', 403, 'FORBIDDEN');
 
-    const updated = await this.quizRepository.update(quizId, {
+    const update = {
       title: patch.title ?? undefined,
       description: patch.description ?? undefined,
       cover_image_url: patch.cover_image_url ?? undefined,
       visibility: patch.visibility ?? undefined,
-    });
+    };
+
+    if (patch.keywords !== undefined) {
+      update.keywords = patch.keywords === null ? null : normalizeKeywords(patch.keywords);
+    }
+
+    const updated = await this.quizRepository.update(quizId, update);
     if (!updated) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
     return QuizDTO.fromRow(updated);
   }
