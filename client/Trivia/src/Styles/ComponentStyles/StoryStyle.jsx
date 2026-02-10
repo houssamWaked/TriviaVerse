@@ -113,9 +113,6 @@ const StoryStyle = {
   /* GRID (like left image cards) */
   levelGrid: {
     marginTop: 16,
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-    gap: 14,
   },
 
   /* Responsive: 2 cols then 1 col */

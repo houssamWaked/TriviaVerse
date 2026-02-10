@@ -159,7 +159,7 @@ export default function Story({
         {!!error && <div style={StoryStyle.error}>{error}</div>}
 
         {/* LEVELS GRID (cards like left image) */}
-        <div style={StoryStyle.levelGrid}>
+        <div className="tv-story-grid" style={StoryStyle.levelGrid}>
           {levels.map((lvl) => {
             const unlocked = !!lvl.is_unlocked;
             const completed = !!lvl.is_completed;
