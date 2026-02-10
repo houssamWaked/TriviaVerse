@@ -18,7 +18,11 @@ function toAppError(error) {
   if (!error) return null;
   const code = String(error.code || '').trim();
   if (code === '42P01') {
-    return new AppError('Mode question pool table is not configured', 501, 'NOT_CONFIGURED');
+    return new AppError(
+      'Mode question pool table is not configured. Apply `TriviaVerse/api/sql/004_mode_question_pool.sql`.',
+      501,
+      'NOT_CONFIGURED'
+    );
   }
   return new AppError(error.message || 'Database error', 500, 'DB_ERROR');
 }

@@ -32,7 +32,7 @@ begin
         and t.relname = 'quiz_scores'
         and c.contype in ('p', 'u')
         and (
-          select array_agg(att.attname order by att.attname)
+          select array_agg(att.attname::text order by att.attname::text)
           from unnest(c.conkey) as k(attnum)
           join pg_attribute att on att.attrelid = t.oid and att.attnum = k.attnum
         ) = array['quiz_id', 'user_id']
@@ -48,4 +48,3 @@ create index if not exists quiz_scores_quiz_score_idx
 
 create index if not exists quiz_scores_user_updated_idx
   on public.quiz_scores (user_id, updated_at desc);
-

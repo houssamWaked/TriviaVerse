@@ -151,8 +151,20 @@ begin
     alter table public.duel_answers
       add column if not exists created_at timestamptz not null default now();
 
+    -- Ensure uniqueness on (duel_id, user_id, question_index) regardless of constraint name.
     if not exists (
-      select 1 from pg_constraint where conname = 'duel_answers_duel_user_q_unique'
+      select 1
+      from pg_constraint c
+      join pg_class t on t.oid = c.conrelid
+      join pg_namespace n on n.oid = t.relnamespace
+      where n.nspname = 'public'
+        and t.relname = 'duel_answers'
+        and c.contype in ('p', 'u')
+        and (
+          select array_agg(att.attname::text order by att.attname::text)
+          from unnest(c.conkey) as k(attnum)
+          join pg_attribute att on att.attrelid = t.oid and att.attnum = k.attnum
+        ) = array['duel_id', 'question_index', 'user_id']
     ) then
       alter table public.duel_answers
         add constraint duel_answers_duel_user_q_unique unique (duel_id, user_id, question_index);
@@ -179,11 +191,25 @@ begin
     alter table public.duel_claims
       add column if not exists created_at timestamptz not null default now();
 
+    -- Existing tables may already have a primary key (e.g. on an `id` column).
+    -- Postgres disallows multiple primary keys, so we only enforce uniqueness
+    -- on (duel_id, question_index) if it's missing.
     if not exists (
-      select 1 from pg_constraint where conname = 'duel_claims_pk'
+      select 1
+      from pg_constraint c
+      join pg_class t on t.oid = c.conrelid
+      join pg_namespace n on n.oid = t.relnamespace
+      where n.nspname = 'public'
+        and t.relname = 'duel_claims'
+        and c.contype in ('p', 'u')
+        and (
+          select array_agg(att.attname::text order by att.attname::text)
+          from unnest(c.conkey) as k(attnum)
+          join pg_attribute att on att.attrelid = t.oid and att.attnum = k.attnum
+        ) = array['duel_id', 'question_index']
     ) then
       alter table public.duel_claims
-        add constraint duel_claims_pk primary key (duel_id, question_index);
+        add constraint duel_claims_duel_q_unique unique (duel_id, question_index);
     end if;
   end if;
 

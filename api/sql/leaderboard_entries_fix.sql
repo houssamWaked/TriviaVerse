@@ -24,7 +24,7 @@ begin
     and t.relname = 'leaderboard_entries'
     and c.contype = 'u'
     and (
-      select array_agg(att.attname order by att.attname)
+      select array_agg(att.attname::text order by att.attname::text)
       from unnest(c.conkey) as k(attnum)
       join pg_attribute att on att.attrelid = t.oid and att.attnum = k.attnum
     ) = array['period', 'user_id']
@@ -47,7 +47,7 @@ begin
       and t.relname = 'leaderboard_entries'
       and c.contype in ('p', 'u')
       and (
-        select array_agg(att.attname order by att.attname)
+        select array_agg(att.attname::text order by att.attname::text)
         from unnest(c.conkey) as k(attnum)
         join pg_attribute att on att.attrelid = t.oid and att.attnum = k.attnum
       ) = array['mode', 'period', 'user_id']
@@ -56,4 +56,3 @@ begin
       add constraint leaderboard_entries_user_period_mode_unique unique (user_id, period, mode);
   end if;
 end $$;
-
