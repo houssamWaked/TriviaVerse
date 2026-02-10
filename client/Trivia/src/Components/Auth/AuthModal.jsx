@@ -62,6 +62,15 @@ export default function AuthModal({
   const [resendBusy, setResendBusy] = useState(false);
   const [resendMessage, setResendMessage] = useState('');
   const isCompact = useMediaQuery('(max-width: 720px)', { enabled: open });
+  const isLogin = mode === 'login';
+
+  const detailsList = Array.isArray(errorDetails) ? errorDetails : [];
+  const fieldErrors = new Map(
+    detailsList
+      .map((e) => [String(e?.field || '').trim(), String(e?.message || '').trim()])
+      .filter(([f, m]) => f && m)
+  );
+  const bannerText = detailsList.length > 0 ? String(error || '').split('\n')[0] : error;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -93,18 +102,6 @@ export default function AuthModal({
   }, [open, onClose, mode, loading]);
 
   if (!open) return null;
-
-  const isLogin = mode === 'login';
-  const detailsList = Array.isArray(errorDetails) ? errorDetails : [];
-  const fieldErrors = useRef(new Map());
-  fieldErrors.current = new Map(
-    detailsList
-      .map((e) => [String(e?.field || '').trim(), String(e?.message || '').trim()])
-      .filter(([f, m]) => f && m)
-  );
-
-  const bannerText =
-    detailsList.length > 0 ? String(error || '').split('\n')[0] : error;
 
   const reset = ({ keepEmail = false } = {}) =>
     setValues((v) => ({
@@ -299,7 +296,7 @@ export default function AuthModal({
                 <input
                   style={{
                     ...AuthModalStyle.input,
-                    ...(fieldErrors.current.has('username') ? AuthModalStyle.inputError : null),
+                    ...(fieldErrors.has('username') ? AuthModalStyle.inputError : null),
                   }}
                   value={values.username}
                   onChange={(e) =>
@@ -312,9 +309,9 @@ export default function AuthModal({
                   disabled={loading}
                   required
                 />
-                {fieldErrors.current.has('username') ? (
+                {fieldErrors.has('username') ? (
                   <span style={AuthModalStyle.errorText}>
-                    {fieldErrors.current.get('username')}
+                    {fieldErrors.get('username')}
                   </span>
                 ) : null}
               </label>
@@ -326,7 +323,7 @@ export default function AuthModal({
                 ref={emailRef}
                 style={{
                   ...AuthModalStyle.input,
-                  ...(fieldErrors.current.has('email') ? AuthModalStyle.inputError : null),
+                  ...(fieldErrors.has('email') ? AuthModalStyle.inputError : null),
                 }}
                 value={values.email}
                 onChange={(e) => {
@@ -339,9 +336,9 @@ export default function AuthModal({
                 disabled={loading || resendBusy}
                 required
               />
-              {fieldErrors.current.has('email') ? (
+              {fieldErrors.has('email') ? (
                 <span style={AuthModalStyle.errorText}>
-                  {fieldErrors.current.get('email')}
+                  {fieldErrors.get('email')}
                 </span>
               ) : null}
             </label>
@@ -351,7 +348,7 @@ export default function AuthModal({
               <input
                 style={{
                   ...AuthModalStyle.input,
-                  ...(fieldErrors.current.has('password') ? AuthModalStyle.inputError : null),
+                  ...(fieldErrors.has('password') ? AuthModalStyle.inputError : null),
                 }}
                 value={values.password}
                 onChange={(e) =>
@@ -364,9 +361,9 @@ export default function AuthModal({
                 disabled={loading || resendBusy}
                 required
               />
-              {fieldErrors.current.has('password') ? (
+              {fieldErrors.has('password') ? (
                 <span style={AuthModalStyle.errorText}>
-                  {fieldErrors.current.get('password')}
+                  {fieldErrors.get('password')}
                 </span>
               ) : null}
             </label>
