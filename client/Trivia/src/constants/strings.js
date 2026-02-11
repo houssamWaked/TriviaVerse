@@ -951,6 +951,7 @@ export const STRINGS = {
       next: 'Next',
       addOption: '+ Add option',
       edit: 'Edit',
+      saveChanges: 'Save changes',
       refreshPool: 'Refresh pool',
       refreshList: 'Refresh list',
       viewPool: 'View pool',
@@ -999,6 +1000,7 @@ export const STRINGS = {
     modals: {
       addQuestionsTitle: 'Add questions',
       addGlobalQuestionsTitle: (targetTitle) => `Add global questions → ${targetTitle}`,
+      editGlobalQuestionTitle: 'Edit global question',
       classicCategoriesTitle: 'Classic categories',
     },
     format: {

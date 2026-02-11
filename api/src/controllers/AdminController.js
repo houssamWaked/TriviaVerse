@@ -120,6 +120,24 @@ export class AdminController {
     res.status(200).json(data);
   };
 
+  getGlobalQuestion = async (req, res) => {
+    const data = await this.adminService.getGlobalQuestion(req.params.question_id);
+    res.status(200).json(data);
+  };
+
+  patchGlobalQuestion = async (req, res) => {
+    const data = await this.adminService.patchGlobalQuestion(req.params.question_id, req.body);
+    res.status(200).json(data);
+  };
+
+  replaceGlobalQuestionOptions = async (req, res) => {
+    const data = await this.adminService.replaceGlobalQuestionOptions(
+      req.params.question_id,
+      req.body
+    );
+    res.status(200).json(data);
+  };
+
   deleteGlobalQuestion = async (req, res) => {
     const data = await this.adminService.deleteGlobalQuestion(req.params.question_id);
     res.status(200).json(data);

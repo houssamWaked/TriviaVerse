@@ -496,6 +496,19 @@ export const api = {
       scope: 'user',
       prefer: 'localStorage',
     }),
+  adminGetGlobalQuestion: async (questionId) =>
+    (await http.get(endpoints.adminGlobalQuestionById(questionId))).data,
+  adminPatchGlobalQuestion: async (questionId, body) => {
+    const data = (await http.patch(endpoints.adminGlobalQuestionById(questionId), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    invalidatePublicCacheByPathPrefix('/api/public/home-metrics');
+    return data;
+  },
+  adminReplaceGlobalQuestionOptions: async (questionId, body) => {
+    const data = (await http.put(endpoints.adminReplaceGlobalQuestionOptions(questionId), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
   adminDeleteGlobalQuestion: async (questionId) => {
     const data = (await http.delete(endpoints.adminDeleteGlobalQuestion(questionId))).data;
     invalidateUserCacheByPathPrefix('/api/admin');

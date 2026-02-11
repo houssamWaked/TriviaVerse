@@ -587,6 +587,124 @@ export class AdminService {
     };
   }
 
+  async getGlobalQuestion(questionId) {
+    const qid = String(questionId || '').trim();
+    if (!qid) throw new AppError('Invalid question_id', 400, 'INVALID_INPUT');
+
+    const q = await this.quizQuestionRepository.findById(qid);
+    if (!q) throw new AppError('Question not found', 404, 'NOT_FOUND');
+    if (q.quiz_id != null) {
+      throw new AppError('Only global questions can be edited here', 400, 'INVALID_INPUT');
+    }
+
+    const options = await this.questionOptionRepository.listByQuestionId(qid);
+
+    return {
+      id: q.id,
+      quiz_id: null,
+      question_text: q.question_text,
+      explanation: q.explanation ?? null,
+      difficulty_rating: q.difficulty_rating ?? null,
+      time_limit_sec: q.time_limit_sec ?? 30,
+      points: q.points ?? 100,
+      options: (options || []).map((o) => ({
+        id: o.id,
+        option_text: o.option_text,
+        is_correct: !!o.is_correct,
+        order_index: o.order_index,
+      })),
+    };
+  }
+
+  async patchGlobalQuestion(questionId, patch = {}) {
+    const qid = String(questionId || '').trim();
+    if (!qid) throw new AppError('Invalid question_id', 400, 'INVALID_INPUT');
+
+    const q = await this.quizQuestionRepository.findById(qid);
+    if (!q) throw new AppError('Question not found', 404, 'NOT_FOUND');
+    if (q.quiz_id != null) {
+      throw new AppError('Only global questions can be edited here', 400, 'INVALID_INPUT');
+    }
+
+    const nextPatch = {
+      question_text: patch.question_text ?? undefined,
+      explanation: patch.explanation ?? undefined,
+      difficulty_rating: patch.difficulty_rating ?? undefined,
+      time_limit_sec: patch.time_limit_sec ?? undefined,
+      points: patch.points ?? undefined,
+    };
+
+    let updated;
+    try {
+      updated = await this.quizQuestionRepository.update(qid, nextPatch);
+    } catch (err) {
+      if (err?.code === 'NOT_CONFIGURED') {
+        throw new AppError(
+          'Difficulty rating is not configured. Run `api/sql/quiz_questions_difficulty_rating.sql` in Supabase first.',
+          501,
+          'NOT_CONFIGURED'
+        );
+      }
+      throw err;
+    }
+    if (!updated) throw new AppError('Question not found', 404, 'NOT_FOUND');
+
+    return {
+      id: updated.id,
+      quiz_id: null,
+      question_text: updated.question_text,
+      explanation: updated.explanation ?? null,
+      difficulty_rating: updated.difficulty_rating ?? null,
+      time_limit_sec: updated.time_limit_sec ?? 30,
+      points: updated.points ?? 100,
+    };
+  }
+
+  async replaceGlobalQuestionOptions(questionId, payload = {}) {
+    const qid = String(questionId || '').trim();
+    if (!qid) throw new AppError('Invalid question_id', 400, 'INVALID_INPUT');
+
+    const q = await this.quizQuestionRepository.findById(qid);
+    if (!q) throw new AppError('Question not found', 404, 'NOT_FOUND');
+    if (q.quiz_id != null) {
+      throw new AppError('Only global questions can be edited here', 400, 'INVALID_INPUT');
+    }
+
+    const options = Array.isArray(payload.options) ? payload.options : [];
+    if (options.length < 2) {
+      throw new AppError('Provide at least 2 options', 400, 'VALIDATION_ERROR');
+    }
+    if (options.length > 6) {
+      throw new AppError('Provide at most 6 options', 400, 'VALIDATION_ERROR');
+    }
+
+    const correctCount = options.filter((o) => !!o.is_correct).length;
+    if (correctCount !== 1) {
+      throw new AppError('Provide exactly 1 correct option', 400, 'VALIDATION_ERROR');
+    }
+
+    await this.questionOptionRepository.deleteByQuestionId(qid);
+
+    const rows = options.map((o, idx) => ({
+      question_id: qid,
+      option_text: String(o.option_text || '').trim(),
+      is_correct: !!o.is_correct,
+      order_index: idx + 1,
+    }));
+
+    const created = await this.questionOptionRepository.createMany(rows);
+
+    return {
+      success: true,
+      options: (created || []).map((o) => ({
+        id: o.id,
+        option_text: o.option_text,
+        is_correct: !!o.is_correct,
+        order_index: o.order_index,
+      })),
+    };
+  }
+
   async listModePool(mode) {
     const ids = await this.modeQuestionPoolRepository.listQuestionIdsByMode(mode);
     const copy = ids.slice();

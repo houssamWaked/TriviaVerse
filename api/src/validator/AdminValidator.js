@@ -62,6 +62,20 @@ export const createGlobalQuestionBody = [
   body('modes').optional().isArray({ max: 3 }),
 ];
 
+export const patchGlobalQuestionBody = [
+  body('question_text').optional().isString().trim().isLength({ min: 5, max: 300 }),
+  body('difficulty_rating').optional().isInt({ min: 1, max: 10 }),
+  body('explanation').optional({ nullable: true }).isString().trim().isLength({ min: 1, max: 2000 }),
+  body('time_limit_sec').optional().isInt({ min: 3, max: 600 }),
+  body('points').optional().isInt({ min: 0, max: 100000 }),
+];
+
+export const replaceGlobalQuestionOptionsBody = [
+  body('options').isArray({ min: 2, max: 6 }),
+  body('options.*.option_text').isString().trim().isLength({ min: 1, max: 300 }),
+  body('options.*.is_correct').optional().isBoolean(),
+];
+
 export const createClassicCategoryBody = [
   body('name').isString().trim().isLength({ min: 2, max: 40 }),
   body('icon').optional({ nullable: true }).isString().trim().isLength({ max: 120 }),

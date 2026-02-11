@@ -26,6 +26,8 @@ import {
   listReportsQuery,
   seedPoolBody,
   banUserBody,
+  patchGlobalQuestionBody,
+  replaceGlobalQuestionOptionsBody,
 } from '../validator/AdminValidator.js';
 
 export default function createAdminRouter(adminController) {
@@ -131,6 +133,32 @@ export default function createAdminRouter(adminController) {
     searchQuestionsQuery,
     validateRequest,
     asyncHandler(adminController.searchGlobalQuestions)
+  );
+
+  router.get(
+    '/questions/:question_id',
+    requireAdmin,
+    questionIdParam,
+    validateRequest,
+    asyncHandler(adminController.getGlobalQuestion)
+  );
+
+  router.patch(
+    '/questions/:question_id',
+    requireAdmin,
+    questionIdParam,
+    patchGlobalQuestionBody,
+    validateRequest,
+    asyncHandler(adminController.patchGlobalQuestion)
+  );
+
+  router.put(
+    '/questions/:question_id/options',
+    requireAdmin,
+    questionIdParam,
+    replaceGlobalQuestionOptionsBody,
+    validateRequest,
+    asyncHandler(adminController.replaceGlobalQuestionOptions)
   );
 
   router.delete(

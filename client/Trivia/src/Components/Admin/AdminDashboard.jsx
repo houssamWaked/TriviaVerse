@@ -75,6 +75,18 @@ export default function AdminDashboard({
     points: 100,
   });
 
+  const [editQuestion, setEditQuestion] = useState({
+    open: false,
+    id: '',
+    question_text: '',
+    explanation: '',
+    difficulty_rating: 5,
+    time_limit_sec: 30,
+    points: 100,
+    options: DEFAULT_GLOBAL_QUESTION_OPTIONS,
+    correctIndex: 0,
+  });
+
   const [modeSeedCount, setModeSeedCount] = useState({
     classic: 25,
     blitz: 25,
@@ -340,6 +352,91 @@ export default function AdminDashboard({
       await api.adminDeleteClassicCategory(cid);
       setSuccess(STRINGS.ADMIN.toasts.categoryDeleted);
       await loadClassicCategories();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openEditGlobalQuestion = async (questionId) => {
+    const qid = String(questionId || '').trim();
+    if (!qid) return;
+
+    setBusy(true);
+    clearMessages();
+    try {
+      const q = await api.adminGetGlobalQuestion(qid);
+      const opts = Array.isArray(q?.options) ? q.options.slice().sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)) : [];
+      const optionTexts = opts.map((o) => String(o?.option_text || '').trim());
+      const correctIndex = Math.max(
+        0,
+        Math.min(optionTexts.length - 1, opts.findIndex((o) => !!o.is_correct))
+      );
+
+      setEditQuestion({
+        open: true,
+        id: qid,
+        question_text: q?.question_text || '',
+        explanation: q?.explanation || '',
+        difficulty_rating: Number(q?.difficulty_rating) || 5,
+        time_limit_sec: Number(q?.time_limit_sec) || 30,
+        points: Number(q?.points) || 100,
+        options: optionTexts.length ? optionTexts : DEFAULT_GLOBAL_QUESTION_OPTIONS,
+        correctIndex: correctIndex >= 0 ? correctIndex : 0,
+      });
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveEditedGlobalQuestion = async () => {
+    const qid = String(editQuestion.id || '').trim();
+    if (!qid) return;
+
+    const question_text = String(editQuestion.question_text || '').trim();
+    const explanation = String(editQuestion.explanation || '').trim();
+    if (!question_text) {
+      setError('Question text is required.');
+      return;
+    }
+    if (!explanation) {
+      setError('Explanation is required.');
+      return;
+    }
+
+    const options = (editQuestion.options || []).map((t) => String(t || '').trim()).filter(Boolean);
+    if (options.length < 2) {
+      setError('Provide at least 2 options.');
+      return;
+    }
+
+    const correctIndex = Math.max(0, Math.min(options.length - 1, Number(editQuestion.correctIndex) || 0));
+    const payloadOptions = options.map((t, idx) => ({ option_text: t, is_correct: idx === correctIndex }));
+
+    setBusy(true);
+    clearMessages();
+    try {
+      await api.adminPatchGlobalQuestion(qid, {
+        question_text,
+        explanation,
+        difficulty_rating: clampInt(editQuestion.difficulty_rating, 1, 10),
+        time_limit_sec: clampInt(editQuestion.time_limit_sec, 3, 600),
+        points: clampInt(editQuestion.points, 0, 100000),
+      });
+
+      await api.adminReplaceGlobalQuestionOptions(qid, { options: payloadOptions });
+      setSuccess('Question updated.');
+
+      // Refresh picker/pool lists if open so admins see changes immediately.
+      if (pool.open && pool.kind && pool.id) {
+        await loadPool({ kind: pool.kind, id: pool.id, title: pool.title, offset: pool.offset });
+      }
+      if (picker.open) {
+        await loadPicker({ q: picker.q, offset: picker.offset, keepSelected: true });
+      }
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {
@@ -1358,6 +1455,15 @@ export default function AdminDashboard({
                     type="button"
                     className="tv-card tv-card--hover"
                     style={AdminStyle.btn}
+                    onClick={() => openEditGlobalQuestion(q.id)}
+                    disabled={busy}
+                  >
+                    {STRINGS.ADMIN.actions.edit}
+                  </button>
+                  <button
+                    type="button"
+                    className="tv-card tv-card--hover"
+                    style={AdminStyle.btn}
                     onClick={() => removeFromPool(q.id)}
                     disabled={busy}
                   >
@@ -1547,6 +1653,16 @@ export default function AdminDashboard({
                 <button
                   type="button"
                   className="tv-card tv-card--hover"
+                  style={AdminStyle.btn}
+                  disabled={busy}
+                  onClick={() => openEditGlobalQuestion(r.id)}
+                >
+                  {STRINGS.ADMIN.actions.edit}
+                </button>
+
+                <button
+                  type="button"
+                  className="tv-card tv-card--hover"
                   style={AdminStyle.btnDanger}
                   disabled={busy}
                   onClick={async () => {
@@ -1615,6 +1731,161 @@ export default function AdminDashboard({
             </button>
           </div>
         </details>
+      </AdminModal>
+
+      <AdminModal
+        open={editQuestion.open}
+        title={STRINGS.ADMIN.modals.editGlobalQuestionTitle}
+        onClose={() => setEditQuestion((v) => ({ ...v, open: false }))}
+        maxWidth={980}
+      >
+        <div style={AdminStyle.field}>
+          <span style={AdminStyle.label}>{STRINGS.ADMIN.labels.question}</span>
+          <textarea
+            style={AdminStyle.textarea}
+            value={editQuestion.question_text}
+            onChange={(e) => setEditQuestion((v) => ({ ...v, question_text: e.target.value }))}
+            disabled={busy}
+          />
+        </div>
+
+        <div style={AdminStyle.field}>
+          <span style={AdminStyle.label}>{STRINGS.ADMIN.labels.explanation}</span>
+          <textarea
+            style={AdminStyle.textarea}
+            value={editQuestion.explanation}
+            onChange={(e) => setEditQuestion((v) => ({ ...v, explanation: e.target.value }))}
+            placeholder={STRINGS.ADMIN.text.explanationPlaceholder}
+            disabled={busy}
+          />
+        </div>
+
+        <div style={AdminStyle.rowMt14}>
+          <span style={AdminStyle.pill}>{STRINGS.ADMIN.labels.difficultyRating}</span>
+          <input
+            style={{ ...AdminStyle.input, width: 120 }}
+            type="number"
+            min={1}
+            max={10}
+            value={Number(editQuestion.difficulty_rating) || 5}
+            onChange={(e) =>
+              setEditQuestion((v) => ({ ...v, difficulty_rating: Number(e.target.value) }))
+            }
+            disabled={busy}
+          />
+
+          <span style={AdminStyle.pill}>{STRINGS.ADMIN.labels.timeLimitSec}</span>
+          <input
+            style={{ ...AdminStyle.input, width: 140 }}
+            type="number"
+            min={3}
+            max={600}
+            value={Number(editQuestion.time_limit_sec) || 30}
+            onChange={(e) =>
+              setEditQuestion((v) => ({ ...v, time_limit_sec: Number(e.target.value) }))
+            }
+            disabled={busy}
+          />
+
+          <span style={AdminStyle.pill}>{STRINGS.ADMIN.labels.points}</span>
+          <input
+            style={{ ...AdminStyle.input, width: 140 }}
+            type="number"
+            min={0}
+            max={100000}
+            value={Number(editQuestion.points) || 100}
+            onChange={(e) => setEditQuestion((v) => ({ ...v, points: Number(e.target.value) }))}
+            disabled={busy}
+          />
+        </div>
+
+        <div style={AdminStyle.field}>
+          <span style={AdminStyle.label}>Options</span>
+          <div style={AdminStyle.row}>
+            <button
+              type="button"
+              className="tv-card tv-card--hover"
+              style={AdminStyle.btn}
+              disabled={busy || (editQuestion.options || []).length >= 6}
+              onClick={() =>
+                setEditQuestion((v) => ({
+                  ...v,
+                  options: [...(v.options || []), STRINGS.ADMIN.placeholders.newOption],
+                }))
+              }
+            >
+              {STRINGS.ADMIN.actions.addOption}
+            </button>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {(editQuestion.options || []).map((opt, idx) => (
+            <div key={idx} style={AdminStyle.row}>
+              <input
+                type="radio"
+                name="edit-correct"
+                checked={Number(editQuestion.correctIndex) === idx}
+                onChange={() => setEditQuestion((v) => ({ ...v, correctIndex: idx }))}
+                disabled={busy}
+              />
+              <input
+                style={{ ...AdminStyle.input, flex: '1 1 auto', minWidth: 240 }}
+                value={opt}
+                onChange={(e) =>
+                  setEditQuestion((v) => {
+                    const next = (v.options || []).slice();
+                    next[idx] = e.target.value;
+                    return { ...v, options: next };
+                  })
+                }
+                disabled={busy}
+              />
+              <button
+                type="button"
+                className="tv-card tv-card--hover"
+                style={AdminStyle.btn}
+                disabled={busy || (editQuestion.options || []).length <= 2}
+                onClick={() =>
+                  setEditQuestion((v) => {
+                    const next = (v.options || []).filter((_, i) => i !== idx);
+                    const currentCorrect = Number(v.correctIndex) || 0;
+                    const nextCorrect =
+                      idx === currentCorrect ? 0 : idx < currentCorrect ? currentCorrect - 1 : currentCorrect;
+                    return { ...v, options: next, correctIndex: Math.max(0, nextCorrect) };
+                  })
+                }
+              >
+                {STRINGS.ADMIN.actions.remove}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div style={AdminStyle.rowMt14}>
+          <button
+            type="button"
+            className="tv-card tv-card--hover"
+            style={AdminStyle.btnPrimaryFull}
+            onClick={saveEditedGlobalQuestion}
+            disabled={
+              busy ||
+              !String(editQuestion.question_text || '').trim() ||
+              !String(editQuestion.explanation || '').trim()
+            }
+          >
+            {STRINGS.ADMIN.actions.saveChanges}
+          </button>
+          <button
+            type="button"
+            className="tv-card tv-card--hover"
+            style={AdminStyle.btn}
+            onClick={() => setEditQuestion((v) => ({ ...v, open: false }))}
+            disabled={busy}
+          >
+            {STRINGS.COMMON.buttons.close}
+          </button>
+        </div>
       </AdminModal>
 
       <AdminModal
