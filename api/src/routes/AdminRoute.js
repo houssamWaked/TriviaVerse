@@ -40,6 +40,7 @@ export default function createAdminRouter(adminController) {
     requireAdmin,
     asyncHandler(adminController.listStoryAssignedQuestionIds)
   );
+  router.get('/pools/assigned', requireAdmin, asyncHandler(adminController.listAllAssignedQuestionIds));
 
   router.post(
     '/story/levels',

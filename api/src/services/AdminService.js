@@ -218,6 +218,138 @@ export class AdminService {
     );
   }
 
+  async assertExclusiveForModePool(mode, questionIds = []) {
+    const m = String(mode || '').trim().toLowerCase();
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (!m || ids.length === 0) return;
+
+    const [storyAssignments, modeAssignments, classicAssignments] = await Promise.all([
+      this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
+      this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
+      this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+    ]);
+
+    const storyConflicts = Array.isArray(storyAssignments) ? storyAssignments : [];
+    const modeConflicts = Array.isArray(modeAssignments)
+      ? modeAssignments.filter((a) => a?.mode && String(a.mode).toLowerCase() !== m)
+      : [];
+    const classicConflicts = Array.isArray(classicAssignments) ? classicAssignments : [];
+
+    if (storyConflicts.length > 0 || modeConflicts.length > 0 || classicConflicts.length > 0) {
+      throw new AppError(
+        'Some questions are already assigned to another pool. Remove them before adding to this mode.',
+        409,
+        'POOL_CONFLICT',
+        {
+          story_level_conflicts: storyConflicts,
+          mode_conflicts: modeConflicts,
+          classic_category_conflicts: classicConflicts,
+        }
+      );
+    }
+  }
+
+  async filterEligibleForModePool(mode, questionIds = []) {
+    const m = String(mode || '').trim().toLowerCase();
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (!m || ids.length === 0) return [];
+
+    const [storyAssignments, modeAssignments, classicAssignments] = await Promise.all([
+      this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
+      this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
+      this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+    ]);
+
+    const blocked = new Set();
+
+    if (Array.isArray(storyAssignments)) {
+      for (const a of storyAssignments) {
+        if (a?.quiz_question_id) blocked.add(a.quiz_question_id);
+      }
+    }
+
+    if (Array.isArray(modeAssignments)) {
+      for (const a of modeAssignments) {
+        if (!a?.quiz_question_id) continue;
+        if (a.mode && String(a.mode).toLowerCase() !== m) blocked.add(a.quiz_question_id);
+      }
+    }
+
+    if (Array.isArray(classicAssignments)) {
+      for (const a of classicAssignments) {
+        if (a?.quiz_question_id) blocked.add(a.quiz_question_id);
+      }
+    }
+
+    return ids.filter((id) => !blocked.has(id));
+  }
+
+  async assertExclusiveForClassicCategory(categoryId, questionIds = []) {
+    const cid = String(categoryId || '').trim();
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (!cid || ids.length === 0) return;
+
+    const [storyAssignments, modeAssignments, classicAssignments] = await Promise.all([
+      this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
+      this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
+      this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+    ]);
+
+    const storyConflicts = Array.isArray(storyAssignments) ? storyAssignments : [];
+    const modeConflicts = Array.isArray(modeAssignments) ? modeAssignments : [];
+    const classicConflicts = Array.isArray(classicAssignments)
+      ? classicAssignments.filter((a) => a?.category_id && a.category_id !== cid)
+      : [];
+
+    if (storyConflicts.length > 0 || modeConflicts.length > 0 || classicConflicts.length > 0) {
+      throw new AppError(
+        'Some questions are already assigned to another pool. Remove them before adding to this category.',
+        409,
+        'POOL_CONFLICT',
+        {
+          story_level_conflicts: storyConflicts,
+          mode_conflicts: modeConflicts,
+          classic_category_conflicts: classicConflicts,
+        }
+      );
+    }
+  }
+
+  async filterEligibleForClassicCategory(categoryId, questionIds = []) {
+    const cid = String(categoryId || '').trim();
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (!cid || ids.length === 0) return [];
+
+    const [storyAssignments, modeAssignments, classicAssignments] = await Promise.all([
+      this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
+      this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
+      this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+    ]);
+
+    const blocked = new Set();
+
+    if (Array.isArray(storyAssignments)) {
+      for (const a of storyAssignments) {
+        if (a?.quiz_question_id) blocked.add(a.quiz_question_id);
+      }
+    }
+
+    if (Array.isArray(modeAssignments)) {
+      for (const a of modeAssignments) {
+        if (a?.quiz_question_id) blocked.add(a.quiz_question_id);
+      }
+    }
+
+    if (Array.isArray(classicAssignments)) {
+      for (const a of classicAssignments) {
+        if (!a?.quiz_question_id) continue;
+        if (a.category_id && a.category_id !== cid) blocked.add(a.quiz_question_id);
+      }
+    }
+
+    return ids.filter((id) => !blocked.has(id));
+  }
+
   async assertExclusiveForStoryLevel(levelId, questionIds = []) {
     const lid = String(levelId || '').trim();
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
@@ -413,6 +545,34 @@ export class AdminService {
     return { count: unique.length, ids: unique };
   }
 
+  async listAllAssignedQuestionIds() {
+    const story = await this.safeListIds(() => this.storyLevelPoolRepository?.listAllQuestionIds?.());
+    const modes = await this.safeListIds(() => this.modeQuestionPoolRepository?.listAllQuestionIds?.());
+    const classic = await this.safeListIds(() => this.classicCategoryPoolRepository?.listAllQuestionIds?.());
+
+    const ids = Array.from(new Set([...(story || []), ...(modes || []), ...(classic || [])].filter(Boolean)));
+    return {
+      count: ids.length,
+      ids,
+      pools: {
+        story: { count: (story || []).length, ids: story || [] },
+        modes: { count: (modes || []).length, ids: modes || [] },
+        classic_categories: { count: (classic || []).length, ids: classic || [] },
+      },
+    };
+  }
+
+  async safeListIds(fn) {
+    try {
+      const res = await fn();
+      const ids = Array.isArray(res) ? res : [];
+      return Array.from(new Set(ids.filter(Boolean)));
+    } catch (err) {
+      if (err?.code === 'NOT_CONFIGURED') return [];
+      throw err;
+    }
+  }
+
   async removeStoryLevelPoolQuestions(levelId, questionIds = []) {
     const level = await this.storyLevelRepository.findById(levelId);
     if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
@@ -515,6 +675,10 @@ export class AdminService {
       ? payload.modes.map((m) => String(m || '').trim().toLowerCase()).filter(Boolean)
       : [];
 
+    if (modes.length > 1) {
+      throw new AppError('Provide at most 1 mode assignment', 400, 'VALIDATION_ERROR');
+    }
+
     for (const m of modes) {
       // eslint-disable-next-line no-await-in-loop
       await this.modeQuestionPoolRepository.upsertMany(m, [created.id]);
@@ -544,7 +708,7 @@ export class AdminService {
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (ids.length === 0) return { success: true, added_count: 0 };
 
-    await this.assertNotInStoryPool(ids);
+    await this.assertExclusiveForModePool(m, ids);
     await this.modeQuestionPoolRepository.upsertMany(m, ids);
     return { success: true, added_count: ids.length };
   }
@@ -565,7 +729,7 @@ export class AdminService {
     if (!m) throw new AppError('Mode is required', 400, 'VALIDATION_ERROR');
 
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
-    await this.assertNotInStoryPool(ids);
+    await this.assertExclusiveForModePool(m, ids);
     await this.modeQuestionPoolRepository.deleteAllByMode(m);
     if (ids.length > 0) await this.modeQuestionPoolRepository.upsertMany(m, ids);
     return { success: true, count: ids.length };
@@ -730,13 +894,9 @@ export class AdminService {
     const ids = questions.map((q) => q.id).filter(Boolean);
     if (ids.length === 0) throw new AppError('No global questions available', 400, 'NO_POOL');
 
-    const eligible = await this.filterOutStoryAssigned(ids);
+    const eligible = await this.filterEligibleForModePool(m, ids);
     if (eligible.length === 0) {
-      throw new AppError(
-        'No eligible global questions available (some are already assigned to story mode)',
-        400,
-        'NO_POOL'
-      );
+      throw new AppError('No eligible global questions available', 400, 'NO_POOL');
     }
 
     await this.modeQuestionPoolRepository.upsertMany(m, eligible);
@@ -847,7 +1007,7 @@ export class AdminService {
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (ids.length === 0) return { success: true, added_count: 0 };
 
-    await this.assertNotInStoryPool(ids);
+    await this.assertExclusiveForClassicCategory(cat.id, ids);
     await this.classicCategoryPoolRepository.upsertMany(cat.id, ids);
     return { success: true, added_count: ids.length };
   }
@@ -868,7 +1028,7 @@ export class AdminService {
     if (!cat) throw new AppError('Category not found', 404, 'NOT_FOUND');
 
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
-    await this.assertNotInStoryPool(ids);
+    await this.assertExclusiveForClassicCategory(cat.id, ids);
     await this.classicCategoryPoolRepository.deleteAllByCategoryId(cat.id);
     if (ids.length > 0) await this.classicCategoryPoolRepository.upsertMany(cat.id, ids);
     return { success: true, count: ids.length };
@@ -880,38 +1040,13 @@ export class AdminService {
 
     const count = Math.min(100, Math.max(1, Number(random_count) || 10));
 
-    // Prefer drawing from classic mode pool (if configured), otherwise global random.
-    let ids = [];
-    try {
-      const fromMode = await this.modeQuestionPoolRepository.listQuestionIdsByMode('classic');
-      if (fromMode.length > 0) {
-        const shuffled = fromMode.slice();
-        for (let i = shuffled.length - 1; i > 0; i -= 1) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-        ids = shuffled.slice(0, Math.min(count, shuffled.length));
-      }
-    } catch (err) {
-      if (err?.code !== 'NOT_CONFIGURED') throw err;
-    }
+    const questions = await this.quizQuestionRepository.listRandomGlobal(count);
+    const raw = questions.map((q) => q.id).filter(Boolean);
+    const eligible = await this.filterEligibleForClassicCategory(cat.id, raw);
+    if (eligible.length === 0) throw new AppError('No eligible global questions available', 400, 'NO_POOL');
 
-    if (ids.length > 0) {
-      // Exclude story-assigned questions from the classic seed.
-      // eslint-disable-next-line no-await-in-loop
-      ids = await this.filterOutStoryAssigned(ids);
-    }
-
-    if (ids.length === 0) {
-      const questions = await this.quizQuestionRepository.listRandomGlobal(count);
-      const raw = questions.map((q) => q.id).filter(Boolean);
-      ids = await this.filterOutStoryAssigned(raw);
-    }
-
-    if (ids.length === 0) throw new AppError('No global questions available', 400, 'NO_POOL');
-
-    await this.classicCategoryPoolRepository.upsertMany(cat.id, ids);
-    return { success: true, added_count: ids.length };
+    await this.classicCategoryPoolRepository.upsertMany(cat.id, eligible);
+    return { success: true, added_count: eligible.length };
   }
 
   async deleteGlobalQuestion(questionId) {

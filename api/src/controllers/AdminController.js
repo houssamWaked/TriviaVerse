@@ -81,6 +81,11 @@ export class AdminController {
     res.status(200).json(data);
   };
 
+  listAllAssignedQuestionIds = async (req, res) => {
+    const data = await this.adminService.listAllAssignedQuestionIds();
+    res.status(200).json(data);
+  };
+
   removeStoryLevelPoolQuestions = async (req, res) => {
     const data = await this.adminService.removeStoryLevelPoolQuestions(
       req.params.level_id,

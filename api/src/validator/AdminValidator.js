@@ -59,7 +59,7 @@ export const createGlobalQuestionBody = [
   body('options').isArray({ min: 2, max: 6 }),
   body('options.*.option_text').isString().trim().isLength({ min: 1, max: 300 }),
   body('options.*.is_correct').optional().isBoolean(),
-  body('modes').optional().isArray({ max: 3 }),
+  body('modes').optional().isArray({ max: 1 }),
 ];
 
 export const patchGlobalQuestionBody = [

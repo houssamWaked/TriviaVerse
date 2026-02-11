@@ -454,6 +454,12 @@ export const api = {
       scope: 'user',
       prefer: 'localStorage',
     }),
+  adminAllAssignedQuestionIds: async () =>
+    cachedGet(endpoints.adminAllAssignedQuestionIds(), {
+      ttlMs: 10_000,
+      scope: 'user',
+      prefer: 'localStorage',
+    }),
   adminCreateStoryLevel: async (body) => {
     const data = (await http.post(endpoints.adminCreateStoryLevel(), body)).data;
     invalidateUserCacheByPathPrefix('/api/admin');

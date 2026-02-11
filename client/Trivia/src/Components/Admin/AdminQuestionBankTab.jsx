@@ -162,7 +162,9 @@ export default function AdminQuestionBankTab({
                     onChange={(e) =>
                       setQuestionForm((v) => ({
                         ...v,
-                        modes: { ...(v.modes || {}), [m]: e.target.checked },
+                        modes: e.target.checked
+                          ? { classic: m === 'classic', blitz: m === 'blitz', millionaire: m === 'millionaire' }
+                          : { ...(v.modes || {}), [m]: false },
                       }))
                     }
                     disabled={busy}

@@ -89,6 +89,7 @@ export const endpoints = {
   // admin
   adminStoryLevels: () => '/api/admin/story/levels',
   adminStoryAssignedQuestionIds: () => '/api/admin/story/pool/assigned',
+  adminAllAssignedQuestionIds: () => '/api/admin/pools/assigned',
   adminCreateStoryLevel: () => '/api/admin/story/levels',
   adminDeleteStoryLevel: (levelId) => `/api/admin/story/levels/${levelId}`,
   adminAddStoryLevelPool: (levelId) => `/api/admin/story/levels/${levelId}/pool`,

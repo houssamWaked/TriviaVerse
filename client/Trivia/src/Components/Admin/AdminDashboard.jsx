@@ -120,6 +120,7 @@ export default function AdminDashboard({
     results: [],
     selected: [],
     exclude_ids: [],
+    can_next: true,
     maxSelect: 50,
     limit: 30,
     offset: 0,
@@ -567,19 +568,35 @@ export default function AdminDashboard({
     clearMessages();
     try {
       const query = String(q ?? picker.q ?? '').trim();
-      const off = Math.max(0, Number(offset) || 0);
+      let off = Math.max(0, Number(offset) || 0);
       const lim = picker.limit || 30;
-      const res = await api.adminListGlobalQuestions({ q: query, limit: lim, offset: off });
 
       const excludeSet = new Set(((excludeIds ?? picker.exclude_ids) || []).filter(Boolean));
-      const filteredResults = Array.isArray(res?.results)
-        ? res.results.filter((r) => !excludeSet.has(r.id))
-        : [];
+
+      let rawResults = [];
+      let filteredResults = [];
+      let canNext = false;
+
+      // When we exclude many ids (e.g. "show only unassigned"), a page can be fully filtered out.
+      // Auto-advance a few pages so the picker doesn't look empty even when eligible items exist.
+      for (let i = 0; i < 6; i += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        const res = await api.adminListGlobalQuestions({ q: query, limit: lim, offset: off });
+        rawResults = Array.isArray(res?.results) ? res.results : [];
+        filteredResults = rawResults.filter((r) => !excludeSet.has(r.id));
+        canNext = rawResults.length >= lim;
+
+        if (filteredResults.length > 0) break;
+        if (rawResults.length < lim) break; // no more pages
+        off += lim;
+      }
+
       setPicker((v) => ({
         ...v,
         q: query,
         results: filteredResults,
         offset: off,
+        can_next: canNext,
         selected: keepSelected ? (v.selected || []).filter((id) => !excludeSet.has(id)) : [],
       }));
     } catch (err) {
@@ -616,6 +633,7 @@ export default function AdminDashboard({
       results: [],
       selected: [],
       exclude_ids: [],
+      can_next: true,
       offset: 0,
     }));
 
@@ -628,11 +646,18 @@ export default function AdminDashboard({
     }
 
     try {
-      const storyAssigned = await api.adminStoryAssignedQuestionIds();
-      const storyIds = Array.isArray(storyAssigned?.ids) ? storyAssigned.ids : [];
-      exclude_ids = Array.from(new Set([...(exclude_ids || []), ...storyIds].filter(Boolean)));
+      const assigned = await api.adminAllAssignedQuestionIds();
+      const assignedIds = Array.isArray(assigned?.ids) ? assigned.ids : [];
+      exclude_ids = Array.from(new Set([...(exclude_ids || []), ...assignedIds].filter(Boolean)));
     } catch {
-      // ignore
+      // Back-compat fallback: story pool assignment list (older deployments).
+      try {
+        const storyAssigned = await api.adminStoryAssignedQuestionIds();
+        const storyIds = Array.isArray(storyAssigned?.ids) ? storyAssigned.ids : [];
+        exclude_ids = Array.from(new Set([...(exclude_ids || []), ...storyIds].filter(Boolean)));
+      } catch {
+        // ignore
+      }
     }
 
     setPicker((v) => ({ ...v, exclude_ids }));
@@ -1610,7 +1635,7 @@ export default function AdminDashboard({
                 keepSelected: true,
               })
             }
-            disabled={busy || picker.results.length < picker.limit}
+            disabled={busy || picker.can_next === false}
           >
             {STRINGS.ADMIN.actions.next}
           </button>

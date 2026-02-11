@@ -22,6 +22,12 @@ function toAppError(error) {
 }
 
 export class ClassicCategoryPoolRepository {
+  async listAllQuestionIds() {
+    const { data, error } = await supabase.from('classic_category_pool').select('quiz_question_id');
+    if (error) throw toAppError(error);
+    return (data || []).map((r) => r.quiz_question_id).filter(Boolean);
+  }
+
   async listAssignmentsByQuestionIds(questionIds = []) {
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (ids.length === 0) return [];
