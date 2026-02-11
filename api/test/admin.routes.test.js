@@ -34,6 +34,12 @@ function createTestApp() {
     createGlobalQuestion: async (req, res) => res.status(201).json({}),
     listGlobalQuestions: async (req, res) => res.status(200).json({ results: [] }),
     searchGlobalQuestions: async (req, res) => res.status(200).json({ results: [] }),
+    getGlobalQuestion: async (req, res) =>
+      res.status(200).json({ id: req.params.question_id, options: [] }),
+    patchGlobalQuestion: async (req, res) =>
+      res.status(200).json({ id: req.params.question_id }),
+    replaceGlobalQuestionOptions: async (req, res) =>
+      res.status(200).json({ success: true, options: [] }),
     deleteGlobalQuestion: async (req, res) =>
       res.status(200).json({ success: true, question_id: req.params.question_id }),
     modePoolSummary: async (req, res) => res.status(200).json({ count: 0 }),
@@ -94,4 +100,13 @@ test('GET /api/admin/modes/:mode/pool/ids returns ids', async () => {
   assert.equal(res.status, 200);
   assert.ok(Array.isArray(res.body.ids));
   assert.equal(res.body.count, 0);
+});
+
+test('GET /api/admin/questions/:question_id exists', async () => {
+  const app = createTestApp();
+  const res = await request(app)
+    .get('/api/admin/questions/00000000-0000-0000-0000-000000000000')
+    .set(adminHeader());
+  assert.equal(res.status, 200);
+  assert.equal(res.body.id, '00000000-0000-0000-0000-000000000000');
 });
