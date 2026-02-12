@@ -18,6 +18,16 @@ import {
 export default function createAuthRouter(authController) {
   const router = Router();
 
+  // This endpoint is POST-only (expects a Google ID token).
+  // Provide a helpful response for accidental browser GETs.
+  router.get('/google', (req, res) =>
+    res.status(405).json({
+      success: false,
+      code: 'METHOD_NOT_ALLOWED',
+      message: 'Use POST /api/auth/google with JSON body: { "id_token": "<google id token>" }',
+    })
+  );
+
   router.post(
     '/register',
     registerValidator,
