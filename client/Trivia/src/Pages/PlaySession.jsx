@@ -40,8 +40,15 @@ export default function PlaySession({
   storyLevelNumber = null,
 }) {
   const isStory = variant === 'story';
-  // Keep answer->next transitions snappy. Any intentional pause here is felt as lag.
-  const nextTransitionMs = isStory ? 1000 : 0;
+  // Transition delay between answering and the next question.
+  // Story + Blitz intentionally pause to show correct/wrong feedback.
+  const storyTransitionMs = 1000;
+  const blitzTransitionMs = 1000;
+  const getNextTransitionMs = (q) => {
+    if (isStory) return storyTransitionMs;
+    if (String(q?.mode || '').toLowerCase() === 'blitz') return blitzTransitionMs;
+    return 0;
+  };
   const sleep = (ms) => new Promise((r) => window.setTimeout(r, ms));
   const [sessionMode, setSessionMode] = useState('');
 
@@ -400,6 +407,7 @@ export default function PlaySession({
   const submit = async (chosenOptionId) => {
     if (!question || !chosenOptionId || busy || answerResult) return;
     const submitSeq = (submitSeqRef.current += 1);
+    const nextTransitionMs = getNextTransitionMs(question);
     setPendingChoiceId(chosenOptionId);
     setBusy(true);
     setError('');
