@@ -5,6 +5,8 @@
  * Passwords are hashed with bcrypt and verified on login.
  */
 import bcrypt from 'bcryptjs';
+import { OAuth2Client } from 'google-auth-library';
+import { randomBytes } from 'node:crypto';
 import AppError from '../utils/AppError.js';
 import UserDTO from '../domain/dto/UserDTO.js';
 import { signAccessToken, verifyRefreshToken } from '../utils/jwt.js';
@@ -37,10 +39,54 @@ export class AuthService {
   constructor(userRepository, userStatsRepository) {
     this.userRepository = userRepository;
     this.userStatsRepository = userStatsRepository;
+
+    this._googleClient = null;
   }
 
   #isProd() {
     return process.env.NODE_ENV === 'production';
+  }
+
+  #getGoogleClient() {
+    const raw = String(process.env.GOOGLE_CLIENT_ID || '').trim();
+    const audiences = raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const primaryClientId = audiences[0] || '';
+
+    if (!primaryClientId) {
+      throw new AppError('Google login is not configured', 503, 'GOOGLE_NOT_CONFIGURED', {
+        missing: ['GOOGLE_CLIENT_ID'],
+      });
+    }
+    if (!this._googleClient) this._googleClient = new OAuth2Client(primaryClientId);
+    return { audiences, client: this._googleClient };
+  }
+
+  async #ensureUniqueUsername(base) {
+    const cleaned = String(base || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 20);
+
+    const fallbackBase = cleaned.length >= 3 ? cleaned : 'player';
+
+    const direct = await this.userRepository.findByUsername(fallbackBase);
+    if (!direct) return fallbackBase;
+
+    for (let i = 0; i < 25; i += 1) {
+      const suffix = randomBytes(3).toString('hex'); // 6 chars
+      const candidate = `${fallbackBase}_${suffix}`.slice(0, 30);
+      // eslint-disable-next-line no-await-in-loop
+      const existing = await this.userRepository.findByUsername(candidate);
+      if (!existing) return candidate;
+    }
+
+    throw new AppError('Failed to generate a unique username', 500, 'USERNAME_GENERATION_FAILED');
   }
 
   async #deliverVerification(user, token) {
@@ -198,6 +244,61 @@ export class AuthService {
 
     const token = signAccessToken(user);
     return { user: UserDTO.fromEntity(user), token };
+  }
+
+  async googleLogin({ id_token }) {
+    const token = String(id_token || '').trim();
+    if (!token) throw new AppError('id_token is required', 400, 'VALIDATION_ERROR');
+
+    const { audiences, client } = this.#getGoogleClient();
+
+    let payload = null;
+    try {
+      const ticket = await client.verifyIdToken({ idToken: token, audience: audiences });
+      payload = ticket.getPayload();
+    } catch (err) {
+      throw new AppError('Invalid Google token', 401, 'UNAUTHORIZED');
+    }
+
+    const email = String(payload?.email || '').trim().toLowerCase();
+    const emailVerified = Boolean(payload?.email_verified);
+    if (!email) throw new AppError('Google account missing email', 400, 'GOOGLE_PROFILE_INVALID');
+    if (!emailVerified) {
+      throw new AppError('Google email is not verified', 403, 'GOOGLE_EMAIL_NOT_VERIFIED');
+    }
+
+    const displayName = String(payload?.name || '').trim();
+    const picture = String(payload?.picture || '').trim();
+
+    let user = await this.userRepository.findByEmail(email);
+    if (!user) {
+      const base = displayName || email.split('@')[0] || 'player';
+      const username = await this.#ensureUniqueUsername(base);
+      const password_hash = await bcrypt.hash(randomBytes(24).toString('hex'), 10);
+
+      user = await this.userRepository.create({
+        username,
+        email,
+        password_hash,
+        avatar_url: picture || undefined,
+      });
+      await this.userStatsRepository.createDefault(user.id);
+      await this.userRepository.markEmailVerified(user.id);
+      user = (await this.userRepository.findById(user.id)) || user;
+    } else {
+      if (user.is_banned) {
+        throw new AppError('Account banned', 403, 'BANNED', {
+          reason: user.banned_reason || undefined,
+        });
+      }
+
+      if (!user.email_verified_at) {
+        user = (await this.userRepository.markEmailVerified(user.id)) || user;
+      }
+    }
+
+    const access = signAccessToken(user);
+    return { user: UserDTO.fromEntity(user), token: access };
   }
 
   async refresh(refreshToken) {

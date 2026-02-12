@@ -382,6 +382,34 @@ function App() {
     }
   };
 
+  const handleGoogleAuth = async (idToken) => {
+    setAuthBusy(true);
+    setAuthError('');
+    setAuthErrorCode('');
+    setAuthErrorDetails(null);
+    try {
+      const result = await api.googleAuth({ id_token: idToken });
+      essentialCacheClearByPrefix('user:');
+      setAuthToken(result.token);
+      setCurrentUser(result.user);
+      setUser(result.user);
+      setAuthOpen(false);
+      if (postAuthRoute) {
+        if (typeof postAuthRoute === 'string') navigate(postAuthRoute);
+        else navigate(postAuthRoute.name, postAuthRoute.params);
+      }
+      setPostAuthRoute(null);
+    } catch (err) {
+      setAuthError(getApiErrorMessage(err));
+      setAuthErrorCode(err?.response?.data?.code || '');
+      setAuthErrorDetails(
+        err?.response?.data?.details?.errors || err?.response?.data?.errors || null
+      );
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
   const handleResendVerification = async (email) => {
     await api.resendVerification({ email });
   };
@@ -618,6 +646,7 @@ function App() {
         onClose={() => setAuthOpen(false)}
         onLogin={handleLogin}
         onSignup={handleSignup}
+        onGoogle={handleGoogleAuth}
         onResendVerification={handleResendVerification}
         loading={authBusy}
         error={authError}

@@ -73,6 +73,7 @@ function isAuthEndpoint(url) {
   return (
     u.includes('/api/auth/login') ||
     u.includes('/api/auth/register') ||
+    u.includes('/api/auth/google') ||
     u.includes('/api/auth/refresh') ||
     u.includes('/api/auth/logout') ||
     u.includes('/api/auth/verify-email') ||

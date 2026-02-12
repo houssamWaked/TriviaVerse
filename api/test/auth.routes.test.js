@@ -19,6 +19,11 @@ function createTestApp(controllerOverrides = {}) {
         user: { id: 'u1', username: 'x', email: req.body.email, avatar_url: null },
         token: 'token',
       }),
+    google: async (req, res) =>
+      res.status(200).json({
+        user: { id: 'u1', username: 'x', email: 'google@example.com', avatar_url: null },
+        token: 'token',
+      }),
     refresh: async (req, res) => res.status(200).json({ token: 'token' }),
     logout: async (req, res) => res.status(200).json({ success: true }),
     ...controllerOverrides,
@@ -42,6 +47,13 @@ test('POST /api/auth/register validates input', async () => {
 test('POST /api/auth/login validates input', async () => {
   const app = createTestApp();
   const res = await request(app).post('/api/auth/login').send({ email: 'bad' });
+  assert.equal(res.status, 400);
+  assert.equal(res.body.code, 'VALIDATION_ERROR');
+});
+
+test('POST /api/auth/google validates input', async () => {
+  const app = createTestApp();
+  const res = await request(app).post('/api/auth/google').send({});
   assert.equal(res.status, 400);
   assert.equal(res.body.code, 'VALIDATION_ERROR');
 });

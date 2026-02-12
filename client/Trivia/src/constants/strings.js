@@ -220,6 +220,7 @@ export const STRINGS = {
       dontHave: "Don't have an account?",
       alreadyHave: 'Already have an account?',
     },
+    or: 'OR',
   },
 
   MILLIONAIRE: {

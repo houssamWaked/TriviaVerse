@@ -50,3 +50,12 @@ export const resendVerificationValidator = [
     .withMessage('email must be a valid email')
     .normalizeEmail(),
 ];
+
+export const googleAuthValidator = [
+  body('id_token')
+    .isString()
+    .withMessage('id_token must be a string')
+    .trim()
+    .notEmpty()
+    .withMessage('id_token is required'),
+];

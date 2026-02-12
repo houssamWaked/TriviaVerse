@@ -12,6 +12,7 @@ import {
   resendVerificationValidator,
   verifyEmailGetValidator,
   verifyEmailPostValidator,
+  googleAuthValidator,
 } from '../validator/AuthValidator.js';
 
 export default function createAuthRouter(authController) {
@@ -29,6 +30,13 @@ export default function createAuthRouter(authController) {
     loginValidator,
     validateRequest,
     asyncHandler(authController.login)
+  );
+
+  router.post(
+    '/google',
+    googleAuthValidator,
+    validateRequest,
+    asyncHandler(authController.google)
   );
 
   router.post('/refresh', asyncHandler(authController.refresh));

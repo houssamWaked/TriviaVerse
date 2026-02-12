@@ -46,6 +46,14 @@ export class AuthController {
     res.status(200).json(result);
   };
 
+  google = async (req, res) => {
+    const result = await this.authService.googleLogin(req.body);
+    const { name, options } = getRefreshCookieConfig();
+    const refresh = signRefreshToken(result.user);
+    res.cookie(name, refresh, options);
+    res.status(200).json(result);
+  };
+
   refresh = async (req, res) => {
     const { name, options } = getRefreshCookieConfig();
     const refreshToken = req.cookies?.[name];

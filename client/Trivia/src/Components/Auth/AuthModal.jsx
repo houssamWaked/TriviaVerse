@@ -46,6 +46,7 @@ export default function AuthModal({
   onClose,
   onLogin,
   onSignup,
+  onGoogle,
   onResendVerification,
   loading = false,
   error = '',
@@ -53,6 +54,13 @@ export default function AuthModal({
   errorDetails = null,
 }) {
   const emailRef = useRef(null);
+  const googleBtnRef = useRef(null);
+  const onGoogleRef = useRef(onGoogle);
+  const googleRenderedRef = useRef(false);
+  const googleClientId =
+    typeof import.meta.env.VITE_GOOGLE_CLIENT_ID === 'string'
+      ? import.meta.env.VITE_GOOGLE_CLIENT_ID.trim()
+      : '';
   const [values, setValues] = useState({
     username: '',
     email: '',
@@ -71,6 +79,10 @@ export default function AuthModal({
       .filter(([f, m]) => f && m)
   );
   const bannerText = detailsList.length > 0 ? String(error || '').split('\n')[0] : error;
+
+  useEffect(() => {
+    onGoogleRef.current = onGoogle;
+  }, [onGoogle]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -100,6 +112,79 @@ export default function AuthModal({
       document.body.style.overflow = previousOverflow;
     };
   }, [open, onClose, mode, loading]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    if (!googleClientId) return undefined;
+
+    let cancelled = false;
+    googleRenderedRef.current = false;
+
+    const render = () => {
+      if (cancelled) return false;
+      const g = window?.google?.accounts?.id;
+      if (!g || !googleBtnRef.current) return false;
+
+      try {
+        googleBtnRef.current.innerHTML = '';
+      } catch {
+        // ignore
+      }
+
+      try {
+        g.initialize({
+          client_id: googleClientId,
+          callback: (resp) => {
+            const credential = resp?.credential;
+            if (!credential) return;
+            if (typeof onGoogleRef.current === 'function') {
+              onGoogleRef.current(credential);
+            }
+          },
+        });
+        g.renderButton(googleBtnRef.current, {
+          type: 'standard',
+          theme: 'outline',
+          size: 'large',
+          text: 'continue_with',
+          shape: 'pill',
+          width: isCompact ? 300 : 360,
+        });
+        googleRenderedRef.current = true;
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    if (render()) {
+      return () => {
+        cancelled = true;
+        try {
+          window?.google?.accounts?.id?.cancel?.();
+        } catch {
+          // ignore
+        }
+      };
+    }
+
+    let tries = 0;
+    const t = window.setInterval(() => {
+      tries += 1;
+      if (render()) window.clearInterval(t);
+      if (tries > 30) window.clearInterval(t);
+    }, 200);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+      try {
+        window?.google?.accounts?.id?.cancel?.();
+      } catch {
+        // ignore
+      }
+    };
+  }, [open, googleClientId, isCompact]);
 
   if (!open) return null;
 
@@ -290,6 +375,25 @@ export default function AuthModal({
           </div>
 
           <form style={AuthModalStyle.form} onSubmit={submit}>
+            {!!googleClientId && (
+              <>
+                <div
+                  style={{
+                    ...AuthModalStyle.socialWrap,
+                    ...(loading || resendBusy ? AuthModalStyle.socialDisabled : null),
+                  }}
+                >
+                  <div ref={googleBtnRef} />
+                </div>
+
+                <div style={AuthModalStyle.dividerRow}>
+                  <div style={AuthModalStyle.dividerLine} />
+                  <span style={AuthModalStyle.dividerText}>{STRINGS.AUTH.or}</span>
+                  <div style={AuthModalStyle.dividerLine} />
+                </div>
+              </>
+            )}
+
             {!isLogin && (
               <label style={AuthModalStyle.field}>
                 <span style={AuthModalStyle.label}>{STRINGS.AUTH.fields.username}</span>

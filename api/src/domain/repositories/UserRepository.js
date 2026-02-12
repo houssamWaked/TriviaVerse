@@ -106,8 +106,13 @@ export class UserRepository {
     return res.data?.[0] ? new User(res.data[0]) : null;
   }
 
-  async create({ username, email, password_hash }) {
-    const payload = { username: username?.trim(), email: email?.trim(), password_hash };
+  async create({ username, email, password_hash, avatar_url = undefined }) {
+    const payload = {
+      username: username?.trim(),
+      email: email?.trim(),
+      password_hash,
+      ...(avatar_url ? { avatar_url: String(avatar_url).trim().slice(0, 500) } : {}),
+    };
     const res = await supabase.from('users').insert(payload).select(this.selectColumns()).limit(1);
 
     if (res.error && this.isSchemaMissingColumn(res.error)) {

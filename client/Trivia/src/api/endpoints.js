@@ -41,6 +41,7 @@ export const endpoints = {
   logout: () => '/api/auth/logout',
   verifyEmail: () => '/api/auth/verify-email',
   resendVerification: () => '/api/auth/resend-verification',
+  googleAuth: () => '/api/auth/google',
 
   // categories (protected write routes)
   categories: () => '/api/categories',

@@ -217,6 +217,36 @@ const AuthModalStyle = {
     gap: 14,
     marginTop: 6,
   },
+
+  dividerRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    background: colors.neutral[200],
+  },
+  dividerText: {
+    fontSize: 12,
+    fontWeight: 850,
+    color: colors.neutral[500],
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  socialWrap: {
+    display: 'flex',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  socialDisabled: {
+    opacity: 0.6,
+    pointerEvents: 'none',
+  },
   field: {
     display: 'flex',
     flexDirection: 'column',
