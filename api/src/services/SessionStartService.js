@@ -30,6 +30,15 @@ function inRatingRange(question, range) {
   return r >= range.min && r <= range.max;
 }
 
+function shuffleInPlace(arr) {
+  const a = Array.isArray(arr) ? arr : [];
+  for (let i = a.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export class SessionStartService {
   constructor({
     gameSessionRepository,
@@ -123,6 +132,125 @@ export class SessionStartService {
     // Back-compat fallback: when admin pools aren't configured, keep using the
     // existing global randomness (which may include custom quiz questions).
     return this.quizQuestionRepository.listRandom(count);
+  }
+
+  async listQuestionsForMillionaire(limit = 15) {
+    const total = Math.max(1, Number(limit) || 15);
+    const desired = [
+      { label: 'easy', count: Math.min(3, total), range: difficultyToRatingRange('easy') },
+      { label: 'medium', count: Math.min(6, Math.max(0, total - 3)), range: difficultyToRatingRange('medium') },
+      { label: 'hard', count: Math.max(0, total - 9), range: difficultyToRatingRange('hard') },
+    ].filter((s) => s.count > 0);
+
+    const picked = [];
+    const pickedIds = new Set();
+
+    // If mode pools are configured, never mix in unrelated global questions.
+    if (this.modeQuestionPoolRepository) {
+      try {
+        const ids = await this.modeQuestionPoolRepository.listQuestionIdsByMode('millionaire');
+        if (ids.length === 0) {
+          throw new AppError(
+            'No questions configured for millionaire mode yet. Add questions to the millionaire pool in Admin.',
+            400,
+            'NO_POOL'
+          );
+        }
+
+        const shuffled = shuffleInPlace(ids.slice());
+        let segIdx = 0;
+        let remainingInSegment = desired[segIdx]?.count ?? 0;
+
+        const batchSize = 200;
+        for (let off = 0; off < shuffled.length && segIdx < desired.length; off += batchSize) {
+          const batchIds = shuffled.slice(off, off + batchSize);
+          // eslint-disable-next-line no-await-in-loop
+          const rows = await this.quizQuestionRepository.listByIds(batchIds);
+          const map = new Map(rows.map((q) => [q.id, q]));
+
+          for (const id of batchIds) {
+            if (segIdx >= desired.length) break;
+            const q = map.get(id);
+            if (!q?.id) continue;
+            if (pickedIds.has(q.id)) continue;
+
+            const seg = desired[segIdx];
+            if (!inRatingRange(q, seg.range)) continue;
+
+            pickedIds.add(q.id);
+            picked.push(q);
+            remainingInSegment -= 1;
+
+            if (remainingInSegment <= 0) {
+              segIdx += 1;
+              remainingInSegment = desired[segIdx]?.count ?? 0;
+            }
+          }
+        }
+
+        if (picked.length < total) {
+          const counts = { easy: 0, medium: 0, hard: 0 };
+          for (let i = 0; i < picked.length; i += 1) {
+            if (i < 3) counts.easy += 1;
+            else if (i < 9) counts.medium += 1;
+            else counts.hard += 1;
+          }
+
+          throw new AppError(
+            `Not enough millionaire questions by difficulty in pool (need easy:3, medium:6, hard:${Math.max(
+              0,
+              total - 9
+            )}). Add more questions with difficulty ratings.`,
+            400,
+            'NOT_ENOUGH_QUESTIONS',
+            {
+              needed: { easy: 3, medium: 6, hard: Math.max(0, total - 9) },
+              picked: counts,
+            }
+          );
+        }
+
+        return picked.slice(0, total);
+      } catch (err) {
+        if (err?.code !== 'NOT_CONFIGURED') throw err;
+      }
+    }
+
+    // Fallback (no pools): draw from global bank by difficulty.
+    // If difficulty isn't configured, fall back to previous behavior.
+    try {
+      for (const seg of desired) {
+        if (seg.count <= 0) continue;
+        // Request more than we need to account for duplicates across segments.
+        // eslint-disable-next-line no-await-in-loop
+        const candidates = await this.quizQuestionRepository.listRandomGlobalByDifficultyRange(
+          Math.min(50, Math.max(seg.count * 5, seg.count)),
+          seg.range
+        );
+        for (const q of candidates) {
+          if (!q?.id) continue;
+          if (pickedIds.has(q.id)) continue;
+          pickedIds.add(q.id);
+          picked.push(q);
+          if (picked.length >= desired.slice(0, desired.indexOf(seg) + 1).reduce((a, s) => a + s.count, 0)) break;
+        }
+      }
+    } catch (err) {
+      if (err?.code === 'NOT_CONFIGURED') {
+        return this.listQuestionsForMode('millionaire', total);
+      }
+      throw err;
+    }
+
+    if (picked.length < total) {
+      throw new AppError(
+        'Not enough millionaire questions available by difficulty. Add more global questions with difficulty ratings.',
+        400,
+        'NOT_ENOUGH_QUESTIONS'
+      );
+    }
+
+    return picked.slice(0, total);
   }
 
   async listQuestionsForModeByDifficulty(mode, limit, difficulty) {
@@ -616,7 +744,7 @@ export class SessionStartService {
       if (!ladder) throw new AppError('Ladder not found', 404, 'NOT_FOUND');
     }
 
-    const questions = await this.listQuestionsForMode('millionaire', 15);
+    const questions = await this.listQuestionsForMillionaire(15);
     if (questions.length === 0) {
       throw new AppError('No questions available for this mode', 400, 'NO_POOL');
     }
