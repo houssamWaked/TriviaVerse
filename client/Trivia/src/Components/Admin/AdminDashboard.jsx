@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../api';
 import AdminStyle from '../../Styles/ComponentStyles/AdminStyle';
 import AdminDashboardStyle from '../../Styles/ComponentStyles/AdminDashboardStyle';
@@ -126,6 +126,17 @@ export default function AdminDashboard({
     offset: 0,
   });
 
+  const [globalBank, setGlobalBank] = useState({
+    q: '',
+    results: [],
+    limit: 50,
+    offset: 0,
+    can_next: false,
+    assigned_ids: [],
+  });
+
+  const globalBankLoadedRef = useRef(false);
+
   const selectedLevel = useMemo(() => {
     if (pool.kind !== 'level') return null;
     return levels.find((l) => l.id === pool.id) || null;
@@ -234,6 +245,49 @@ export default function AdminDashboard({
     }
   };
 
+  const loadGlobalBank = async ({ q, offset } = {}) => {
+    const query = String(q ?? globalBank.q ?? '').trim();
+    const off = Math.max(0, Number(offset ?? globalBank.offset ?? 0) || 0);
+    const lim = Math.min(50, Math.max(1, Number(globalBank.limit) || 50));
+
+    setBusy(true);
+    clearMessages();
+    try {
+      const [res, assigned] = await Promise.all([
+        api.adminListGlobalQuestions({ q: query, limit: lim, offset: off }),
+        api.adminAllAssignedQuestionIds().catch(() => null),
+      ]);
+
+      const results = Array.isArray(res?.results) ? res.results : [];
+      const assignedIds = Array.isArray(assigned?.ids) ? assigned.ids : globalBank.assigned_ids;
+
+      setGlobalBank((v) => ({
+        ...v,
+        q: query,
+        results,
+        offset: off,
+        can_next: results.length >= lim,
+        assigned_ids: assignedIds,
+      }));
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const assignedGlobalQuestionIdSet = useMemo(() => {
+    return new Set((globalBank.assigned_ids || []).filter(Boolean));
+  }, [globalBank.assigned_ids]);
+
+  useEffect(() => {
+    if (workspace !== 'questions') return;
+    if (globalBankLoadedRef.current) return;
+    globalBankLoadedRef.current = true;
+    loadGlobalBank({ q: '', offset: 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspace]);
+
   const createQuestion = async () => {
     const question_text = String(questionForm.question_text || '').trim();
     if (!question_text) return;
@@ -286,6 +340,7 @@ export default function AdminDashboard({
         explanation: '',
       }));
       await loadDashboard();
+      await loadGlobalBank({ q: globalBank.q, offset: 0 });
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {
@@ -852,12 +907,158 @@ export default function AdminDashboard({
           {!!success && <div style={AdminStyle.success}>{success}</div>}
 
           {workspace === 'questions' && (
-            <AdminQuestionBankTab
-              busy={busy}
-              questionForm={questionForm}
-              setQuestionForm={setQuestionForm}
-              onCreateQuestion={createQuestion}
-            />
+            <>
+              <AdminQuestionBankTab
+                busy={busy}
+                questionForm={questionForm}
+                setQuestionForm={setQuestionForm}
+                onCreateQuestion={createQuestion}
+              />
+
+              <div style={AdminStyle.grid}>
+                <div style={AdminStyle.section}>
+                  <h3 style={AdminStyle.sectionTitle}>{STRINGS.ADMIN.sections.globalQuestionBank}</h3>
+                  <div style={AdminStyle.sectionSub}>{STRINGS.ADMIN.sections.globalBankSubtitle}</div>
+
+                  <div style={AdminStyle.rowMt14}>
+                    <input
+                      style={AdminDashboardStyle.inputFlex1}
+                      value={globalBank.q}
+                      onChange={(e) => setGlobalBank((v) => ({ ...v, q: e.target.value }))}
+                      placeholder={STRINGS.ADMIN.text.searchQuestionsPlaceholder}
+                      disabled={busy}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') loadGlobalBank({ q: globalBank.q, offset: 0 });
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="tv-card tv-card--hover"
+                      style={AdminStyle.btn}
+                      onClick={() => loadGlobalBank({ q: globalBank.q, offset: 0 })}
+                      disabled={busy}
+                    >
+                      {STRINGS.ADMIN.actions.search}
+                    </button>
+                    <button
+                      type="button"
+                      className="tv-card tv-card--hover"
+                      style={AdminStyle.btn}
+                      onClick={() => loadGlobalBank({ q: globalBank.q, offset: globalBank.offset })}
+                      disabled={busy}
+                    >
+                      {STRINGS.ADMIN.actions.refreshList}
+                    </button>
+                  </div>
+
+                  <div style={AdminStyle.list}>
+                    {globalBank.results.map((q) => (
+                      <div key={q.id} style={AdminStyle.listItem}>
+                        <div style={AdminStyle.listItemTitle}>{q.question_text}</div>
+                        <div style={AdminStyle.listItemMeta}>
+                          {q.difficulty_rating != null ? (
+                            <span style={AdminStyle.pill}>
+                              {STRINGS.ADMIN.pills.difficultyPrefix}
+                              {q.difficulty_rating}
+                            </span>
+                          ) : null}
+                          {assignedGlobalQuestionIdSet.has(q.id) ? (
+                            <span style={AdminStyle.pill}>Assigned</span>
+                          ) : (
+                            <span style={AdminStyle.pill}>Unassigned</span>
+                          )}
+                          <span style={AdminStyle.pill}>{q.id}</span>
+                        </div>
+                        <div style={AdminStyle.rowMt14}>
+                          <button
+                            type="button"
+                            className="tv-card tv-card--hover"
+                            style={AdminStyle.btn}
+                            onClick={() => openEditGlobalQuestion(q.id)}
+                            disabled={busy}
+                          >
+                            {STRINGS.ADMIN.actions.edit}
+                          </button>
+                          <button
+                            type="button"
+                            className="tv-card tv-card--hover"
+                            style={AdminStyle.btnDanger}
+                            onClick={async () => {
+                              // eslint-disable-next-line no-alert
+                              const ok = window.confirm(STRINGS.ADMIN.confirm.deleteGlobalQuestion);
+                              if (!ok) return;
+
+                              const prev = globalBank.results;
+                              setGlobalBank((v) => ({
+                                ...v,
+                                results: (v.results || []).filter((x) => x?.id !== q.id),
+                              }));
+
+                              setBusy(true);
+                              clearMessages();
+                              try {
+                                await api.adminDeleteGlobalQuestion(q.id);
+                                setSuccess(STRINGS.ADMIN.toasts.questionDeleted);
+                                await loadDashboard();
+                                await loadGlobalBank({ q: globalBank.q, offset: globalBank.offset });
+                              } catch (err) {
+                                setGlobalBank((v) => ({ ...v, results: prev }));
+                                setError(getApiErrorMessage(err));
+                              } finally {
+                                setBusy(false);
+                              }
+                            }}
+                            disabled={busy}
+                          >
+                            {STRINGS.ADMIN.actions.deleteQuestion}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {globalBank.results.length === 0 && (
+                      <div style={AdminDashboardStyle.emptyText}>
+                        {globalBank.q ? STRINGS.ADMIN.sections.noResults : STRINGS.ADMIN.hints.globalBankEmpty}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={AdminStyle.rowMt14}>
+                    <button
+                      type="button"
+                      className="tv-card tv-card--hover"
+                      style={AdminStyle.btn}
+                      onClick={() =>
+                        loadGlobalBank({
+                          q: globalBank.q,
+                          offset: Math.max(0, globalBank.offset - globalBank.limit),
+                        })
+                      }
+                      disabled={busy || globalBank.offset <= 0}
+                    >
+                      {STRINGS.ADMIN.actions.prev}
+                    </button>
+                    <button
+                      type="button"
+                      className="tv-card tv-card--hover"
+                      style={AdminStyle.btn}
+                      onClick={() =>
+                        loadGlobalBank({
+                          q: globalBank.q,
+                          offset: globalBank.offset + globalBank.limit,
+                        })
+                      }
+                      disabled={busy || globalBank.can_next === false}
+                    >
+                      {STRINGS.ADMIN.actions.next}
+                    </button>
+                    <span style={AdminStyle.pill}>
+                      {STRINGS.ADMIN.pills.showingBare} {globalBank.results.length}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
 
           {workspace === 'modes' && (

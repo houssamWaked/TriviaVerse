@@ -15,9 +15,35 @@ function toAppError(error) {
 
 export class StoryLevelPoolRepository {
   async listAllQuestionIds() {
-    const { data, error } = await supabase.from('story_level_pool').select('quiz_question_id');
-    if (error) throw toAppError(error);
-    return (data || []).map((r) => r.quiz_question_id).filter(Boolean);
+    const pageSize = 1000;
+    const ids = [];
+
+    for (let offset = 0; offset < 100_000; offset += pageSize) {
+      // eslint-disable-next-line no-await-in-loop
+      let res = await supabase
+        .from('story_level_pool')
+        .select('quiz_question_id')
+        .order('created_at', { ascending: false })
+        .order('quiz_question_id', { ascending: true })
+        .range(offset, offset + pageSize - 1);
+
+      // Back-compat: some schemas may not have created_at.
+      if (res.error && String(res.error.code || '').trim() === '42703') {
+        res = await supabase
+          .from('story_level_pool')
+          .select('quiz_question_id')
+          .order('quiz_question_id', { ascending: true })
+          .range(offset, offset + pageSize - 1);
+      }
+
+      const { data, error } = res;
+      if (error) throw toAppError(error);
+      const page = (data || []).map((r) => r.quiz_question_id).filter(Boolean);
+      ids.push(...page);
+      if (page.length < pageSize) break;
+    }
+
+    return ids;
   }
 
   async listAssignmentsByQuestionIds(questionIds = []) {
@@ -33,12 +59,23 @@ export class StoryLevelPoolRepository {
   }
 
   async listQuestionIdsByLevelId(levelId) {
-    const { data, error } = await supabase
+    let res = await supabase
       .from('story_level_pool')
       .select('quiz_question_id')
-      .eq('level_id', levelId);
-    if (error) throw toAppError(error);
-    return (data || []).map((r) => r.quiz_question_id).filter(Boolean);
+      .eq('level_id', levelId)
+      .order('created_at', { ascending: false })
+      .order('quiz_question_id', { ascending: true });
+
+    if (res.error && String(res.error.code || '').trim() === '42703') {
+      res = await supabase
+        .from('story_level_pool')
+        .select('quiz_question_id')
+        .eq('level_id', levelId)
+        .order('quiz_question_id', { ascending: true });
+    }
+
+    if (res.error) throw toAppError(res.error);
+    return (res.data || []).map((r) => r.quiz_question_id).filter(Boolean);
   }
 
   async listQuestionIdsByLevelIdPaged(levelId, { limit = 50, offset = 0 } = {}) {
@@ -48,14 +85,25 @@ export class StoryLevelPoolRepository {
     const lim = Math.min(100, Math.max(1, Number(limit) || 50));
     const off = Math.max(0, Number(offset) || 0);
 
-    const { data, error } = await supabase
+    let res = await supabase
       .from('story_level_pool')
       .select('quiz_question_id')
       .eq('level_id', lid)
+      .order('created_at', { ascending: false })
+      .order('quiz_question_id', { ascending: true })
       .range(off, off + lim - 1);
 
-    if (error) throw toAppError(error);
-    return (data || []).map((r) => r.quiz_question_id).filter(Boolean);
+    if (res.error && String(res.error.code || '').trim() === '42703') {
+      res = await supabase
+        .from('story_level_pool')
+        .select('quiz_question_id')
+        .eq('level_id', lid)
+        .order('quiz_question_id', { ascending: true })
+        .range(off, off + lim - 1);
+    }
+
+    if (res.error) throw toAppError(res.error);
+    return (res.data || []).map((r) => r.quiz_question_id).filter(Boolean);
   }
 
   async upsertMany(levelId, questionIds = []) {

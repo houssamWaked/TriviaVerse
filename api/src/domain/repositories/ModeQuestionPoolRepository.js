@@ -29,9 +29,24 @@ function toAppError(error) {
 
 export class ModeQuestionPoolRepository {
   async listAllQuestionIds() {
-    const { data, error } = await supabase.from('mode_question_pool').select('quiz_question_id');
-    if (error) throw toAppError(error);
-    return (data || []).map((r) => r.quiz_question_id).filter(Boolean);
+    const pageSize = 1000;
+    const ids = [];
+
+    for (let offset = 0; offset < 100_000; offset += pageSize) {
+      // eslint-disable-next-line no-await-in-loop
+      const { data, error } = await supabase
+        .from('mode_question_pool')
+        .select('quiz_question_id')
+        .order('created_at', { ascending: false })
+        .order('quiz_question_id', { ascending: true })
+        .range(offset, offset + pageSize - 1);
+      if (error) throw toAppError(error);
+      const page = (data || []).map((r) => r.quiz_question_id).filter(Boolean);
+      ids.push(...page);
+      if (page.length < pageSize) break;
+    }
+
+    return ids;
   }
 
   async listAssignmentsByQuestionIds(questionIds = []) {
@@ -53,7 +68,9 @@ export class ModeQuestionPoolRepository {
     const { data, error } = await supabase
       .from('mode_question_pool')
       .select('quiz_question_id')
-      .eq('mode', m);
+      .eq('mode', m)
+      .order('created_at', { ascending: false })
+      .order('quiz_question_id', { ascending: true });
     if (error) throw toAppError(error);
     return (data || []).map((r) => r.quiz_question_id).filter(Boolean);
   }
@@ -69,6 +86,8 @@ export class ModeQuestionPoolRepository {
       .from('mode_question_pool')
       .select('quiz_question_id')
       .eq('mode', m)
+      .order('created_at', { ascending: false })
+      .order('quiz_question_id', { ascending: true })
       .range(off, off + lim - 1);
 
     if (error) throw toAppError(error);
