@@ -215,7 +215,9 @@ export class QuizQuestionRepository {
       .select(SELECT_FIELDS)
       .is('quiz_id', null)
       .ilike('question_text', `%${query}%`)
+      // Stable ordering so pagination/ranges don't "miss" items when question_text duplicates exist.
       .order('question_text', { ascending: true })
+      .order('id', { ascending: true })
       .limit(lim);
     if (res.error && String(res.error.code || '').trim() === '42703') {
       res = await supabase
@@ -224,6 +226,7 @@ export class QuizQuestionRepository {
         .is('quiz_id', null)
         .ilike('question_text', `%${query}%`)
         .order('question_text', { ascending: true })
+        .order('id', { ascending: true })
         .limit(lim);
     }
     if (res.error) throw toAppError(res.error);
@@ -242,14 +245,21 @@ export class QuizQuestionRepository {
 
     if (query) req = req.ilike('question_text', `%${query}%`);
 
-    let res = await req.order('question_text', { ascending: true }).range(off, off + lim - 1);
+    // Stable ordering so pagination/ranges don't "miss" items when question_text duplicates exist.
+    let res = await req
+      .order('question_text', { ascending: true })
+      .order('id', { ascending: true })
+      .range(off, off + lim - 1);
     if (res.error && String(res.error.code || '').trim() === '42703') {
       let req2 = supabase
         .from('quiz_questions')
         .select(SELECT_FIELDS_FALLBACK)
         .is('quiz_id', null);
       if (query) req2 = req2.ilike('question_text', `%${query}%`);
-      res = await req2.order('question_text', { ascending: true }).range(off, off + lim - 1);
+      res = await req2
+        .order('question_text', { ascending: true })
+        .order('id', { ascending: true })
+        .range(off, off + lim - 1);
     }
     if (res.error) throw toAppError(res.error);
     return res.data || [];
