@@ -255,6 +255,15 @@ export default function AdminDashboard({
     setBusy(true);
     clearMessages();
     try {
+      let assignedSet = null;
+      const ensureAssignedSet = async () => {
+        if (assignedSet) return assignedSet;
+        const assigned = await api.adminAllAssignedQuestionIds().catch(() => null);
+        const ids = Array.isArray(assigned?.ids) ? assigned.ids : [];
+        assignedSet = new Set((ids || []).filter(Boolean));
+        return assignedSet;
+      };
+
       let pageOffset = off;
       let rawResults = [];
       let filteredResults = [];
@@ -265,6 +274,16 @@ export default function AdminDashboard({
         // eslint-disable-next-line no-await-in-loop
         const res = await api.adminListGlobalQuestions({ q: query, limit: lim, offset: pageOffset });
         rawResults = Array.isArray(res?.results) ? res.results : [];
+
+        // Back-compat: if the DB boolean isn't deployed yet, compute assignment using legacy endpoint.
+        if (rawResults.some((r) => r?.id && r?.is_assigned == null)) {
+          // eslint-disable-next-line no-await-in-loop
+          const legacyAssignedSet = await ensureAssignedSet();
+          rawResults = rawResults.map((r) => ({
+            ...r,
+            is_assigned: r?.id ? legacyAssignedSet.has(r.id) : false,
+          }));
+        }
         canNext = rawResults.length >= lim;
 
         if (f === 'assigned') {
@@ -644,6 +663,15 @@ export default function AdminDashboard({
 
       const excludeSet = new Set(((excludeIds ?? picker.exclude_ids) || []).filter(Boolean));
 
+      let assignedSet = null;
+      const ensureAssignedSet = async () => {
+        if (assignedSet) return assignedSet;
+        const assigned = await api.adminAllAssignedQuestionIds().catch(() => null);
+        const ids = Array.isArray(assigned?.ids) ? assigned.ids : [];
+        assignedSet = new Set((ids || []).filter(Boolean));
+        return assignedSet;
+      };
+
       let rawResults = [];
       let filteredResults = [];
       let canNext = false;
@@ -654,6 +682,17 @@ export default function AdminDashboard({
         // eslint-disable-next-line no-await-in-loop
         const res = await api.adminListGlobalQuestions({ q: query, limit: lim, offset: off });
         rawResults = Array.isArray(res?.results) ? res.results : [];
+
+        // Back-compat: if the DB boolean isn't deployed yet, compute assignment using legacy endpoint.
+        if (rawResults.some((r) => r?.id && r?.is_assigned == null)) {
+          // eslint-disable-next-line no-await-in-loop
+          const legacyAssignedSet = await ensureAssignedSet();
+          rawResults = rawResults.map((r) => ({
+            ...r,
+            is_assigned: r?.id ? legacyAssignedSet.has(r.id) : false,
+          }));
+        }
+
         filteredResults = rawResults.filter((r) => !excludeSet.has(r.id) && r?.is_assigned !== true);
         canNext = rawResults.length >= lim;
 
