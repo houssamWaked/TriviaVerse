@@ -697,6 +697,7 @@ export class AdminService {
         id: r.id,
         question_text: r.question_text,
         difficulty_rating: r.difficulty_rating ?? null,
+        is_assigned: r.is_assigned ?? null,
       })),
     };
   }
@@ -747,6 +748,7 @@ export class AdminService {
         id: r.id,
         question_text: r.question_text,
         difficulty_rating: r.difficulty_rating ?? null,
+        is_assigned: r.is_assigned ?? null,
       })),
     };
   }
@@ -768,6 +770,7 @@ export class AdminService {
       quiz_id: null,
       question_text: q.question_text,
       explanation: q.explanation ?? null,
+      is_assigned: q.is_assigned ?? null,
       difficulty_rating: q.difficulty_rating ?? null,
       time_limit_sec: q.time_limit_sec ?? 30,
       points: q.points ?? 100,

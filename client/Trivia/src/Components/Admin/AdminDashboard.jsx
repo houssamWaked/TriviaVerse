@@ -133,7 +133,6 @@ export default function AdminDashboard({
     limit: 50,
     offset: 0,
     can_next: false,
-    assigned_ids: [],
     loaded: false,
   });
 
@@ -256,10 +255,6 @@ export default function AdminDashboard({
     setBusy(true);
     clearMessages();
     try {
-      const assigned = await api.adminAllAssignedQuestionIds().catch(() => null);
-      const assignedIds = Array.isArray(assigned?.ids) ? assigned.ids : globalBank.assigned_ids;
-      const assignedSet = new Set((assignedIds || []).filter(Boolean));
-
       let pageOffset = off;
       let rawResults = [];
       let filteredResults = [];
@@ -273,9 +268,9 @@ export default function AdminDashboard({
         canNext = rawResults.length >= lim;
 
         if (f === 'assigned') {
-          filteredResults = rawResults.filter((r) => assignedSet.has(r?.id));
+          filteredResults = rawResults.filter((r) => r?.is_assigned === true);
         } else if (f === 'unassigned') {
-          filteredResults = rawResults.filter((r) => r?.id && !assignedSet.has(r.id));
+          filteredResults = rawResults.filter((r) => r?.id && r?.is_assigned !== true);
         } else {
           filteredResults = rawResults;
         }
@@ -292,7 +287,6 @@ export default function AdminDashboard({
         results: filteredResults,
         offset: pageOffset,
         can_next: canNext,
-        assigned_ids: assignedIds,
         loaded: true,
       }));
     } catch (err) {
@@ -301,10 +295,6 @@ export default function AdminDashboard({
       setBusy(false);
     }
   };
-
-  const assignedGlobalQuestionIdSet = useMemo(() => {
-    return new Set((globalBank.assigned_ids || []).filter(Boolean));
-  }, [globalBank.assigned_ids]);
 
   useEffect(() => {
     if (workspace !== 'questions') return;
@@ -664,7 +654,7 @@ export default function AdminDashboard({
         // eslint-disable-next-line no-await-in-loop
         const res = await api.adminListGlobalQuestions({ q: query, limit: lim, offset: off });
         rawResults = Array.isArray(res?.results) ? res.results : [];
-        filteredResults = rawResults.filter((r) => !excludeSet.has(r.id));
+        filteredResults = rawResults.filter((r) => !excludeSet.has(r.id) && r?.is_assigned !== true);
         canNext = rawResults.length >= lim;
 
         if (filteredResults.length > 0) break;
@@ -724,21 +714,6 @@ export default function AdminDashboard({
       exclude_ids = Array.isArray(targetPoolIds) ? targetPoolIds : [];
     } catch {
       // ignore
-    }
-
-    try {
-      const assigned = await api.adminAllAssignedQuestionIds();
-      const assignedIds = Array.isArray(assigned?.ids) ? assigned.ids : [];
-      exclude_ids = Array.from(new Set([...(exclude_ids || []), ...assignedIds].filter(Boolean)));
-    } catch {
-      // Back-compat fallback: story pool assignment list (older deployments).
-      try {
-        const storyAssigned = await api.adminStoryAssignedQuestionIds();
-        const storyIds = Array.isArray(storyAssigned?.ids) ? storyAssigned.ids : [];
-        exclude_ids = Array.from(new Set([...(exclude_ids || []), ...storyIds].filter(Boolean)));
-      } catch {
-        // ignore
-      }
     }
 
     setPicker((v) => ({ ...v, exclude_ids }));
@@ -1005,7 +980,7 @@ export default function AdminDashboard({
                               {q.difficulty_rating}
                             </span>
                           ) : null}
-                          {assignedGlobalQuestionIdSet.has(q.id) ? (
+                          {q?.is_assigned === true ? (
                             <span style={AdminStyle.pill}>Assigned</span>
                           ) : (
                             <span style={AdminStyle.pill}>Unassigned</span>
