@@ -22,6 +22,17 @@ export class SessionQuestionRepository {
     return data || [];
   }
 
+  async getMaxOrderIndex(sessionId) {
+    const { data, error } = await supabase
+      .from('session_questions')
+      .select('order_index')
+      .eq('session_id', sessionId)
+      .order('order_index', { ascending: false })
+      .limit(1);
+    if (error) throw toAppError(error);
+    return Number(data?.[0]?.order_index) || 0;
+  }
+
   async createMany(rows) {
     const { data, error } = await supabase
       .from('session_questions')

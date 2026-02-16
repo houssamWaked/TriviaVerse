@@ -208,6 +208,7 @@ export default function PlaySession({
 
   const title = useMemo(() => {
     if (!question) return STRINGS.PLAY_SESSION.header.question;
+    if (String(question.mode || '').toLowerCase() === 'blitz') return STRINGS.PLAY_SESSION.header.question;
     const a = Number(question.question_number);
     const b = Number(question.total_questions);
     if (Number.isFinite(a) && Number.isFinite(b))

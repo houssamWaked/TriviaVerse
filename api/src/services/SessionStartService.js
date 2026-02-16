@@ -492,6 +492,144 @@ export class SessionStartService {
     await this.sessionOptionRepository.createMany(optionRows);
   }
 
+  async appendSessionQuestions(sessionId, sourceQuestions, { orderIndexStart = 0 } = {}) {
+    const start = Math.max(0, Number(orderIndexStart) || 0);
+
+    const sessionQuestionsRows = sourceQuestions.map((q, idx) => ({
+      session_id: sessionId,
+      source_question_id: q.id,
+      question_text_snapshot: q.question_text,
+      order_index: start + idx + 1,
+      points_snapshot: q.points ?? 0,
+      time_limit_snapshot: q.time_limit_sec ?? 30,
+    }));
+
+    const createdSessionQuestions = await this.sessionQuestionRepository.createMany(
+      sessionQuestionsRows
+    );
+
+    const bySourceId = new Map(
+      createdSessionQuestions.map((sq) => [sq.source_question_id, sq])
+    );
+    const options = await this.questionOptionRepository.listByQuestionIds(
+      sourceQuestions.map((q) => q.id)
+    );
+
+    const optionRows = [];
+    for (const opt of options) {
+      const sq = bySourceId.get(opt.question_id);
+      if (!sq) continue;
+      optionRows.push({
+        session_question_id: sq.id,
+        option_text_snapshot: opt.option_text,
+        is_correct_snapshot: opt.is_correct ?? false,
+        order_index: opt.order_index,
+      });
+    }
+    const createdOptions = await this.sessionOptionRepository.createMany(optionRows);
+
+    return { sessionQuestions: createdSessionQuestions, sessionOptions: createdOptions };
+  }
+
+  async appendBlitzQuestionsToSession(sessionId, { difficulty = null, count = 50 } = {}) {
+    const session = await this.gameSessionRepository.findById(sessionId);
+    if (!session) throw new AppError('Session not found', 404, 'NOT_FOUND');
+    if (session.mode !== 'blitz') throw new AppError('Invalid mode', 400, 'INVALID_INPUT');
+
+    const appendCount = Math.min(200, Math.max(1, Number(count) || 50));
+
+    // Try to avoid repeats within the same session (best-effort), but allow repeats
+    // if the pool is small so gameplay can continue.
+    const existingRows = await this.sessionQuestionRepository.listBySessionId(sessionId);
+    const existingSourceIds = new Set(existingRows.map((r) => r.source_question_id).filter(Boolean));
+
+    const candidates = await this.listQuestionsForModeByDifficulty(
+      'blitz',
+      appendCount * 2,
+      difficulty ?? session.difficulty ?? null
+    );
+    const pickedNoRepeat = (candidates || []).filter((q) => q?.id && !existingSourceIds.has(q.id));
+    const picked = (pickedNoRepeat.length > 0 ? pickedNoRepeat : candidates || []).slice(
+      0,
+      appendCount
+    );
+
+    if (picked.length === 0) {
+      throw new AppError('No questions available for this mode', 400, 'NO_POOL');
+    }
+
+    const perQuestionTimeLimitSec = 15;
+    const adjusted = picked.map((q) => ({
+      ...q,
+      time_limit_sec: perQuestionTimeLimitSec,
+    }));
+
+    const maxOrderIndex = await this.sessionQuestionRepository.getMaxOrderIndex(sessionId);
+    const { sessionQuestions, sessionOptions } = await this.appendSessionQuestions(
+      sessionId,
+      adjusted,
+      { orderIndexStart: maxOrderIndex }
+    );
+
+    const nextTotal = maxOrderIndex + sessionQuestions.length;
+    try {
+      await this.gameSessionRepository.setTotalQuestions(sessionId, nextTotal);
+    } catch {
+      // ignore (gameplay does not depend on total_questions)
+    }
+
+    const LABELS = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+    let sourceById = new Map();
+    try {
+      const sourceIds = sessionQuestions.map((q) => q.source_question_id).filter(Boolean);
+      const sources = await this.quizQuestionRepository.listByIds(sourceIds);
+      sourceById = new Map((sources || []).map((q) => [q.id, q]));
+    } catch {
+      // ignore (explanations are optional for this payload)
+    }
+
+    const bySqId = new Map();
+    for (const o of sessionOptions) {
+      const sid = o.session_question_id;
+      if (!sid) continue;
+      if (!bySqId.has(sid)) bySqId.set(sid, []);
+      bySqId.get(sid).push(o);
+    }
+
+    const correctBySqId = {};
+    const cachedQuestions = sessionQuestions
+      .slice()
+      .sort((a, b) => (Number(a.order_index) || 0) - (Number(b.order_index) || 0))
+      .map((sq) => {
+        const opts = (bySqId.get(sq.id) || []).slice().sort((a, b) => {
+          const x = Number(a.order_index) || 0;
+          const y = Number(b.order_index) || 0;
+          return x - y;
+        });
+        const correct = opts.find((o) => !!o.is_correct_snapshot);
+        if (correct?.id) correctBySqId[sq.id] = correct.id;
+
+        return {
+          session_question_id: sq.id,
+          mode: 'blitz',
+          question_number: sq.order_index,
+          total_questions: nextTotal,
+          question_text: sq.question_text_snapshot,
+          explanation: sourceById.get(sq.source_question_id)?.explanation ?? null,
+          time_limit_sec: sq.time_limit_snapshot,
+          points: sq.points_snapshot ?? 0,
+          options: opts.map((o) => ({
+            id: o.id,
+            label: LABELS[(Number(o.order_index) || 1) - 1] || String(o.order_index),
+            text: o.option_text_snapshot,
+          })),
+        };
+      });
+
+    return { appended: cachedQuestions, correctBySqId, total_questions: nextTotal, time_limit_sec: perQuestionTimeLimitSec };
+  }
+
   async primeSessionCache(session, userId) {
     if (!session?.id || !session?.mode || !userId) return;
 

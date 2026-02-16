@@ -247,6 +247,7 @@ const sessionService = new SessionService({
   storyLevelRepository,
   userStoryProgressRepository,
   storySessionRepository,
+  sessionStartService,
 });
 const friendService = new FriendService({
   friendRepository,

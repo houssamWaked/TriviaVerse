@@ -10,6 +10,16 @@ export const leaderboardQuery = [
     .withMessage('period must be all_time or weekly'),
   query('mode')
     .optional()
-    .isIn(['global', 'story', 'millionaire', 'classic', 'blitz', 'blitz_hard', 'custom'])
+    .isIn([
+      'global',
+      'story',
+      'millionaire',
+      'classic',
+      'blitz',
+      'blitz_easy',
+      'blitz_medium',
+      'blitz_hard',
+      'custom',
+    ])
     .withMessage('mode is invalid'),
 ];

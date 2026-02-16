@@ -378,6 +378,8 @@ export const STRINGS = {
       story: 'story',
       millionaire: 'millionaire',
       classic: 'classic',
+      blitzEasy: 'blitz_easy',
+      blitzMedium: 'blitz_medium',
       blitzHard: 'blitz_hard',
       custom: 'custom',
     },

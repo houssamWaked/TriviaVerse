@@ -12,6 +12,14 @@ const MILLIONAIRE_PRIZES = [
 const BLITZ_TIME_LIMIT_SEC = 15;
 const BLITZ_MAX_STRIKES = 3;
 
+function blitzDifficultyToLeaderboardMode(difficulty) {
+  const d = String(difficulty || '').trim().toLowerCase();
+  if (d === 'easy') return 'blitz_easy';
+  if (d === 'medium') return 'blitz_medium';
+  if (d === 'hard') return 'blitz_hard';
+  return 'blitz';
+}
+
 function computeStars({ scoreTotal = 0, maxScore = 0, passScoreMin = null }) {
   const score = Math.max(0, Number(scoreTotal) || 0);
   const max = Math.max(0, Number(maxScore) || 0);
@@ -112,6 +120,7 @@ export class SessionService {
     storyLevelRepository,
     userStoryProgressRepository,
     storySessionRepository,
+    sessionStartService,
   }) {
     this.gameSessionRepository = gameSessionRepository;
     this.sessionQuestionRepository = sessionQuestionRepository;
@@ -126,6 +135,7 @@ export class SessionService {
     this.storyLevelRepository = storyLevelRepository;
     this.userStoryProgressRepository = userStoryProgressRepository;
     this.storySessionRepository = storySessionRepository;
+    this.sessionStartService = sessionStartService;
   }
 
   async assertSessionOwner(sessionId, userId) {
@@ -494,6 +504,27 @@ export class SessionService {
             } catch {
               // ignore
             }
+
+            // Record blitz score even when the session ends due to strikes.
+            try {
+              const fresh = await this.gameSessionRepository.findById(sessionId);
+              const modeForLeaderboard =
+                fresh?.mode === 'blitz' ? blitzDifficultyToLeaderboardMode(fresh?.difficulty) : fresh?.mode;
+              if (fresh?.user_id && modeForLeaderboard) {
+                await this.leaderboardRepository.insertFromSession({
+                  user_id: fresh.user_id,
+                  mode: modeForLeaderboard,
+                  score_value: fresh.score_total ?? cached.score_total ?? 0,
+                });
+                await this.leaderboardRepository.insertFromSession({
+                  user_id: fresh.user_id,
+                  mode: 'global',
+                  score_value: fresh.score_total ?? cached.score_total ?? 0,
+                });
+              }
+            } catch (err) {
+              if (err?.code !== 'NOT_CONFIGURED' && err?.code !== 'DB_SCHEMA_MISMATCH') throw err;
+            }
           }
           return {
             is_correct: false,
@@ -629,7 +660,69 @@ export class SessionService {
         cached.question_started_at = new Date().toISOString();
       }
 
-      const next = Array.isArray(cached.questions) ? cached.questions[cached.current_index] : null;
+      let next = Array.isArray(cached.questions) ? cached.questions[cached.current_index] : null;
+
+      // Blitz should primarily end by strikes. If we ran out of pre-snapshotted questions,
+      // refill the session (logged-in) or wrap around (guest) so gameplay can continue.
+      if (cached.mode === 'blitz' && !next) {
+        const strikes = Math.max(0, Number(cached.strike_count) || 0);
+        if (strikes < BLITZ_MAX_STRIKES) {
+          if (isGuest) {
+            cached.current_index = 0;
+            cached.question_started_at = new Date().toISOString();
+            cached.answered_session_question_id_set = new Set();
+            cached.answers_by_session_question_id = {};
+
+            try {
+              const arr = Array.isArray(cached.questions) ? cached.questions.slice() : [];
+              for (let i = arr.length - 1; i > 0; i -= 1) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+              }
+              for (let i = 0; i < arr.length; i += 1) {
+                arr[i] = { ...arr[i], question_number: i + 1, total_questions: arr.length };
+              }
+              cached.questions = arr;
+            } catch {
+              // ignore
+            }
+
+            next = Array.isArray(cached.questions) ? cached.questions[cached.current_index] : null;
+          } else if (this.sessionStartService?.appendBlitzQuestionsToSession) {
+            try {
+              const session = await this.gameSessionRepository.findById(sessionId);
+              const appended = await this.sessionStartService.appendBlitzQuestionsToSession(sessionId, {
+                difficulty: session?.difficulty ?? null,
+                count: 50,
+              });
+              const extra = Array.isArray(appended?.appended) ? appended.appended : [];
+              const totalQuestions = Number(appended?.total_questions) || undefined;
+              const correct = appended?.correctBySqId || {};
+
+              if (!Array.isArray(cached.questions)) cached.questions = [];
+              cached.questions = [...cached.questions, ...extra];
+              cached.correct_option_id_by_session_question_id = {
+                ...(cached.correct_option_id_by_session_question_id || {}),
+                ...correct,
+              };
+
+              if (totalQuestions && Array.isArray(cached.questions)) {
+                cached.questions = cached.questions.map((q) => ({ ...q, total_questions: totalQuestions }));
+              }
+
+              next = Array.isArray(cached.questions) ? cached.questions[cached.current_index] : null;
+            } catch (err) {
+              // If refill fails, fall through and report "no next question".
+              if (err?.code === 'NO_POOL' || err?.code === 'NOT_ENOUGH_QUESTIONS') {
+                // ignore
+              } else {
+                // ignore other refill errors to avoid breaking answer submission
+              }
+            }
+          }
+        }
+      }
+
       const next_question_available = !!next;
 
       sessionCache.set(sessionId, cached);
@@ -730,6 +823,24 @@ export class SessionService {
       if (strikes >= BLITZ_MAX_STRIKES) {
         await this.gameSessionRepository.updateStatus(sessionId, 'abandoned');
         sessionCache.del(sessionId);
+
+        // Record blitz score even when the session ends due to strikes.
+        try {
+          const modeForLeaderboard = blitzDifficultyToLeaderboardMode(session?.difficulty);
+          await this.leaderboardRepository.insertFromSession({
+            user_id: session.user_id,
+            mode: modeForLeaderboard,
+            score_value: session.score_total ?? 0,
+          });
+          await this.leaderboardRepository.insertFromSession({
+            user_id: session.user_id,
+            mode: 'global',
+            score_value: session.score_total ?? 0,
+          });
+        } catch (err) {
+          if (err?.code !== 'NOT_CONFIGURED' && err?.code !== 'DB_SCHEMA_MISMATCH') throw err;
+        }
+
         return {
           is_correct: false,
           chosen_option_id: chosen.id,
@@ -754,7 +865,22 @@ export class SessionService {
 
       const answers = [...(answersBefore || []), createdAnswer].filter(Boolean);
       const answeredSet = new Set(answers.map((a) => a.session_question_id));
-      const next = questions.find((q) => !answeredSet.has(q.id)) || null;
+      let next = questions.find((q) => !answeredSet.has(q.id)) || null;
+
+      // If we ran out of pre-snapshotted questions, append more so blitz ends by strikes.
+      if (!next && this.sessionStartService?.appendBlitzQuestionsToSession) {
+        try {
+          await this.sessionStartService.appendBlitzQuestionsToSession(sessionId, {
+            difficulty: session?.difficulty ?? null,
+            count: 50,
+          });
+          const updatedQuestions = await this.sessionQuestionRepository.listBySessionId(sessionId);
+          next = updatedQuestions.find((q) => !answeredSet.has(q.id)) || null;
+        } catch {
+          // ignore
+        }
+      }
+
       const next_question_available = !!next;
 
       let next_question = null;
@@ -1266,7 +1392,7 @@ export class SessionService {
     if (status === 'completed') {
       let modeForLeaderboard = session.mode;
       if (session.mode === 'blitz') {
-        modeForLeaderboard = session.difficulty === 'hard' ? 'blitz_hard' : null;
+        modeForLeaderboard = blitzDifficultyToLeaderboardMode(session.difficulty);
       }
 
       if (modeForLeaderboard) {
