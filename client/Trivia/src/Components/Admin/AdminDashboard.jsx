@@ -128,11 +128,13 @@ export default function AdminDashboard({
 
   const [globalBank, setGlobalBank] = useState({
     q: '',
+    filter: 'all', // all | assigned | unassigned
     results: [],
     limit: 50,
     offset: 0,
     can_next: false,
     assigned_ids: [],
+    loaded: false,
   });
 
   const globalBankLoadedRef = useRef(false);
@@ -245,29 +247,53 @@ export default function AdminDashboard({
     }
   };
 
-  const loadGlobalBank = async ({ q, offset } = {}) => {
+  const loadGlobalBank = async ({ q, offset, filter } = {}) => {
     const query = String(q ?? globalBank.q ?? '').trim();
     const off = Math.max(0, Number(offset ?? globalBank.offset ?? 0) || 0);
     const lim = Math.min(50, Math.max(1, Number(globalBank.limit) || 50));
+    const f = String(filter ?? globalBank.filter ?? 'all').trim() || 'all';
 
     setBusy(true);
     clearMessages();
     try {
-      const [res, assigned] = await Promise.all([
-        api.adminListGlobalQuestions({ q: query, limit: lim, offset: off }),
-        api.adminAllAssignedQuestionIds().catch(() => null),
-      ]);
-
-      const results = Array.isArray(res?.results) ? res.results : [];
+      const assigned = await api.adminAllAssignedQuestionIds().catch(() => null);
       const assignedIds = Array.isArray(assigned?.ids) ? assigned.ids : globalBank.assigned_ids;
+      const assignedSet = new Set((assignedIds || []).filter(Boolean));
+
+      let pageOffset = off;
+      let rawResults = [];
+      let filteredResults = [];
+      let canNext = false;
+
+      // Filtering can exclude an entire page (especially "unassigned"), so we auto-advance a few pages.
+      for (let i = 0; i < 6; i += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        const res = await api.adminListGlobalQuestions({ q: query, limit: lim, offset: pageOffset });
+        rawResults = Array.isArray(res?.results) ? res.results : [];
+        canNext = rawResults.length >= lim;
+
+        if (f === 'assigned') {
+          filteredResults = rawResults.filter((r) => assignedSet.has(r?.id));
+        } else if (f === 'unassigned') {
+          filteredResults = rawResults.filter((r) => r?.id && !assignedSet.has(r.id));
+        } else {
+          filteredResults = rawResults;
+        }
+
+        if (filteredResults.length > 0) break;
+        if (rawResults.length < lim) break; // no more pages
+        pageOffset += lim;
+      }
 
       setGlobalBank((v) => ({
         ...v,
         q: query,
-        results,
-        offset: off,
-        can_next: results.length >= lim,
+        filter: f,
+        results: filteredResults,
+        offset: pageOffset,
+        can_next: canNext,
         assigned_ids: assignedIds,
+        loaded: true,
       }));
     } catch (err) {
       setError(getApiErrorMessage(err));
@@ -340,7 +366,7 @@ export default function AdminDashboard({
         explanation: '',
       }));
       await loadDashboard();
-      await loadGlobalBank({ q: globalBank.q, offset: 0 });
+      await loadGlobalBank({ q: globalBank.q, filter: globalBank.filter, offset: 0 });
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {
@@ -921,6 +947,20 @@ export default function AdminDashboard({
                   <div style={AdminStyle.sectionSub}>{STRINGS.ADMIN.sections.globalBankSubtitle}</div>
 
                   <div style={AdminStyle.rowMt14}>
+                    <select
+                      style={{ ...AdminStyle.select, width: 170 }}
+                      value={globalBank.filter}
+                      onChange={(e) => {
+                        const nextFilter = String(e.target.value || 'all');
+                        setGlobalBank((v) => ({ ...v, filter: nextFilter, offset: 0 }));
+                        loadGlobalBank({ q: globalBank.q, filter: nextFilter, offset: 0 });
+                      }}
+                      disabled={busy}
+                    >
+                      <option value="all">All</option>
+                      <option value="unassigned">Unassigned</option>
+                      <option value="assigned">Assigned</option>
+                    </select>
                     <input
                       style={AdminDashboardStyle.inputFlex1}
                       value={globalBank.q}
@@ -928,14 +968,15 @@ export default function AdminDashboard({
                       placeholder={STRINGS.ADMIN.text.searchQuestionsPlaceholder}
                       disabled={busy}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') loadGlobalBank({ q: globalBank.q, offset: 0 });
+                        if (e.key === 'Enter')
+                          loadGlobalBank({ q: globalBank.q, filter: globalBank.filter, offset: 0 });
                       }}
                     />
                     <button
                       type="button"
                       className="tv-card tv-card--hover"
                       style={AdminStyle.btn}
-                      onClick={() => loadGlobalBank({ q: globalBank.q, offset: 0 })}
+                      onClick={() => loadGlobalBank({ q: globalBank.q, filter: globalBank.filter, offset: 0 })}
                       disabled={busy}
                     >
                       {STRINGS.ADMIN.actions.search}
@@ -944,7 +985,9 @@ export default function AdminDashboard({
                       type="button"
                       className="tv-card tv-card--hover"
                       style={AdminStyle.btn}
-                      onClick={() => loadGlobalBank({ q: globalBank.q, offset: globalBank.offset })}
+                      onClick={() =>
+                        loadGlobalBank({ q: globalBank.q, filter: globalBank.filter, offset: globalBank.offset })
+                      }
                       disabled={busy}
                     >
                       {STRINGS.ADMIN.actions.refreshList}
@@ -997,14 +1040,18 @@ export default function AdminDashboard({
                               setBusy(true);
                               clearMessages();
                               try {
-                                await api.adminDeleteGlobalQuestion(q.id);
-                                setSuccess(STRINGS.ADMIN.toasts.questionDeleted);
-                                await loadDashboard();
-                                await loadGlobalBank({ q: globalBank.q, offset: globalBank.offset });
-                              } catch (err) {
-                                setGlobalBank((v) => ({ ...v, results: prev }));
-                                setError(getApiErrorMessage(err));
-                              } finally {
+                                 await api.adminDeleteGlobalQuestion(q.id);
+                                 setSuccess(STRINGS.ADMIN.toasts.questionDeleted);
+                                 await loadDashboard();
+                                 await loadGlobalBank({
+                                   q: globalBank.q,
+                                   filter: globalBank.filter,
+                                   offset: globalBank.offset,
+                                 });
+                               } catch (err) {
+                                 setGlobalBank((v) => ({ ...v, results: prev }));
+                                 setError(getApiErrorMessage(err));
+                               } finally {
                                 setBusy(false);
                               }
                             }}
@@ -1018,7 +1065,7 @@ export default function AdminDashboard({
 
                     {globalBank.results.length === 0 && (
                       <div style={AdminDashboardStyle.emptyText}>
-                        {globalBank.q ? STRINGS.ADMIN.sections.noResults : STRINGS.ADMIN.hints.globalBankEmpty}
+                        {globalBank.loaded ? STRINGS.ADMIN.sections.noResults : STRINGS.ADMIN.hints.globalBankEmpty}
                       </div>
                     )}
                   </div>
@@ -1031,6 +1078,7 @@ export default function AdminDashboard({
                       onClick={() =>
                         loadGlobalBank({
                           q: globalBank.q,
+                          filter: globalBank.filter,
                           offset: Math.max(0, globalBank.offset - globalBank.limit),
                         })
                       }
@@ -1045,6 +1093,7 @@ export default function AdminDashboard({
                       onClick={() =>
                         loadGlobalBank({
                           q: globalBank.q,
+                          filter: globalBank.filter,
                           offset: globalBank.offset + globalBank.limit,
                         })
                       }
