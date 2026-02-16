@@ -687,10 +687,11 @@ export class AdminService {
     return { question_id: created.id };
   }
 
-  async listGlobalQuestions({ q = '', limit = 20, offset = 0 } = {}) {
-    const rows = await this.quizQuestionRepository.listGlobal({ q, limit, offset });
+  async listGlobalQuestions({ q = '', limit = 20, offset = 0, assigned = 'all' } = {}) {
+    const rows = await this.quizQuestionRepository.listGlobal({ q, limit, offset, assigned });
     return {
       q: String(q || '').trim(),
+      assigned: String(assigned || 'all').trim(),
       limit: Math.min(50, Math.max(1, Number(limit) || 20)),
       offset: Math.max(0, Number(offset) || 0),
       results: rows.map((r) => ({
@@ -736,14 +737,19 @@ export class AdminService {
     return { success: true, count: ids.length };
   }
 
-  async searchGlobalQuestions({ q, limit = 20 }) {
+  async searchGlobalQuestions({ q, limit = 20, assigned = 'all' }) {
     const query = String(q || '').trim();
     if (!query) return { q: '', results: [] };
     const lim = Math.min(50, Math.max(1, Number(limit) || 20));
 
-    const results = await this.quizQuestionRepository.searchGlobalByText({ q: query, limit: lim });
+    const results = await this.quizQuestionRepository.searchGlobalByText({
+      q: query,
+      limit: lim,
+      assigned,
+    });
     return {
       q: query,
+      assigned: String(assigned || 'all').trim(),
       results: results.map((r) => ({
         id: r.id,
         question_text: r.question_text,

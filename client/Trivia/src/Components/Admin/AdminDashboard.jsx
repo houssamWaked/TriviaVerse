@@ -255,56 +255,40 @@ export default function AdminDashboard({
     setBusy(true);
     clearMessages();
     try {
-      let assignedSet = null;
-      const ensureAssignedSet = async () => {
-        if (assignedSet) return assignedSet;
+      const res = await api.adminListGlobalQuestions({
+        q: query,
+        limit: lim,
+        offset: off,
+        assigned: f,
+      });
+
+      const rawResults = Array.isArray(res?.results) ? res.results : [];
+      const canNext = rawResults.length >= lim;
+
+      let results = rawResults;
+
+      // Back-compat: if the DB boolean isn't deployed yet, compute assignment using legacy endpoint,
+      // then apply the filter client-side.
+      if (rawResults.some((r) => r?.id && r?.is_assigned == null)) {
         const assigned = await api.adminAllAssignedQuestionIds().catch(() => null);
         const ids = Array.isArray(assigned?.ids) ? assigned.ids : [];
-        assignedSet = new Set((ids || []).filter(Boolean));
-        return assignedSet;
-      };
+        const assignedSet = new Set((ids || []).filter(Boolean));
 
-      let pageOffset = off;
-      let rawResults = [];
-      let filteredResults = [];
-      let canNext = false;
+        results = rawResults.map((r) => ({
+          ...r,
+          is_assigned: r?.id ? assignedSet.has(r.id) : false,
+        }));
 
-      // Filtering can exclude an entire page (especially "unassigned"), so we auto-advance a few pages.
-      for (let i = 0; i < 6; i += 1) {
-        // eslint-disable-next-line no-await-in-loop
-        const res = await api.adminListGlobalQuestions({ q: query, limit: lim, offset: pageOffset });
-        rawResults = Array.isArray(res?.results) ? res.results : [];
-
-        // Back-compat: if the DB boolean isn't deployed yet, compute assignment using legacy endpoint.
-        if (rawResults.some((r) => r?.id && r?.is_assigned == null)) {
-          // eslint-disable-next-line no-await-in-loop
-          const legacyAssignedSet = await ensureAssignedSet();
-          rawResults = rawResults.map((r) => ({
-            ...r,
-            is_assigned: r?.id ? legacyAssignedSet.has(r.id) : false,
-          }));
-        }
-        canNext = rawResults.length >= lim;
-
-        if (f === 'assigned') {
-          filteredResults = rawResults.filter((r) => r?.is_assigned === true);
-        } else if (f === 'unassigned') {
-          filteredResults = rawResults.filter((r) => r?.id && r?.is_assigned !== true);
-        } else {
-          filteredResults = rawResults;
-        }
-
-        if (filteredResults.length > 0) break;
-        if (rawResults.length < lim) break; // no more pages
-        pageOffset += lim;
+        if (f === 'assigned') results = results.filter((r) => r?.is_assigned === true);
+        if (f === 'unassigned') results = results.filter((r) => r?.id && r?.is_assigned !== true);
       }
 
       setGlobalBank((v) => ({
         ...v,
         q: query,
         filter: f,
-        results: filteredResults,
-        offset: pageOffset,
+        results,
+        offset: off,
         can_next: canNext,
         loaded: true,
       }));
@@ -680,7 +664,12 @@ export default function AdminDashboard({
       // Auto-advance a few pages so the picker doesn't look empty even when eligible items exist.
       for (let i = 0; i < 6; i += 1) {
         // eslint-disable-next-line no-await-in-loop
-        const res = await api.adminListGlobalQuestions({ q: query, limit: lim, offset: off });
+        const res = await api.adminListGlobalQuestions({
+          q: query,
+          limit: lim,
+          offset: off,
+          assigned: 'unassigned',
+        });
         rawResults = Array.isArray(res?.results) ? res.results : [];
 
         // Back-compat: if the DB boolean isn't deployed yet, compute assignment using legacy endpoint.

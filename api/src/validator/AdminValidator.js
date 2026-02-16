@@ -83,11 +83,13 @@ export const createClassicCategoryBody = [
 
 export const searchQuestionsQuery = [
   query('q').isString().trim().isLength({ min: 1, max: 200 }),
+  query('assigned').optional().isIn(['all', 'assigned', 'unassigned']),
   query('limit').optional().isInt({ min: 1, max: 50 }),
 ];
 
 export const listQuestionsQuery = [
   query('q').optional().isString().trim().isLength({ min: 0, max: 200 }),
+  query('assigned').optional().isIn(['all', 'assigned', 'unassigned']),
   query('limit').optional().isInt({ min: 1, max: 50 }),
   query('offset').optional().isInt({ min: 0, max: 100000 }),
 ];
