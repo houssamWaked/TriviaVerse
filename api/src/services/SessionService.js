@@ -120,6 +120,9 @@ export class SessionService {
     storyLevelRepository,
     userStoryProgressRepository,
     storySessionRepository,
+    classicCategoryLevelRepository = null,
+    userClassicProgressRepository = null,
+    classicSessionRepository = null,
     sessionStartService,
   }) {
     this.gameSessionRepository = gameSessionRepository;
@@ -135,6 +138,9 @@ export class SessionService {
     this.storyLevelRepository = storyLevelRepository;
     this.userStoryProgressRepository = userStoryProgressRepository;
     this.storySessionRepository = storySessionRepository;
+    this.classicCategoryLevelRepository = classicCategoryLevelRepository;
+    this.userClassicProgressRepository = userClassicProgressRepository;
+    this.classicSessionRepository = classicSessionRepository;
     this.sessionStartService = sessionStartService;
   }
 
@@ -1302,6 +1308,10 @@ export class SessionService {
     let storyXpValue = 0;
     let storySummary = null;
 
+    let classicXpEligible = false;
+    let classicXpValue = 0;
+    let classicSummary = null;
+
     if (session.mode === 'story' && status === 'completed') {
       if (
         this.storySessionRepository &&
@@ -1373,6 +1383,72 @@ export class SessionService {
       }
     }
 
+    if (session.mode === 'classic' && status === 'completed') {
+      if (
+        this.classicSessionRepository &&
+        this.classicCategoryLevelRepository &&
+        this.userClassicProgressRepository
+      ) {
+        try {
+          const meta = await this.classicSessionRepository.findBySessionId(sessionId);
+          if (meta?.level_id) {
+            const level = await this.classicCategoryLevelRepository.findById(meta.level_id);
+            if (level?.id) {
+              const questions = await this.sessionQuestionRepository.listBySessionId(sessionId);
+              const totalQuestions = questions.length;
+              const scoreTotal = Number(updated.score_total) || 0;
+              const answers = await this.sessionAnswerRepository.listBySessionQuestionIds(
+                questions.map((q) => q.id)
+              );
+              const correctCount = (answers || []).filter((a) => a && a.is_correct === true).length;
+              const outcome = computeStoryOutcome({ correctCount, totalCount: totalQuestions });
+
+              const passed = outcome.passed;
+              const stars = outcome.stars;
+
+              const xpReward = Number(level?.xp_reward);
+              classicXpEligible = Boolean(passed);
+              classicXpValue = Number.isFinite(xpReward) ? xpReward : scoreTotal;
+
+              await this.userClassicProgressRepository.upsertResult(session.user_id, level.id, {
+                score_total: scoreTotal,
+                stars_earned: stars,
+                is_completed: passed,
+              });
+
+              let hasNextLevel = false;
+              let nextLevelNumber = null;
+              if (meta.level_number && meta.category_id) {
+                const next = await this.classicCategoryLevelRepository.findByCategoryAndLevelNumber(
+                  meta.category_id,
+                  Number(meta.level_number) + 1
+                );
+                if (next?.id) {
+                  hasNextLevel = true;
+                  nextLevelNumber = Number(meta.level_number) + 1;
+                  if (passed) {
+                    await this.userClassicProgressRepository.ensureUnlocked(session.user_id, next.id);
+                  }
+                }
+              }
+
+              classicSummary = {
+                category_id: meta.category_id ?? null,
+                level_number: meta.level_number ?? null,
+                ...outcome,
+                score_total: scoreTotal,
+                passed,
+                has_next_level: hasNextLevel,
+                next_level_number: nextLevelNumber,
+              };
+            }
+          }
+        } catch (err) {
+          if (err?.code !== 'NOT_CONFIGURED') throw err;
+        }
+      }
+    }
+
     if (session.mode === 'custom' && session.quiz_id && status === 'completed') {
       try {
         await this.quizScoreRepository.upsertBest({
@@ -1414,7 +1490,12 @@ export class SessionService {
 
     if (status === 'completed') {
       if (session.mode === 'classic') {
-        xpDelta = Number(updated.score_total) || 0;
+        xpDelta =
+          classicSummary && session.user_id
+            ? classicXpEligible
+              ? Number(classicXpValue) || 0
+              : 0
+            : Number(updated.score_total) || 0;
       } else if (session.mode === 'story') {
         xpDelta = storyXpEligible ? Number(storyXpValue) || 0 : 0;
       } else if (session.mode === 'custom' && session.quiz_id) {
@@ -1450,6 +1531,7 @@ export class SessionService {
         score_total: updated.score_total ?? null,
       },
       ...(storySummary ? { story: storySummary } : {}),
+      ...(classicSummary ? { classic: classicSummary } : {}),
       warnings,
     };
   }

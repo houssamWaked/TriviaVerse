@@ -218,6 +218,19 @@ export const api = {
   // classic
   startClassicSession: async (body) =>
     (await http.post(endpoints.classicStart(), body)).data,
+  getClassicCategoryLevels: async (categoryId) =>
+    cachedGet(endpoints.classicCategoryLevels(categoryId), {
+      ttlMs: 60_000,
+      scope: 'public',
+      prefer: 'localStorage',
+      cache: 'essential',
+    }),
+  getClassicCategoryProgress: async (categoryId) =>
+    cachedGet(endpoints.classicCategoryProgress(categoryId), {
+      ttlMs: 30_000,
+      scope: 'user',
+      prefer: 'localStorage',
+    }),
 
   // blitz
   getBlitzConfig: async () =>
@@ -247,6 +260,19 @@ export const api = {
       invalidatePublicCacheByPathPrefix(
         `/api/public/quizzes/${data.session.quiz_id}/leaderboard`
       );
+    }
+
+    // Story/classic progression and XP should reflect immediately after finishing.
+    if (data?.status === 'completed' && data?.session?.mode === 'story') {
+      invalidateUserCacheByPathPrefix('/api/story/progress');
+      invalidateUserCacheByPathPrefix('/api/me');
+    }
+    if (data?.status === 'completed' && data?.session?.mode === 'classic') {
+      const categoryId = String(data?.classic?.category_id || '').trim();
+      if (categoryId) {
+        invalidateUserCacheByPathPrefix(`/api/classic/categories/${categoryId}/progress`);
+      }
+      invalidateUserCacheByPathPrefix('/api/me');
     }
 
     return data;
@@ -612,6 +638,55 @@ export const api = {
   },
   adminSeedClassicCategoryPool: async (categoryId, body) => {
     const data = (await http.post(endpoints.adminSeedClassicCategoryPool(categoryId), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
+  adminClassicCategoryLevels: async (categoryId) =>
+    cachedGet(endpoints.adminClassicCategoryLevels(categoryId), {
+      ttlMs: 20_000,
+      scope: 'user',
+      prefer: 'localStorage',
+    }),
+  adminCreateClassicCategoryLevel: async (categoryId, body) => {
+    const data = (await http.post(endpoints.adminCreateClassicCategoryLevel(categoryId), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
+  adminDeleteClassicCategoryLevel: async (levelId) => {
+    const data = (await http.delete(endpoints.adminDeleteClassicCategoryLevel(levelId))).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
+  adminListClassicLevelPoolQuestions: async (levelId, params) =>
+    cachedGet(endpoints.adminClassicLevelPoolQuestions(levelId), {
+      params,
+      ttlMs: 30_000,
+      scope: 'user',
+      prefer: 'localStorage',
+    }),
+  adminClassicLevelPoolIds: async (levelId) =>
+    cachedGet(endpoints.adminClassicLevelPoolIds(levelId), {
+      ttlMs: 15_000,
+      scope: 'user',
+      prefer: 'localStorage',
+    }),
+  adminAddClassicLevelPool: async (levelId, body) => {
+    const data = (await http.post(endpoints.adminAddClassicLevelPool(levelId), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
+  adminRemoveClassicLevelPool: async (levelId, body) => {
+    const data = (await http.delete(endpoints.adminRemoveClassicLevelPool(levelId), { data: body })).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
+  adminReplaceClassicLevelPool: async (levelId, body) => {
+    const data = (await http.put(endpoints.adminReplaceClassicLevelPool(levelId), body)).data;
+    invalidateUserCacheByPathPrefix('/api/admin');
+    return data;
+  },
+  adminSeedClassicLevelPool: async (levelId, body) => {
+    const data = (await http.post(endpoints.adminSeedClassicLevelPool(levelId), body)).data;
     invalidateUserCacheByPathPrefix('/api/admin');
     return data;
   },

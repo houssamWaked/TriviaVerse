@@ -73,6 +73,17 @@ begin
     end if;
   end if;
 
+  -- classic category level pool
+  if to_regclass('public.classic_category_level_pool') is not null then
+    if exists (
+      select 1 from public.classic_category_level_pool
+      where quiz_question_id = p_question_id
+      limit 1
+    ) then
+      raise exception 'Question % is already assigned to a classic category level pool', p_question_id;
+    end if;
+  end if;
+
   -- mode pool (only allow the same mode if already assigned)
   if to_regclass('public.mode_question_pool') is not null then
     if exists (

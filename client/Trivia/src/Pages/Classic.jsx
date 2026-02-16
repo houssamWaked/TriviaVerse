@@ -4,11 +4,26 @@ import { STRINGS } from '@/constants/strings';
 import { api } from '@/api';
 import ClassicStyle from '@/Styles/ComponentStyles/ClassicStyle';
 import { getApiErrorMessage } from '@/utils/apiError';
+import {
+  computeGuestClassicUnlockedMax,
+  loadGuestClassicProgress,
+} from '@/utils/guestClassicProgress';
 
 function clampInt(value, min, max) {
   const n = Number(value);
   if (!Number.isFinite(n)) return min;
   return Math.min(max, Math.max(min, Math.floor(n)));
+}
+
+function toDifficultyLabel(max) {
+  const m = Number(max) || 0;
+  if (m <= 3) return 'easy';
+  if (m <= 6) return 'medium';
+  return 'hard';
+}
+
+function clampStars(n) {
+  return Math.max(0, Math.min(3, Math.floor(Number(n) || 0)));
 }
 
 function pickAccent(seed) {
@@ -20,7 +35,6 @@ function pickAccent(seed) {
 
 export default function Classic({
   user,
-  onRequireAuth,
   onNavigateHome,
   onPlaySession,
 }) {
@@ -35,6 +49,11 @@ export default function Classic({
     STRINGS.CLASSIC.difficulty.options[0]
   );
   const [questionsCount, setQuestionsCount] = useState(10);
+
+  const [levelsBusy, setLevelsBusy] = useState(false);
+  const [levelsError, setLevelsError] = useState('');
+  const [levels, setLevels] = useState([]);
+  const [progress, setProgress] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,20 +107,142 @@ export default function Classic({
     [categories, categoryId]
   );
 
-  const startWithCategory = async (id) => {
-    const cid = String(id || '').trim();
-    if (!cid) return;
+  useEffect(() => {
+    let cancelled = false;
+    if (!categoryId) return () => {};
+
+    setLevelsBusy(true);
+    setLevelsError('');
+    setLevels([]);
+
+    api
+      .getClassicCategoryLevels(categoryId)
+      .then((res) => {
+        if (cancelled) return;
+        setLevels(Array.isArray(res?.levels) ? res.levels : []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLevelsError(getApiErrorMessage(err));
+        setLevels([]);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLevelsBusy(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [categoryId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user || !categoryId) {
+      setProgress(null);
+      return () => {};
+    }
+
+    setLevelsError('');
+
+    api
+      .getClassicCategoryProgress(categoryId)
+      .then((res) => {
+        if (cancelled) return;
+        setProgress(res || null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLevelsError(getApiErrorMessage(err));
+        setProgress(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [!!user, user?.id, categoryId]);
+
+  const displayLevels = useMemo(() => {
+    if (progress && Array.isArray(progress?.levels)) return progress.levels;
+
+    const rows = Array.isArray(levels) ? levels : [];
+    const guest = loadGuestClassicProgress(categoryId);
+    const unlockedMax = computeGuestClassicUnlockedMax(categoryId, rows);
+
+    return rows
+      .slice()
+      .sort((a, b) => Number(a?.level_number) - Number(b?.level_number))
+      .map((lvl) => {
+        const n = Number(lvl.level_number);
+        return {
+          level_id: lvl.id,
+          level_number: n,
+          title: lvl.title,
+          difficulty: toDifficultyLabel(lvl.difficulty_max),
+          best_score: Number(guest?.bestScore?.[String(n)] || 0) || 0,
+          stars_earned: Number(guest?.stars?.[String(n)] || 0) || 0,
+          is_unlocked: Number.isFinite(n) ? n <= unlockedMax : false,
+          is_completed: !!guest?.completed?.[String(n)],
+          pool_count: lvl.pool_count ?? null,
+          difficulty_min: lvl.difficulty_min ?? null,
+          difficulty_max: lvl.difficulty_max ?? null,
+          xp_reward: lvl.xp_reward ?? null,
+        };
+      });
+  }, [progress, levels, categoryId]);
+
+  const progressSummary = useMemo(() => {
+    const list = Array.isArray(displayLevels) ? displayLevels : [];
+    if (progress && typeof progress === 'object') {
+      return {
+        completed: Number(progress.completed_levels) || 0,
+        total: Number(progress.total_levels) || list.length || 0,
+      };
+    }
+    const completed = list.filter((l) => l?.is_completed).length;
+    return { completed, total: list.length };
+  }, [displayLevels, progress]);
+
+  const progressPct = useMemo(() => {
+    const t = Number(progressSummary.total) || 0;
+    const c = Number(progressSummary.completed) || 0;
+    if (!t) return 0;
+    return Math.max(0, Math.min(100, Math.round((c / t) * 100)));
+  }, [progressSummary]);
+
+  const startLegacy = async () => {
+    if (!categoryId) return;
+    setBusy(true);
+    setError('');
+
+    try {
+      const res = await api.startClassicSession({
+        category_id: categoryId,
+        difficulty,
+        questions_count: clampInt(questionsCount, 1, 50),
+      });
+      if (res?.session_id) onPlaySession?.(res.session_id, categoryId, null);
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startLevel = async (levelNumber, unlocked) => {
+    if (!categoryId) return;
+    if (!unlocked) return;
 
     setBusy(true);
     setError('');
 
     try {
       const res = await api.startClassicSession({
-        category_id: cid,
-        difficulty,
-        questions_count: clampInt(questionsCount, 1, 50),
+        category_id: categoryId,
+        level_number: Number(levelNumber),
       });
-      onPlaySession?.(res.session_id);
+      if (!res?.session_id) throw new Error('Failed to start level');
+      onPlaySession?.(res.session_id, categoryId, Number(levelNumber));
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {
@@ -167,7 +308,6 @@ export default function Classic({
                     className="tv-card tv-card--hover"
                     onClick={() => {
                       setCategoryId(c.id);
-                      startWithCategory(c.id);
                     }}
                     disabled={busy}
                     style={ClassicStyle.categoryBtn(isSelected)}
@@ -190,6 +330,182 @@ export default function Classic({
                   </button>
                 );
               })}
+        </div>
+
+        {/* LEVELS (per category) */}
+        <div className="tv-card" style={ClassicStyle.levelsCard}>
+          <div style={ClassicStyle.levelsHeader}>
+            <div style={ClassicStyle.levelsTitleWrap}>
+              <div style={ClassicStyle.levelsTitle}>
+                {selectedCategory
+                  ? `${selectedCategory.name} levels`
+                  : STRINGS.CLASSIC.levels.title}
+              </div>
+              <div style={ClassicStyle.levelsSubtitle}>
+                {STRINGS.CLASSIC.levels.subtitle}
+              </div>
+            </div>
+
+            <div style={ClassicStyle.levelsActions}>
+              <button
+                type="button"
+                className="tv-card tv-card--hover"
+                style={ClassicStyle.levelsActionBtn}
+                onClick={() => {
+                  if (!categoryId) return;
+                  setProgress(null);
+                  setLevels([]);
+                  setLevelsBusy(true);
+                  api
+                    .getClassicCategoryLevels(categoryId)
+                    .then((res) => setLevels(Array.isArray(res?.levels) ? res.levels : []))
+                    .catch((err) => setLevelsError(getApiErrorMessage(err)))
+                    .finally(() => setLevelsBusy(false));
+                  if (user) {
+                    api
+                      .getClassicCategoryProgress(categoryId)
+                      .then((res) => setProgress(res || null))
+                      .catch(() => {});
+                  }
+                }}
+                disabled={busy || !categoryId}
+              >
+                {ICONS.common.refresh} {STRINGS.COMMON.buttons.refresh}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <div style={ClassicStyle.levelsSubtitle}>
+              {ICONS.common.target}{' '}
+              {progressSummary.completed} / {progressSummary.total}{' '}
+              Levels {STRINGS.COMMON.separators.dot}{' '}
+              {progressPct}%
+            </div>
+            <div
+              style={{
+                marginTop: 8,
+                height: 10,
+                borderRadius: 999,
+                background: 'rgba(255,255,255,0.12)',
+                border: '1px solid rgba(255,255,255,0.18)',
+                overflow: 'hidden',
+              }}
+              aria-hidden="true"
+            >
+              <div
+                style={{
+                  height: '100%',
+                  width: `${progressPct}%`,
+                  borderRadius: 999,
+                  background: 'linear-gradient(90deg, rgba(255,44,128,0.88), rgba(139,44,255,0.88))',
+                }}
+              />
+            </div>
+          </div>
+
+          {!!levelsError && (
+            <div style={{ ...ClassicStyle.levelsEmpty, marginTop: 12 }}>
+              {levelsError}
+            </div>
+          )}
+
+          {levelsBusy ? (
+            <div className="tv-classic-level-grid" style={{ marginTop: 14 }}>
+              {Array.from({ length: 6 }).map((_, idx) => (
+                <div key={`lvl-sk-${idx}`} className="tv-card" style={ClassicStyle.skeletonCard}>
+                  <div style={ClassicStyle.skeletonLine1} />
+                  <div style={ClassicStyle.skeletonLine2} />
+                </div>
+              ))}
+            </div>
+          ) : displayLevels.length > 0 ? (
+            <div className="tv-classic-level-grid">
+              {displayLevels.map((lvl) => {
+                const unlocked = !!lvl.is_unlocked;
+                const locked = !unlocked;
+                const stars = clampStars(lvl.stars_earned);
+                const diff = String(lvl.difficulty || '').toLowerCase();
+
+                return (
+                  <button
+                    key={lvl.level_id || lvl.level_number}
+                    type="button"
+                    className="tv-card tv-card--hover"
+                    style={ClassicStyle.levelCard(locked)}
+                    disabled={busy || locked}
+                    onClick={() => startLevel(lvl.level_number, unlocked)}
+                    title={locked ? 'Locked' : 'Play'}
+                  >
+                    <div style={ClassicStyle.levelTopRow}>
+                      <span
+                        style={{
+                          ...ClassicStyle.levelBadge,
+                          ...(locked ? ClassicStyle.levelBadgeLocked : {}),
+                        }}
+                      >
+                        {lvl.level_number}
+                      </span>
+                      <span style={ClassicStyle.starsRow} aria-label={`${stars} stars`}>
+                        {Array.from({ length: 3 }).map((_, i) => (
+                          <span
+                            key={i}
+                            style={i < stars ? ClassicStyle.starOn : ClassicStyle.starOff}
+                          >
+                            ★
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+
+                    <div style={ClassicStyle.levelTitle}>
+                      {lvl.title || `Level ${lvl.level_number}`}
+                    </div>
+
+                    <div style={ClassicStyle.levelMetaRow}>
+                      <span
+                        style={{
+                          ...ClassicStyle.diffPill,
+                          ...(diff === 'easy'
+                            ? ClassicStyle.diffEasy
+                            : diff === 'medium'
+                              ? ClassicStyle.diffMedium
+                              : ClassicStyle.diffHard),
+                        }}
+                      >
+                        {diff || 'difficulty'}
+                      </span>
+                      {lvl.pool_count != null ? (
+                        <span style={ClassicStyle.poolCount}>
+                          {Number(lvl.pool_count) || 0} questions
+                        </span>
+                      ) : null}
+                      {!unlocked ? (
+                        <span style={ClassicStyle.poolCount}>
+                          {ICONS.common.lock} Locked
+                        </span>
+                      ) : null}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={ClassicStyle.levelsEmpty}>
+              {STRINGS.CLASSIC.levels.empty}
+              <div style={{ marginTop: 10 }}>
+                <button
+                  type="button"
+                  className="tv-card tv-card--hover"
+                  style={ClassicStyle.levelsActionBtn}
+                  onClick={startLegacy}
+                  disabled={busy || !categoryId}
+                >
+                  {ICONS.common.play} {STRINGS.CLASSIC.levels.playEndless}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* STATS */}
@@ -277,6 +593,18 @@ export default function Classic({
                 {clampInt(questionsCount, 1, 50)}{' '}
                 {STRINGS.CLASSIC.advanced.questionsSuffix}
               </div>
+
+              <div style={{ marginTop: 12 }}>
+                <button
+                  type="button"
+                  className="tv-card tv-card--hover"
+                  style={ClassicStyle.levelsActionBtn}
+                  onClick={startLegacy}
+                  disabled={busy || !categoryId}
+                >
+                  {ICONS.common.play} {STRINGS.CLASSIC.advanced.playEndless}
+                </button>
+              </div>
             </div>
           </details>
         </div>
@@ -286,7 +614,7 @@ export default function Classic({
           <div style={ClassicStyle.statusText}>
             {user
               ? STRINGS.CLASSIC.status.loggedInAs(user.username)
-              : 'Playing as guest (not saved to your profile)'}
+              : STRINGS.CLASSIC.status.guest}
           </div>
         </div>
       </div>

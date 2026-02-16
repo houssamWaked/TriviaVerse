@@ -98,6 +98,18 @@ export default function AdminDashboard({
   const [classicCategoryForm, setClassicCategoryForm] = useState({ name: '', icon: '' });
   const [classicCategorySeedCounts, setClassicCategorySeedCounts] = useState({});
 
+  const [classicLevelsOpen, setClassicLevelsOpen] = useState(false);
+  const [classicLevelsCategory, setClassicLevelsCategory] = useState(null);
+  const [classicLevels, setClassicLevels] = useState([]);
+  const [classicLevelForm, setClassicLevelForm] = useState({
+    title: '',
+    level_number: '',
+    difficulty_min: 1,
+    difficulty_max: 10,
+    xp_reward: 0,
+  });
+  const [classicLevelSeedCounts, setClassicLevelSeedCounts] = useState({});
+
   const [reportsStatus, setReportsStatus] = useState('open'); // open | resolved
   const [reports, setReports] = useState([]);
   const [reportsLimit] = useState(50);
@@ -205,6 +217,99 @@ export default function AdminDashboard({
   const openClassicCategories = async () => {
     setClassicCategoriesOpen(true);
     await loadClassicCategories();
+  };
+
+  const loadClassicLevels = async (categoryId) => {
+    const cid = String(categoryId || '').trim();
+    if (!cid) return;
+
+    setBusy(true);
+    clearMessages();
+    try {
+      const res = await api.adminClassicCategoryLevels(cid);
+      const rows = Array.isArray(res?.levels) ? res.levels : [];
+      setClassicLevels(rows);
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openClassicLevels = async (category) => {
+    const c = category && typeof category === 'object' ? category : null;
+    if (!c?.id) return;
+    setClassicLevelsCategory({ id: c.id, name: c.name });
+    setClassicLevelsOpen(true);
+    setClassicLevelForm((v) => ({ ...v, title: '' }));
+    await loadClassicLevels(c.id);
+  };
+
+  const createClassicLevel = async () => {
+    const cid = classicLevelsCategory?.id;
+    const title = String(classicLevelForm.title || '').trim();
+    if (!cid || !title) return;
+
+    setBusy(true);
+    clearMessages();
+    try {
+      const level_number_raw = String(classicLevelForm.level_number || '').trim();
+      const payload = {
+        title,
+        difficulty_min: clampInt(classicLevelForm.difficulty_min, 1, 10),
+        difficulty_max: clampInt(classicLevelForm.difficulty_max, 1, 10),
+        xp_reward: clampInt(classicLevelForm.xp_reward, 0, 1000000),
+        ...(level_number_raw ? { level_number: clampInt(level_number_raw, 1, 1000) } : {}),
+      };
+      const created = await api.adminCreateClassicCategoryLevel(cid, payload);
+      setSuccess(`Created level ${created.level_number}`);
+      setClassicLevelForm((v) => ({ ...v, title: '', level_number: '' }));
+      await loadClassicLevels(cid);
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteClassicLevel = async (levelId, label) => {
+    const lid = String(levelId || '').trim();
+    if (!lid) return;
+    // eslint-disable-next-line no-alert
+    const ok = window.confirm(`Delete ${label || 'this level'}? This will remove its pool + progress.`);
+    if (!ok) return;
+
+    setBusy(true);
+    clearMessages();
+    try {
+      await api.adminDeleteClassicCategoryLevel(lid);
+      setSuccess('Level deleted');
+      if (classicLevelsCategory?.id) await loadClassicLevels(classicLevelsCategory.id);
+      await loadDashboard();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const seedClassicLevelPool = async (levelId) => {
+    const lid = String(levelId || '').trim();
+    if (!lid) return;
+    const count = clampInt(classicLevelSeedCounts[lid] ?? 10, 1, 50);
+
+    setBusy(true);
+    clearMessages();
+    try {
+      const res = await api.adminSeedClassicLevelPool(lid, { random_count: count });
+      setSuccess(`Auto-filled ${res.added_count || 0}`);
+      if (classicLevelsCategory?.id) await loadClassicLevels(classicLevelsCategory.id);
+      await loadDashboard();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
   useEffect(() => {
@@ -558,6 +663,8 @@ export default function AdminDashboard({
         res = await api.adminListStoryLevelPoolQuestions(id, { limit: lim, offset });
       } else if (kind === 'classic_category') {
         res = await api.adminListClassicCategoryPoolQuestions(id, { limit: lim, offset });
+      } else if (kind === 'classic_level') {
+        res = await api.adminListClassicLevelPoolQuestions(id, { limit: lim, offset });
       } else {
         res = { questions: [] };
       }
@@ -592,6 +699,8 @@ export default function AdminDashboard({
         await api.adminRemoveStoryLevelPool(pool.id, { question_ids: [qid] });
       } else if (pool.kind === 'classic_category') {
         await api.adminRemoveClassicCategoryPool(pool.id, { question_ids: [qid] });
+      } else if (pool.kind === 'classic_level') {
+        await api.adminRemoveClassicLevelPool(pool.id, { question_ids: [qid] });
       } else {
         return;
       }
@@ -624,6 +733,8 @@ export default function AdminDashboard({
         await api.adminReplaceStoryLevelPool(pool.id, { question_ids: [] });
       } else if (pool.kind === 'classic_category') {
         await api.adminReplaceClassicCategoryPool(pool.id, { question_ids: [] });
+      } else if (pool.kind === 'classic_level') {
+        await api.adminReplaceClassicLevelPool(pool.id, { question_ids: [] });
       } else {
         return;
       }
@@ -717,6 +828,8 @@ export default function AdminDashboard({
           ? await api.adminStoryLevelPoolIds(targetId)
           : k === 'classic_category'
             ? await api.adminClassicCategoryPoolIds(targetId)
+            : k === 'classic_level'
+              ? await api.adminClassicLevelPoolIds(targetId)
             : null;
 
     const ids = Array.isArray(res?.ids) ? res.ids : [];
@@ -768,6 +881,9 @@ export default function AdminDashboard({
         if (replace)
           await api.adminReplaceClassicCategoryPool(picker.target.id, { question_ids: ids });
         else await api.adminAddClassicCategoryPool(picker.target.id, { question_ids: ids });
+      } else if (picker.target.kind === 'classic_level') {
+        if (replace) await api.adminReplaceClassicLevelPool(picker.target.id, { question_ids: ids });
+        else await api.adminAddClassicLevelPool(picker.target.id, { question_ids: ids });
       } else {
         return;
       }
@@ -2271,6 +2387,16 @@ export default function AdminDashboard({
                   <button
                     type="button"
                     className="tv-card tv-card--hover"
+                    style={AdminStyle.btn}
+                    onClick={() => openClassicLevels(c)}
+                    disabled={busy}
+                    title="Manage classic levels for this category"
+                  >
+                    Levels
+                  </button>
+                  <button
+                    type="button"
+                    className="tv-card tv-card--hover"
                     style={AdminDashboardStyle.dangerBtn}
                     onClick={() => deleteClassicCategory(c.id, c.name)}
                     disabled={busy}
@@ -2313,6 +2439,186 @@ export default function AdminDashboard({
           {classicCategories.length === 0 && (
             <div style={AdminDashboardStyle.emptyText}>
               {STRINGS.ADMIN.sections.noCategoriesFound}
+            </div>
+          )}
+        </div>
+      </AdminModal>
+
+      <AdminModal
+        open={classicLevelsOpen}
+        title={`Classic Levels${classicLevelsCategory?.name ? ` — ${classicLevelsCategory.name}` : ''}`}
+        onClose={() => setClassicLevelsOpen(false)}
+        maxWidth={980}
+      >
+        <div style={AdminStyle.sectionSub}>
+          Create levels for this category, then assign questions per level.
+        </div>
+
+        <div style={AdminDashboardStyle.rowMt12}>
+          <input
+            style={AdminDashboardStyle.inputFlex1}
+            value={classicLevelForm.title}
+            onChange={(e) => setClassicLevelForm((v) => ({ ...v, title: e.target.value }))}
+            placeholder="Level title (e.g. Basics)"
+            disabled={busy}
+          />
+          <input
+            style={AdminDashboardStyle.inputW110}
+            value={classicLevelForm.level_number}
+            onChange={(e) => setClassicLevelForm((v) => ({ ...v, level_number: e.target.value }))}
+            placeholder="# (auto)"
+            disabled={busy}
+          />
+          <input
+            style={AdminDashboardStyle.inputW110}
+            type="number"
+            min={1}
+            max={10}
+            value={classicLevelForm.difficulty_min}
+            onChange={(e) =>
+              setClassicLevelForm((v) => ({ ...v, difficulty_min: clampInt(e.target.value, 1, 10) }))
+            }
+            disabled={busy}
+          />
+          <input
+            style={AdminDashboardStyle.inputW110}
+            type="number"
+            min={1}
+            max={10}
+            value={classicLevelForm.difficulty_max}
+            onChange={(e) =>
+              setClassicLevelForm((v) => ({ ...v, difficulty_max: clampInt(e.target.value, 1, 10) }))
+            }
+            disabled={busy}
+          />
+          <input
+            style={AdminDashboardStyle.inputW110}
+            type="number"
+            min={0}
+            max={1000000}
+            value={classicLevelForm.xp_reward}
+            onChange={(e) =>
+              setClassicLevelForm((v) => ({ ...v, xp_reward: clampInt(e.target.value, 0, 1000000) }))
+            }
+            disabled={busy}
+          />
+          <button
+            type="button"
+            className="tv-card tv-card--hover"
+            style={AdminStyle.btnPrimaryFull}
+            onClick={createClassicLevel}
+            disabled={busy || !String(classicLevelForm.title || '').trim()}
+          >
+            {STRINGS.ADMIN.actions.create}
+          </button>
+        </div>
+
+        <div style={AdminDashboardStyle.rowMt12}>
+          <button
+            type="button"
+            className="tv-card tv-card--hover"
+            style={AdminStyle.btn}
+            onClick={() => loadClassicLevels(classicLevelsCategory?.id)}
+            disabled={busy || !classicLevelsCategory?.id}
+          >
+            {STRINGS.ADMIN.actions.refreshList}
+          </button>
+          <span style={AdminStyle.pill}>{STRINGS.ADMIN.sections.levels} {classicLevels.length}</span>
+        </div>
+
+        <div style={AdminDashboardStyle.listMt12}>
+          {classicLevels.map((lvl) => {
+            const title = `Classic • ${classicLevelsCategory?.name || ''} • Level ${lvl.level_number}`;
+            return (
+              <div key={lvl.id} style={AdminStyle.listItem}>
+                <div style={AdminDashboardStyle.modeHeader}>
+                  <div style={AdminDashboardStyle.levelLeft}>
+                    <div style={AdminStyle.listItemTitle}>
+                      Level {lvl.level_number}: {lvl.title || 'Untitled'}
+                    </div>
+                    <div style={AdminStyle.listItemMeta}>
+                      <span style={AdminStyle.pill}>
+                        D{lvl.difficulty_min}-{lvl.difficulty_max}
+                      </span>
+                      <span style={AdminStyle.pill}>XP {lvl.xp_reward ?? 0}</span>
+                      <span style={AdminStyle.pill}>
+                        {STRINGS.ADMIN.pills.pool}{' '}
+                        {lvl.pool_count == null ? STRINGS.COMMON.separators.emDash : lvl.pool_count}
+                      </span>
+                      <span style={AdminStyle.pill}>{lvl.id}</span>
+                    </div>
+                  </div>
+
+                  <div style={AdminDashboardStyle.actionCol}>
+                    <button
+                      type="button"
+                      className="tv-card tv-card--hover"
+                      style={AdminStyle.btn}
+                      onClick={() => {
+                        setClassicLevelsOpen(false);
+                        loadPool({ kind: 'classic_level', id: lvl.id, title, offset: 0 });
+                      }}
+                      disabled={busy}
+                    >
+                      {STRINGS.ADMIN.actions.viewPool}
+                    </button>
+                    <button
+                      type="button"
+                      className="tv-card tv-card--hover"
+                      style={AdminStyle.btnPrimaryFull}
+                      onClick={() => {
+                        setClassicLevelsOpen(false);
+                        openPicker({ kind: 'classic_level', id: lvl.id, title });
+                      }}
+                      disabled={busy}
+                    >
+                      {STRINGS.ADMIN.actions.addQuestions}
+                    </button>
+                    <button
+                      type="button"
+                      className="tv-card tv-card--hover"
+                      style={AdminDashboardStyle.dangerBtn}
+                      onClick={() => deleteClassicLevel(lvl.id, title)}
+                      disabled={busy}
+                    >
+                      {STRINGS.ADMIN.actions.deleteLevel}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={AdminDashboardStyle.rowMt10}>
+                  <input
+                    style={AdminDashboardStyle.inputW120}
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={classicLevelSeedCounts[lvl.id] ?? 10}
+                    onChange={(e) =>
+                      setClassicLevelSeedCounts((m) => ({
+                        ...m,
+                        [lvl.id]: clampInt(e.target.value, 1, 50),
+                      }))
+                    }
+                    disabled={busy}
+                  />
+                  <button
+                    type="button"
+                    className="tv-card tv-card--hover"
+                    style={AdminStyle.btn}
+                    onClick={() => seedClassicLevelPool(lvl.id)}
+                    disabled={busy}
+                    title="Adds random eligible questions (does not remove existing)."
+                  >
+                    {STRINGS.ADMIN.actions.autoFill}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {classicLevels.length === 0 && (
+            <div style={AdminDashboardStyle.emptyText}>
+              No levels yet. Create Level 1 first.
             </div>
           )}
         </div>

@@ -52,6 +52,7 @@ function getRoute() {
       name: 'play',
       sessionId: parts[1],
       from: query.get('from') || '',
+      categoryId: query.get('category') || '',
       levelNumber: query.get('level') ? Number(query.get('level')) : null,
     };
   }
@@ -109,6 +110,7 @@ function navigate(route, params = {}) {
   if (route === 'play') {
     const qs = new URLSearchParams();
     if (params.from) qs.set('from', String(params.from));
+    if (params.category) qs.set('category', String(params.category));
     if (params.level != null) qs.set('level', String(params.level));
     const q = qs.toString() ? `?${qs.toString()}` : '';
     window.location.hash = `#/play/${encodeURIComponent(params.sessionId)}${q}`;
@@ -529,8 +531,14 @@ function App() {
           user={user}
           variant={route.from === 'story' ? 'story' : 'default'}
           storyLevelNumber={route.from === 'story' ? route.levelNumber : null}
+          classicCategoryId={route.from === 'classic' ? route.categoryId : null}
+          classicLevelNumber={route.from === 'classic' ? route.levelNumber : null}
           backLabel={
-            route.from === 'story' ? STRINGS.PLAY.backToStory : STRINGS.PLAY.backToQuizzes
+            route.from === 'story'
+              ? STRINGS.PLAY.backToStory
+              : route.from === 'classic'
+                ? STRINGS.PLAY.backToClassic
+                : STRINGS.PLAY.backToQuizzes
           }
           onRequireAuth={() =>
             openAuth('login', {
@@ -539,7 +547,13 @@ function App() {
             })
           }
           onNavigateHome={() => navigate('home')}
-          onBack={() => (route.from === 'story' ? navigate('story') : navigate('quizzes'))}
+          onBack={() =>
+            route.from === 'story'
+              ? navigate('story')
+              : route.from === 'classic'
+                ? navigate('classic')
+                : navigate('quizzes')
+          }
         />
       ) : route.name === 'friends' ? (
         <Friends
@@ -596,7 +610,16 @@ function App() {
           user={user}
           onRequireAuth={() => openAuth('login', 'classic')}
           onNavigateHome={() => navigate('home')}
-          onPlaySession={(sessionId) => navigate('play', { sessionId })}
+          onPlaySession={(sessionId, categoryId, levelNumber) =>
+            levelNumber != null && categoryId
+              ? navigate('play', {
+                  sessionId,
+                  from: 'classic',
+                  category: categoryId,
+                  level: levelNumber,
+                })
+              : navigate('play', { sessionId })
+          }
         />
       ) : route.name === 'blitz' ? (
         <Blitz

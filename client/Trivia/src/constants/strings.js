@@ -300,6 +300,7 @@ export const STRINGS = {
     backToStory: 'Back to story',
     backToQuizzes: 'Back to quizzes',
     backToDuels: 'Back to duels',
+    backToClassic: 'Back to classic',
   },
 
   DUELS: {
@@ -413,13 +414,21 @@ export const STRINGS = {
       questionsLabel: 'Questions',
       currentPrefix: 'Current:',
       questionsSuffix: 'questions',
+      playEndless: 'Play endless',
     },
     difficulty: {
       options: ['easy', 'medium', 'hard'],
     },
+    levels: {
+      title: 'Category levels',
+      subtitle: 'Finish levels to unlock the next one. Pass = 70% correct.',
+      empty: 'No levels configured for this category yet.',
+      playEndless: 'Play endless mode',
+    },
     status: {
-      loggedInAs: (username) => `Logged in as ${username}. Tap a category to start.`,
-      loginRequired: 'Login required to start. Tap any category to login.',
+      loggedInAs: (username) =>
+        `Logged in as ${username}. Pick a category, then choose a level.`,
+      guest: 'Playing as guest (not saved to your profile).',
     },
   },
 

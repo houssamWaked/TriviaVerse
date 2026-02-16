@@ -7,11 +7,16 @@ import PlaySessionStyle, {
 } from '@/Styles/ComponentStyles/PlaySessionStyle';
 import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
 import { saveGuestStoryResult } from '@/utils/guestStoryProgress';
+import { saveGuestClassicResult } from '@/utils/guestClassicProgress';
 
 function clampPct(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return 0;
   return Math.max(0, Math.min(100, x));
+}
+
+function clampStars(n) {
+  return Math.max(0, Math.min(3, Math.floor(Number(n) || 0)));
 }
 
 function computeStoryOutcomeFromCounts({ correctCount = 0, totalCount = 0 } = {}) {
@@ -38,6 +43,8 @@ export default function PlaySession({
   backLabel = STRINGS.COMMON.buttons.back,
   variant = 'default', // 'default' | 'story'
   storyLevelNumber = null,
+  classicCategoryId = null,
+  classicLevelNumber = null,
 }) {
   const isStory = variant === 'story';
   // Transition delay between answering and the next question.
@@ -72,6 +79,8 @@ export default function PlaySession({
   const [correctCount, setCorrectCount] = useState(0);
   const [shareMessage, setShareMessage] = useState('');
   const [storyOutcome, setStoryOutcome] = useState(null);
+  const [classicOutcome, setClassicOutcome] = useState(null);
+  const [classicLevelsMax, setClassicLevelsMax] = useState(null);
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewError, setReviewError] = useState('');
   const [review, setReview] = useState(null);
@@ -123,6 +132,8 @@ export default function PlaySession({
     setCorrectCount(0);
     setShareMessage('');
     setStoryOutcome(null);
+    setClassicOutcome(null);
+    setClassicLevelsMax(null);
     setReviewBusy(false);
     setReviewError('');
     setReview(null);
@@ -137,6 +148,32 @@ export default function PlaySession({
     loadCurrent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
+
+  useEffect(() => {
+    let alive = true;
+    const mode = String(sessionMode || '').toLowerCase();
+    const cid = String(classicCategoryId || '').trim();
+    if (!finished) return undefined;
+    if (mode !== 'classic') return undefined;
+    if (!cid) return undefined;
+
+    api
+      .getClassicCategoryLevels(cid)
+      .then((res) => {
+        if (!alive) return;
+        const list = Array.isArray(res?.levels) ? res.levels : [];
+        const max = list
+          .map((l) => Number(l?.level_number))
+          .filter((n) => Number.isFinite(n) && n > 0)
+          .reduce((acc, n) => Math.max(acc, n), 0);
+        setClassicLevelsMax(max || null);
+      })
+      .catch(() => {});
+
+    return () => {
+      alive = false;
+    };
+  }, [finished, sessionMode, classicCategoryId]);
 
   useEffect(() => {
     let alive = true;
@@ -276,6 +313,41 @@ export default function PlaySession({
     return { passed, stars };
   }, [isStory, answeredCount, correctCount, storyOutcome]);
 
+  const classicResult = useMemo(() => {
+    const mode = String(sessionMode || '').toLowerCase();
+    const cid = String(classicCategoryId || '').trim();
+    const levelNum = Number(classicLevelNumber);
+    if (mode !== 'classic') return null;
+    if (!cid || !Number.isFinite(levelNum) || levelNum < 1) return null;
+
+    const computed = computeStoryOutcomeFromCounts({
+      correctCount,
+      totalCount: answeredCount,
+    });
+
+    const server = classicOutcome && typeof classicOutcome === 'object' ? classicOutcome : null;
+    const passed = Boolean(server?.passed ?? computed.passed);
+    const stars = clampStars(server?.stars ?? computed.stars);
+
+    const nextLevelNumber = Number(server?.next_level_number) || levelNum + 1;
+    const hasNextLevel =
+      typeof server?.has_next_level === 'boolean'
+        ? server.has_next_level
+        : Number.isFinite(Number(classicLevelsMax))
+          ? levelNum < Number(classicLevelsMax)
+          : false;
+
+    return { passed, stars, nextLevelNumber, hasNextLevel, levelNum };
+  }, [
+    sessionMode,
+    classicCategoryId,
+    classicLevelNumber,
+    answeredCount,
+    correctCount,
+    classicOutcome,
+    classicLevelsMax,
+  ]);
+
   const modeLabel = useMemo(() => {
     const m = String(sessionMode || '').toLowerCase();
     if (m === 'story') return 'Story Mode';
@@ -299,9 +371,12 @@ export default function PlaySession({
     if (isStory && Number.isFinite(Number(storyLevelNumber))) {
       parts.push(`Level ${Number(storyLevelNumber)}`);
     }
+    if (classicResult?.levelNum) {
+      parts.push(`Level ${Number(classicResult.levelNum)}`);
+    }
     parts.push('Can you beat me on TriviaVerse? 🚀');
     return parts.join(' ');
-  }, [isStory, modeLabel, scoreDisplay, storyLevelNumber]);
+  }, [isStory, modeLabel, scoreDisplay, storyLevelNumber, classicResult?.levelNum]);
 
   const shareUrl = useMemo(() => {
     try {
@@ -365,6 +440,31 @@ export default function PlaySession({
       return;
     }
 
+    if (mode === 'classic' && classicResult?.levelNum && String(classicCategoryId || '').trim()) {
+      setBusy(true);
+      setError('');
+      try {
+        const cid = String(classicCategoryId).trim();
+        const lvl = Number(classicResult.levelNum);
+        const res = await api.startClassicSession({ category_id: cid, level_number: lvl });
+        const sid = res?.session_id;
+        if (sid) {
+          window.location.hash = `#/play/${encodeURIComponent(String(sid))}?from=classic&category=${encodeURIComponent(
+            cid
+          )}&level=${encodeURIComponent(String(lvl))}`;
+        } else {
+          window.location.hash = '#/classic';
+        }
+      } catch (err) {
+        if (isUnauthorized(err)) return onRequireAuth?.('play');
+        setError(getApiErrorMessage(err));
+        window.location.hash = '#/classic';
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     if (mode === 'classic') window.location.hash = '#/classic';
     else if (mode === 'blitz') window.location.hash = '#/blitz';
     else if (mode === 'millionaire') window.location.hash = '#/millionaire';
@@ -393,6 +493,35 @@ export default function PlaySession({
       if (isUnauthorized(err)) return onRequireAuth?.('play');
       setError(getApiErrorMessage(err));
       window.location.hash = '#/story';
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const playNextClassicLevel = async () => {
+    const cid = String(classicCategoryId || '').trim();
+    const lvl = classicResult?.nextLevelNumber;
+    if (!cid) return;
+    if (!Number.isFinite(Number(lvl)) || Number(lvl) < 1) return;
+    if (!classicResult?.passed) return;
+
+    setShareMessage('');
+    setBusy(true);
+    setError('');
+    try {
+      const res = await api.startClassicSession({ category_id: cid, level_number: Number(lvl) });
+      const sid = res?.session_id;
+      if (sid) {
+        window.location.hash = `#/play/${encodeURIComponent(String(sid))}?from=classic&category=${encodeURIComponent(
+          cid
+        )}&level=${encodeURIComponent(String(lvl))}`;
+      } else {
+        window.location.hash = '#/classic';
+      }
+    } catch (err) {
+      if (isUnauthorized(err)) return onRequireAuth?.('play');
+      setError(getApiErrorMessage(err));
+      window.location.hash = '#/classic';
     } finally {
       setBusy(false);
     }
@@ -509,6 +638,35 @@ export default function PlaySession({
 
         if (!user) {
           saveGuestStoryResult(storyLevelNumber, { scoreTotal, passed, stars });
+        }
+      }
+
+      if (String(sessionMode || '').toLowerCase() === 'classic') {
+        const cid = String(classicCategoryId || '').trim();
+        const levelNum = Number(classicLevelNumber);
+        const computed = computeStoryOutcomeFromCounts({
+          correctCount,
+          totalCount: answeredCount,
+        });
+        const server = res?.classic && typeof res.classic === 'object' ? res.classic : null;
+        const passed =
+          status === 'completed' ? Boolean(server?.passed ?? computed.passed) : false;
+        const stars =
+          status === 'completed'
+            ? clampStars(server?.stars ?? computed.stars)
+            : 0;
+
+        if (status === 'completed') {
+          setClassicOutcome({
+            passed,
+            stars,
+            has_next_level: server?.has_next_level ?? null,
+            next_level_number: server?.next_level_number ?? null,
+          });
+
+          if (!user && cid && Number.isFinite(levelNum) && levelNum > 0) {
+            saveGuestClassicResult(cid, levelNum, { scoreTotal, passed, stars });
+          }
         }
       }
       setFinished(true);
@@ -700,6 +858,17 @@ export default function PlaySession({
                   {'☆'.repeat(Math.max(0, 3 - storyResult.stars))}
                 </div>
               ) : null}
+              {classicResult?.levelNum ? (
+                <div className="tv-results__levelLine">
+                  Level {Number(classicResult.levelNum)} {ICONS.common.star}
+                </div>
+              ) : null}
+              {classicResult ? (
+                <div className="tv-results__levelLine">
+                  {classicResult.passed ? '✅ Passed' : '❌ Not passed'} • {'★'.repeat(classicResult.stars)}
+                  {'☆'.repeat(Math.max(0, 3 - classicResult.stars))}
+                </div>
+              ) : null}
 
               <div className="tv-results__scorePanel">
                 <div className="tv-results__scoreLabel">YOUR SCORE</div>
@@ -786,6 +955,16 @@ export default function PlaySession({
                   type="button"
                   className="tv-card tv-card--hover tv-results__btn"
                   onClick={playNextLevel}
+                  disabled={busy}
+                >
+                  ➡️ Next level
+                </button>
+              ) : null}
+              {classicResult?.passed && classicResult?.hasNextLevel ? (
+                <button
+                  type="button"
+                  className="tv-card tv-card--hover tv-results__btn"
+                  onClick={playNextClassicLevel}
                   disabled={busy}
                 >
                   ➡️ Next level

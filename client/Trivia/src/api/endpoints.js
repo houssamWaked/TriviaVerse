@@ -19,6 +19,7 @@ export const endpoints = {
   millionaireConfig: () => '/api/public/millionaire/config',
   millionaireStart: () => '/api/public/millionaire/sessions/start',
   classicStart: () => '/api/public/classic/sessions/start',
+  classicCategoryLevels: (categoryId) => `/api/public/classic/categories/${categoryId}/levels`,
   blitzConfig: () => '/api/public/blitz/config?v=2',
   blitzStart: () => '/api/public/blitz/sessions/start',
   sessionCurrent: (sessionId) => `/api/public/sessions/${sessionId}/current`,
@@ -49,6 +50,9 @@ export const endpoints = {
 
   // story (protected)
   storyProgress: () => '/api/story/progress',
+
+  // classic (protected)
+  classicCategoryProgress: (categoryId) => `/api/classic/categories/${categoryId}/progress`,
 
   // quiz builder
   quizzes: () => '/api/quizzes',
@@ -133,4 +137,17 @@ export const endpoints = {
     `/api/admin/classic/categories/${categoryId}/pool`,
   adminSeedClassicCategoryPool: (categoryId) =>
     `/api/admin/classic/categories/${categoryId}/pool/seed`,
+
+  // classic category levels (classic mode only)
+  adminClassicCategoryLevels: (categoryId) => `/api/admin/classic/categories/${categoryId}/levels`,
+  adminCreateClassicCategoryLevel: (categoryId) =>
+    `/api/admin/classic/categories/${categoryId}/levels`,
+  adminDeleteClassicCategoryLevel: (levelId) => `/api/admin/classic/levels/${levelId}`,
+  adminClassicLevelPoolQuestions: (levelId) =>
+    `/api/admin/classic/levels/${levelId}/pool/questions`,
+  adminClassicLevelPoolIds: (levelId) => `/api/admin/classic/levels/${levelId}/pool/ids`,
+  adminAddClassicLevelPool: (levelId) => `/api/admin/classic/levels/${levelId}/pool`,
+  adminRemoveClassicLevelPool: (levelId) => `/api/admin/classic/levels/${levelId}/pool`,
+  adminReplaceClassicLevelPool: (levelId) => `/api/admin/classic/levels/${levelId}/pool`,
+  adminSeedClassicLevelPool: (levelId) => `/api/admin/classic/levels/${levelId}/pool/seed`,
 };

@@ -36,6 +36,7 @@ import createStoryRouter from './routes/StoryRoute.js';
 import createStoryPublicRouter from './routes/StoryPublicRoute.js';
 import createMillionaireRouter from './routes/MillionaireRoute.js';
 import createClassicRouter from './routes/ClassicRoute.js';
+import createClassicProtectedRouter from './routes/ClassicProtectedRoute.js';
 import createBlitzRouter from './routes/BlitzRoute.js';
 import createSessionsRouter from './routes/SessionsRoute.js';
 import createFriendsRouter from './routes/FriendsRoute.js';
@@ -65,6 +66,7 @@ import { PublicService } from './services/PublicService.js';
 import { LeaderboardService } from './services/LeaderboardService.js';
 import { QuizBuilderService } from './services/QuizBuilderService.js';
 import { StoryService } from './services/StoryService.js';
+import { ClassicCategoryService } from './services/ClassicCategoryService.js';
 import { SessionStartService } from './services/SessionStartService.js';
 import { SessionService } from './services/SessionService.js';
 import { QuizDiscoveryService } from './services/QuizDiscoveryService.js';
@@ -97,6 +99,10 @@ import { QuizScoreRepository } from './domain/repositories/QuizScoreRepository.j
 import { FriendRepository } from './domain/repositories/FriendRepository.js';
 import { ModeQuestionPoolRepository } from './domain/repositories/ModeQuestionPoolRepository.js';
 import { ClassicCategoryPoolRepository } from './domain/repositories/ClassicCategoryPoolRepository.js';
+import { ClassicCategoryLevelRepository } from './domain/repositories/ClassicCategoryLevelRepository.js';
+import { ClassicCategoryLevelPoolRepository } from './domain/repositories/ClassicCategoryLevelPoolRepository.js';
+import { ClassicSessionRepository } from './domain/repositories/ClassicSessionRepository.js';
+import { UserClassicProgressRepository } from './domain/repositories/UserClassicProgressRepository.js';
 import { DuelRepository } from './domain/repositories/DuelRepository.js';
 import { DuelAnswerRepository } from './domain/repositories/DuelAnswerRepository.js';
 import { DuelClaimRepository } from './domain/repositories/DuelClaimRepository.js';
@@ -176,6 +182,10 @@ const storySessionRepository = new StorySessionRepository();
 const millionaireLadderRepository = new MillionaireLadderRepository();
 const modeQuestionPoolRepository = new ModeQuestionPoolRepository();
 const classicCategoryPoolRepository = new ClassicCategoryPoolRepository();
+const classicCategoryLevelRepository = new ClassicCategoryLevelRepository();
+const classicCategoryLevelPoolRepository = new ClassicCategoryLevelPoolRepository();
+const classicSessionRepository = new ClassicSessionRepository();
+const userClassicProgressRepository = new UserClassicProgressRepository();
 const duelRepository = new DuelRepository();
 const duelAnswerRepository = new DuelAnswerRepository();
 const duelClaimRepository = new DuelClaimRepository();
@@ -216,6 +226,10 @@ const quizReportService = new QuizReportService({
   quizReportRepository,
 });
 const storyService = new StoryService(storyLevelRepository, userStoryProgressRepository);
+const classicCategoryService = new ClassicCategoryService(
+  classicCategoryLevelRepository,
+  userClassicProgressRepository
+);
 const sessionStartService = new SessionStartService({
   gameSessionRepository,
   sessionQuestionRepository,
@@ -232,6 +246,10 @@ const sessionStartService = new SessionStartService({
   millionaireLadderRepository,
   modeQuestionPoolRepository,
   classicCategoryPoolRepository,
+  classicCategoryLevelRepository,
+  classicCategoryLevelPoolRepository,
+  classicSessionRepository,
+  classicCategoryService,
 });
 const sessionService = new SessionService({
   gameSessionRepository,
@@ -247,6 +265,9 @@ const sessionService = new SessionService({
   storyLevelRepository,
   userStoryProgressRepository,
   storySessionRepository,
+  classicCategoryLevelRepository,
+  userClassicProgressRepository,
+  classicSessionRepository,
   sessionStartService,
 });
 const friendService = new FriendService({
@@ -267,6 +288,10 @@ const adminService = new AdminService({
   modeQuestionPoolRepository,
   categoryRepository,
   classicCategoryPoolRepository,
+  classicCategoryLevelRepository,
+  classicCategoryLevelPoolRepository,
+  classicSessionRepository,
+  userClassicProgressRepository,
   sessionQuestionRepository,
   userStoryProgressRepository,
   storySessionRepository,
@@ -294,7 +319,11 @@ const millionaireController = new MillionaireController(
   millionaireLadderRepository,
   sessionStartService
 );
-const classicController = new ClassicController(sessionStartService);
+const classicController = new ClassicController(
+  sessionStartService,
+  classicCategoryService,
+  classicCategoryLevelPoolRepository
+);
 const blitzController = new BlitzController(sessionStartService);
 const sessionsController = new SessionsController(sessionService);
 const friendController = new FriendController(friendService);
@@ -392,6 +421,7 @@ app.use('/api/questions', createQuestionsRouter(quizBuilderController));
 app.use('/api/options', createOptionsRouter(quizBuilderController));
 
 app.use('/api/story', createStoryRouter(storyController));
+app.use('/api/classic', createClassicProtectedRouter(classicController));
 app.use('/api/friends', createFriendsRouter(friendController));
 app.use('/api/admin', createAdminRouter(adminController));
 app.use('/api/me', createMeRouter(meController));

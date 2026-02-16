@@ -13,6 +13,7 @@ import {
   addPoolBody,
   replacePoolBody,
   createClassicCategoryBody,
+  createClassicCategoryLevelBody,
   levelIdParam,
   categoryIdParam,
   questionIdParam,
@@ -305,6 +306,85 @@ export default function createAdminRouter(adminController) {
     seedPoolBody,
     validateRequest,
     asyncHandler(adminController.seedClassicCategoryPool)
+  );
+
+  // classic category levels (story-like classic)
+  router.get(
+    '/classic/categories/:category_id/levels',
+    requireAdmin,
+    categoryIdParam,
+    validateRequest,
+    asyncHandler(adminController.listClassicCategoryLevels)
+  );
+
+  router.post(
+    '/classic/categories/:category_id/levels',
+    requireAdmin,
+    categoryIdParam,
+    createClassicCategoryLevelBody,
+    validateRequest,
+    asyncHandler(adminController.createClassicCategoryLevel)
+  );
+
+  router.delete(
+    '/classic/levels/:level_id',
+    requireAdmin,
+    levelIdParam,
+    validateRequest,
+    asyncHandler(adminController.deleteClassicCategoryLevel)
+  );
+
+  router.get(
+    '/classic/levels/:level_id/pool/questions',
+    requireAdmin,
+    levelIdParam,
+    listPoolQuery,
+    validateRequest,
+    asyncHandler(adminController.listClassicCategoryLevelPoolQuestions)
+  );
+
+  router.get(
+    '/classic/levels/:level_id/pool/ids',
+    requireAdmin,
+    levelIdParam,
+    validateRequest,
+    asyncHandler(adminController.listClassicCategoryLevelPoolQuestionIds)
+  );
+
+  router.post(
+    '/classic/levels/:level_id/pool',
+    requireAdmin,
+    levelIdParam,
+    addPoolBody,
+    validateRequest,
+    asyncHandler(adminController.addClassicCategoryLevelPool)
+  );
+
+  router.delete(
+    '/classic/levels/:level_id/pool',
+    requireAdmin,
+    levelIdParam,
+    addPoolBody,
+    validateRequest,
+    asyncHandler(adminController.removeClassicCategoryLevelPool)
+  );
+
+  router.put(
+    '/classic/levels/:level_id/pool',
+    requireAdmin,
+    levelIdParam,
+    replacePoolBody,
+    validateRequest,
+    asyncHandler(adminController.replaceClassicCategoryLevelPool)
+  );
+
+  router.post(
+    '/classic/levels/:level_id/pool/seed',
+    requireAdmin,
+    levelIdParam,
+    seedPoolBody,
+    validateRequest,
+    asyncHandler(adminController.seedClassicCategoryLevelPool)
   );
 
   // moderation

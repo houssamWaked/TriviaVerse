@@ -20,6 +20,10 @@ export class AdminService {
     modeQuestionPoolRepository,
     categoryRepository,
     classicCategoryPoolRepository,
+    classicCategoryLevelRepository = null,
+    classicCategoryLevelPoolRepository = null,
+    classicSessionRepository = null,
+    userClassicProgressRepository = null,
     sessionQuestionRepository,
     userStoryProgressRepository,
     storySessionRepository,
@@ -38,6 +42,10 @@ export class AdminService {
     this.modeQuestionPoolRepository = modeQuestionPoolRepository;
     this.categoryRepository = categoryRepository;
     this.classicCategoryPoolRepository = classicCategoryPoolRepository;
+    this.classicCategoryLevelRepository = classicCategoryLevelRepository;
+    this.classicCategoryLevelPoolRepository = classicCategoryLevelPoolRepository;
+    this.classicSessionRepository = classicSessionRepository;
+    this.userClassicProgressRepository = userClassicProgressRepository;
     this.sessionQuestionRepository = sessionQuestionRepository;
     this.userStoryProgressRepository = userStoryProgressRepository;
     this.storySessionRepository = storySessionRepository;
@@ -223,10 +231,12 @@ export class AdminService {
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (!m || ids.length === 0) return;
 
-    const [storyAssignments, modeAssignments, classicAssignments] = await Promise.all([
+    const [storyAssignments, modeAssignments, classicAssignments, classicLevelAssignments] =
+      await Promise.all([
       this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
       this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
       this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+      this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
     ]);
 
     const storyConflicts = Array.isArray(storyAssignments) ? storyAssignments : [];
@@ -234,8 +244,14 @@ export class AdminService {
       ? modeAssignments.filter((a) => a?.mode && String(a.mode).toLowerCase() !== m)
       : [];
     const classicConflicts = Array.isArray(classicAssignments) ? classicAssignments : [];
+    const classicLevelConflicts = Array.isArray(classicLevelAssignments) ? classicLevelAssignments : [];
 
-    if (storyConflicts.length > 0 || modeConflicts.length > 0 || classicConflicts.length > 0) {
+    if (
+      storyConflicts.length > 0 ||
+      modeConflicts.length > 0 ||
+      classicConflicts.length > 0 ||
+      classicLevelConflicts.length > 0
+    ) {
       throw new AppError(
         'Some questions are already assigned to another pool. Remove them before adding to this mode.',
         409,
@@ -244,6 +260,7 @@ export class AdminService {
           story_level_conflicts: storyConflicts,
           mode_conflicts: modeConflicts,
           classic_category_conflicts: classicConflicts,
+          classic_category_level_conflicts: classicLevelConflicts,
         }
       );
     }
@@ -254,10 +271,12 @@ export class AdminService {
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (!m || ids.length === 0) return [];
 
-    const [storyAssignments, modeAssignments, classicAssignments] = await Promise.all([
+    const [storyAssignments, modeAssignments, classicAssignments, classicLevelAssignments] =
+      await Promise.all([
       this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
       this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
       this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+      this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
     ]);
 
     const blocked = new Set();
@@ -281,6 +300,12 @@ export class AdminService {
       }
     }
 
+    if (Array.isArray(classicLevelAssignments)) {
+      for (const a of classicLevelAssignments) {
+        if (a?.quiz_question_id) blocked.add(a.quiz_question_id);
+      }
+    }
+
     return ids.filter((id) => !blocked.has(id));
   }
 
@@ -289,10 +314,12 @@ export class AdminService {
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (!cid || ids.length === 0) return;
 
-    const [storyAssignments, modeAssignments, classicAssignments] = await Promise.all([
+    const [storyAssignments, modeAssignments, classicAssignments, classicLevelAssignments] =
+      await Promise.all([
       this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
       this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
       this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+      this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
     ]);
 
     const storyConflicts = Array.isArray(storyAssignments) ? storyAssignments : [];
@@ -300,8 +327,14 @@ export class AdminService {
     const classicConflicts = Array.isArray(classicAssignments)
       ? classicAssignments.filter((a) => a?.category_id && a.category_id !== cid)
       : [];
+    const classicLevelConflicts = Array.isArray(classicLevelAssignments) ? classicLevelAssignments : [];
 
-    if (storyConflicts.length > 0 || modeConflicts.length > 0 || classicConflicts.length > 0) {
+    if (
+      storyConflicts.length > 0 ||
+      modeConflicts.length > 0 ||
+      classicConflicts.length > 0 ||
+      classicLevelConflicts.length > 0
+    ) {
       throw new AppError(
         'Some questions are already assigned to another pool. Remove them before adding to this category.',
         409,
@@ -310,6 +343,7 @@ export class AdminService {
           story_level_conflicts: storyConflicts,
           mode_conflicts: modeConflicts,
           classic_category_conflicts: classicConflicts,
+          classic_category_level_conflicts: classicLevelConflicts,
         }
       );
     }
@@ -320,10 +354,12 @@ export class AdminService {
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (!cid || ids.length === 0) return [];
 
-    const [storyAssignments, modeAssignments, classicAssignments] = await Promise.all([
+    const [storyAssignments, modeAssignments, classicAssignments, classicLevelAssignments] =
+      await Promise.all([
       this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
       this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
       this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+      this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
     ]);
 
     const blocked = new Set();
@@ -347,6 +383,12 @@ export class AdminService {
       }
     }
 
+    if (Array.isArray(classicLevelAssignments)) {
+      for (const a of classicLevelAssignments) {
+        if (a?.quiz_question_id) blocked.add(a.quiz_question_id);
+      }
+    }
+
     return ids.filter((id) => !blocked.has(id));
   }
 
@@ -355,10 +397,12 @@ export class AdminService {
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (!lid || ids.length === 0) return;
 
-    const [storyAssignments, modeAssignments, classicAssignments] = await Promise.all([
+    const [storyAssignments, modeAssignments, classicAssignments, classicLevelAssignments] =
+      await Promise.all([
       this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
       this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
       this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+      this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
     ]);
 
     const storyConflicts = Array.isArray(storyAssignments)
@@ -367,8 +411,14 @@ export class AdminService {
 
     const modeConflicts = Array.isArray(modeAssignments) ? modeAssignments : [];
     const classicConflicts = Array.isArray(classicAssignments) ? classicAssignments : [];
+    const classicLevelConflicts = Array.isArray(classicLevelAssignments) ? classicLevelAssignments : [];
 
-    if (storyConflicts.length > 0 || modeConflicts.length > 0 || classicConflicts.length > 0) {
+    if (
+      storyConflicts.length > 0 ||
+      modeConflicts.length > 0 ||
+      classicConflicts.length > 0 ||
+      classicLevelConflicts.length > 0
+    ) {
       throw new AppError(
         'Some questions are already assigned to another pool. Remove them before adding to this story level.',
         409,
@@ -377,6 +427,7 @@ export class AdminService {
           story_level_conflicts: storyConflicts,
           mode_conflicts: modeConflicts,
           classic_category_conflicts: classicConflicts,
+          classic_category_level_conflicts: classicLevelConflicts,
         }
       );
     }
@@ -387,10 +438,12 @@ export class AdminService {
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (!lid || ids.length === 0) return [];
 
-    const [storyAssignments, modeAssignments, classicAssignments] = await Promise.all([
+    const [storyAssignments, modeAssignments, classicAssignments, classicLevelAssignments] =
+      await Promise.all([
       this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
       this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
       this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+      this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
     ]);
 
     const blocked = new Set();
@@ -410,6 +463,12 @@ export class AdminService {
 
     if (Array.isArray(classicAssignments)) {
       for (const a of classicAssignments) {
+        if (a?.quiz_question_id) blocked.add(a.quiz_question_id);
+      }
+    }
+
+    if (Array.isArray(classicLevelAssignments)) {
+      for (const a of classicLevelAssignments) {
         if (a?.quiz_question_id) blocked.add(a.quiz_question_id);
       }
     }
@@ -549,8 +608,13 @@ export class AdminService {
     const story = await this.safeListIds(() => this.storyLevelPoolRepository?.listAllQuestionIds?.());
     const modes = await this.safeListIds(() => this.modeQuestionPoolRepository?.listAllQuestionIds?.());
     const classic = await this.safeListIds(() => this.classicCategoryPoolRepository?.listAllQuestionIds?.());
+    const classicLevels = await this.safeListIds(() =>
+      this.classicCategoryLevelPoolRepository?.listAllQuestionIds?.()
+    );
 
-    const ids = Array.from(new Set([...(story || []), ...(modes || []), ...(classic || [])].filter(Boolean)));
+    const ids = Array.from(
+      new Set([...(story || []), ...(modes || []), ...(classic || []), ...(classicLevels || [])].filter(Boolean))
+    );
     return {
       count: ids.length,
       ids,
@@ -558,6 +622,7 @@ export class AdminService {
         story: { count: (story || []).length, ids: story || [] },
         modes: { count: (modes || []).length, ids: modes || [] },
         classic_categories: { count: (classic || []).length, ids: classic || [] },
+        classic_levels: { count: (classicLevels || []).length, ids: classicLevels || [] },
       },
     };
   }
@@ -1058,6 +1123,344 @@ export class AdminService {
     return { success: true, added_count: eligible.length };
   }
 
+  // ===== Classic category levels (story-like classic) =====
+
+  async listClassicCategoryLevels(categoryId) {
+    if (!this.classicCategoryLevelRepository) {
+      throw new AppError(
+        'Classic category levels are not configured. Apply `TriviaVerse/api/sql/009_classic_category_levels.sql`.',
+        501,
+        'NOT_CONFIGURED'
+      );
+    }
+
+    const cat = await this.categoryRepository.findById(categoryId);
+    if (!cat) throw new AppError('Category not found', 404, 'NOT_FOUND');
+
+    const levels = await this.classicCategoryLevelRepository.listByCategoryId(cat.id);
+
+    const withCounts = await Promise.all(
+      levels.map(async (lvl) => {
+        try {
+          const count = await this.classicCategoryLevelPoolRepository?.countByLevelId?.(lvl.id);
+          return { ...lvl, pool_count: Number.isFinite(Number(count)) ? Number(count) : null };
+        } catch (err) {
+          if (err?.code !== 'NOT_CONFIGURED') throw err;
+          return { ...lvl, pool_count: null };
+        }
+      })
+    );
+
+    return {
+      category_id: cat.id,
+      name: cat.name,
+      levels: withCounts.map((lvl) => ({
+        id: lvl.id,
+        category_id: lvl.category_id,
+        level_number: lvl.level_number,
+        title: lvl.title,
+        difficulty_min: lvl.difficulty_min,
+        difficulty_max: lvl.difficulty_max,
+        xp_reward: lvl.xp_reward,
+        pool_count: lvl.pool_count ?? null,
+      })),
+    };
+  }
+
+  async createClassicCategoryLevel(categoryId, payload) {
+    if (!this.classicCategoryLevelRepository) {
+      throw new AppError(
+        'Classic category levels are not configured. Apply `TriviaVerse/api/sql/009_classic_category_levels.sql`.',
+        501,
+        'NOT_CONFIGURED'
+      );
+    }
+
+    const cat = await this.categoryRepository.findById(categoryId);
+    if (!cat) throw new AppError('Category not found', 404, 'NOT_FOUND');
+
+    const nextNumber =
+      payload.level_number ??
+      ((await this.classicCategoryLevelRepository.getMaxLevelNumberByCategory(cat.id)) || 0) + 1;
+
+    const created = await this.classicCategoryLevelRepository.create({
+      category_id: cat.id,
+      level_number: nextNumber,
+      title: payload.title,
+      difficulty_min: payload.difficulty_min ?? 1,
+      difficulty_max: payload.difficulty_max ?? 10,
+      xp_reward: payload.xp_reward ?? 0,
+    });
+
+    if (!created) throw new AppError('Failed to create level', 500, 'DB_ERROR');
+    return created;
+  }
+
+  async deleteClassicCategoryLevel(levelId) {
+    if (!this.classicCategoryLevelRepository) {
+      throw new AppError(
+        'Classic category levels are not configured. Apply `TriviaVerse/api/sql/009_classic_category_levels.sql`.',
+        501,
+        'NOT_CONFIGURED'
+      );
+    }
+
+    const level = await this.classicCategoryLevelRepository.findById(levelId);
+    if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
+
+    // Best-effort cleanup of related tables.
+    try {
+      await this.classicCategoryLevelPoolRepository?.deleteAllByLevelId?.(level.id);
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+    }
+
+    try {
+      await this.userClassicProgressRepository?.deleteByLevelId?.(level.id);
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+    }
+
+    try {
+      await this.classicSessionRepository?.deleteByLevelId?.(level.id);
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+    }
+
+    const ok = await this.classicCategoryLevelRepository.delete(level.id);
+    return { success: !!ok };
+  }
+
+  async assertExclusiveForClassicLevel(levelId, questionIds = []) {
+    const lid = String(levelId || '').trim();
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (!lid || ids.length === 0) return;
+
+    const [storyAssignments, modeAssignments, classicAssignments, classicLevelAssignments] =
+      await Promise.all([
+        this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
+      ]);
+
+    const storyConflicts = Array.isArray(storyAssignments) ? storyAssignments : [];
+    const modeConflicts = Array.isArray(modeAssignments) ? modeAssignments : [];
+    const classicConflicts = Array.isArray(classicAssignments) ? classicAssignments : [];
+    const classicLevelConflicts = Array.isArray(classicLevelAssignments)
+      ? classicLevelAssignments.filter((a) => a?.level_id && a.level_id !== lid)
+      : [];
+
+    if (
+      storyConflicts.length > 0 ||
+      modeConflicts.length > 0 ||
+      classicConflicts.length > 0 ||
+      classicLevelConflicts.length > 0
+    ) {
+      throw new AppError(
+        'Some questions are already assigned to another pool. Remove them before adding to this level.',
+        409,
+        'POOL_CONFLICT',
+        {
+          story_level_conflicts: storyConflicts,
+          mode_conflicts: modeConflicts,
+          classic_category_conflicts: classicConflicts,
+          classic_category_level_conflicts: classicLevelConflicts,
+        }
+      );
+    }
+  }
+
+  async filterEligibleForClassicLevel(levelId, questionIds = []) {
+    const lid = String(levelId || '').trim();
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (!lid || ids.length === 0) return [];
+
+    const [storyAssignments, modeAssignments, classicAssignments, classicLevelAssignments] =
+      await Promise.all([
+        this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
+      ]);
+
+    const blocked = new Set();
+
+    if (Array.isArray(storyAssignments)) {
+      for (const a of storyAssignments) {
+        if (a?.quiz_question_id) blocked.add(a.quiz_question_id);
+      }
+    }
+
+    if (Array.isArray(modeAssignments)) {
+      for (const a of modeAssignments) {
+        if (a?.quiz_question_id) blocked.add(a.quiz_question_id);
+      }
+    }
+
+    if (Array.isArray(classicAssignments)) {
+      for (const a of classicAssignments) {
+        if (a?.quiz_question_id) blocked.add(a.quiz_question_id);
+      }
+    }
+
+    if (Array.isArray(classicLevelAssignments)) {
+      for (const a of classicLevelAssignments) {
+        if (!a?.quiz_question_id) continue;
+        if (a.level_id && a.level_id !== lid) blocked.add(a.quiz_question_id);
+      }
+    }
+
+    return ids.filter((id) => !blocked.has(id));
+  }
+
+  async listClassicCategoryLevelPoolQuestions(levelId, { limit = 50, offset = 0 } = {}) {
+    if (!this.classicCategoryLevelRepository || !this.classicCategoryLevelPoolRepository) {
+      throw new AppError(
+        'Classic category level pools are not configured. Apply `TriviaVerse/api/sql/009_classic_category_levels.sql`.',
+        501,
+        'NOT_CONFIGURED'
+      );
+    }
+
+    const level = await this.classicCategoryLevelRepository.findById(levelId);
+    if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
+
+    const ids = await this.classicCategoryLevelPoolRepository.listQuestionIdsByLevelIdPaged(level.id, {
+      limit,
+      offset,
+    });
+    const questions = await this.quizQuestionRepository.listByIds(ids);
+    const questionMap = new Map(questions.map((q) => [q.id, q]));
+
+    return {
+      level_id: level.id,
+      category_id: level.category_id,
+      level_number: level.level_number,
+      title: level.title,
+      limit: Math.min(100, Math.max(1, Number(limit) || 50)),
+      offset: Math.max(0, Number(offset) || 0),
+      questions: ids
+        .map((id) => questionMap.get(id))
+        .filter(Boolean)
+        .map((q) => ({
+          id: q.id,
+          question_text: q.question_text,
+          difficulty_rating: q.difficulty_rating ?? null,
+        })),
+    };
+  }
+
+  async listClassicCategoryLevelPoolQuestionIds(levelId) {
+    if (!this.classicCategoryLevelRepository || !this.classicCategoryLevelPoolRepository) {
+      throw new AppError(
+        'Classic category level pools are not configured. Apply `TriviaVerse/api/sql/009_classic_category_levels.sql`.',
+        501,
+        'NOT_CONFIGURED'
+      );
+    }
+
+    const level = await this.classicCategoryLevelRepository.findById(levelId);
+    if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
+
+    const ids = await this.classicCategoryLevelPoolRepository.listQuestionIdsByLevelId(level.id);
+    const unique = Array.from(new Set((ids || []).filter(Boolean)));
+    return { level_id: level.id, count: unique.length, ids: unique };
+  }
+
+  async addClassicCategoryLevelPool(levelId, questionIds = []) {
+    if (!this.classicCategoryLevelRepository || !this.classicCategoryLevelPoolRepository) {
+      throw new AppError(
+        'Classic category level pools are not configured. Apply `TriviaVerse/api/sql/009_classic_category_levels.sql`.',
+        501,
+        'NOT_CONFIGURED'
+      );
+    }
+
+    const level = await this.classicCategoryLevelRepository.findById(levelId);
+    if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
+
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (ids.length === 0) return { success: true, added_count: 0 };
+
+    await this.assertExclusiveForClassicLevel(level.id, ids);
+    await this.classicCategoryLevelPoolRepository.upsertMany(level.id, ids);
+    return { success: true, added_count: ids.length };
+  }
+
+  async removeClassicCategoryLevelPool(levelId, questionIds = []) {
+    if (!this.classicCategoryLevelPoolRepository) {
+      throw new AppError(
+        'Classic category level pools are not configured. Apply `TriviaVerse/api/sql/009_classic_category_levels.sql`.',
+        501,
+        'NOT_CONFIGURED'
+      );
+    }
+
+    const level = await this.classicCategoryLevelRepository.findById(levelId);
+    if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
+
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    if (ids.length === 0) return { success: true, removed_count: 0 };
+
+    await this.classicCategoryLevelPoolRepository.deleteMany(level.id, ids);
+    return { success: true, removed_count: ids.length };
+  }
+
+  async replaceClassicCategoryLevelPool(levelId, questionIds = []) {
+    if (!this.classicCategoryLevelPoolRepository) {
+      throw new AppError(
+        'Classic category level pools are not configured. Apply `TriviaVerse/api/sql/009_classic_category_levels.sql`.',
+        501,
+        'NOT_CONFIGURED'
+      );
+    }
+
+    const level = await this.classicCategoryLevelRepository.findById(levelId);
+    if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
+
+    const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
+    await this.assertExclusiveForClassicLevel(level.id, ids);
+    await this.classicCategoryLevelPoolRepository.deleteAllByLevelId(level.id);
+    if (ids.length > 0) await this.classicCategoryLevelPoolRepository.upsertMany(level.id, ids);
+    return { success: true, count: ids.length };
+  }
+
+  async seedClassicCategoryLevelPool(levelId, { random_count = 10 } = {}) {
+    if (!this.classicCategoryLevelRepository || !this.classicCategoryLevelPoolRepository) {
+      throw new AppError(
+        'Classic category level pools are not configured. Apply `TriviaVerse/api/sql/009_classic_category_levels.sql`.',
+        501,
+        'NOT_CONFIGURED'
+      );
+    }
+
+    const level = await this.classicCategoryLevelRepository.findById(levelId);
+    if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
+
+    const count = Math.min(50, Math.max(1, Number(random_count) || 10));
+
+    let questions;
+    try {
+      questions = await this.quizQuestionRepository.listRandomGlobalByDifficultyRange(count, {
+        min: level.difficulty_min ?? 1,
+        max: level.difficulty_max ?? 10,
+      });
+    } catch (err) {
+      if (err?.code !== 'NOT_CONFIGURED') throw err;
+      questions = await this.quizQuestionRepository.listRandomGlobal(count);
+    }
+
+    const raw = questions.map((q) => q.id).filter(Boolean);
+    const eligible = await this.filterEligibleForClassicLevel(level.id, raw);
+    if (eligible.length === 0) {
+      throw new AppError('No eligible global questions available', 400, 'NO_POOL');
+    }
+
+    await this.classicCategoryLevelPoolRepository.upsertMany(level.id, eligible);
+    return { success: true, added_count: eligible.length };
+  }
+
   async deleteGlobalQuestion(questionId) {
     const qid = String(questionId || '').trim();
     if (!qid) throw new AppError('Invalid question_id', 400, 'INVALID_INPUT');
@@ -1073,6 +1476,7 @@ export class AdminService {
       this.storyLevelPoolRepository?.deleteByQuizQuestionIds?.([qid]),
       this.modeQuestionPoolRepository?.deleteByQuizQuestionIds?.([qid]),
       this.classicCategoryPoolRepository?.deleteByQuizQuestionIds?.([qid]),
+      this.classicCategoryLevelPoolRepository?.deleteByQuizQuestionIds?.([qid]),
       this.sessionQuestionRepository?.clearSourceQuestionIds?.([qid]),
     ]);
 

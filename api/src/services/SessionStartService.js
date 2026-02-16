@@ -56,6 +56,10 @@ export class SessionStartService {
     millionaireLadderRepository,
     modeQuestionPoolRepository,
     classicCategoryPoolRepository,
+    classicCategoryLevelRepository,
+    classicCategoryLevelPoolRepository,
+    classicSessionRepository,
+    classicCategoryService,
   }) {
     this.gameSessionRepository = gameSessionRepository;
     this.sessionQuestionRepository = sessionQuestionRepository;
@@ -72,6 +76,10 @@ export class SessionStartService {
     this.millionaireLadderRepository = millionaireLadderRepository;
     this.modeQuestionPoolRepository = modeQuestionPoolRepository;
     this.classicCategoryPoolRepository = classicCategoryPoolRepository;
+    this.classicCategoryLevelRepository = classicCategoryLevelRepository;
+    this.classicCategoryLevelPoolRepository = classicCategoryLevelPoolRepository;
+    this.classicSessionRepository = classicSessionRepository;
+    this.classicCategoryService = classicCategoryService;
   }
 
   async listQuestionsForMode(mode, limit) {
@@ -398,6 +406,35 @@ export class SessionStartService {
     }
 
     return this.listQuestionsForMode('classic', count);
+  }
+
+  async listQuestionsForClassicLevel(levelId) {
+    const lid = String(levelId || '').trim();
+    if (!lid) return [];
+
+    if (!this.classicCategoryLevelPoolRepository) {
+      throw new AppError(
+        'Classic category levels are not configured on the server',
+        501,
+        'NOT_CONFIGURED'
+      );
+    }
+
+    const ids = await this.classicCategoryLevelPoolRepository.listQuestionIdsByLevelId(lid);
+    if (ids.length === 0) {
+      throw new AppError('No questions configured for this level', 400, 'NO_POOL');
+    }
+
+    const wantedIds = ids.slice(0, 10);
+    const rows = await this.quizQuestionRepository.listByIds(wantedIds);
+    const byId = new Map(rows.map((q) => [q.id, q]));
+    const questions = wantedIds.map((id) => byId.get(id)).filter(Boolean);
+
+    if (questions.length === 0) {
+      throw new AppError('Some questions in this level pool no longer exist. Please rebuild the pool.', 400, 'POOL_CORRUPT');
+    }
+
+    return questions;
   }
 
   async assertCanViewQuiz(userId, quiz) {
@@ -923,9 +960,79 @@ export class SessionStartService {
     };
   }
 
-  async startClassicSession(userId, { category_id, difficulty, questions_count }) {
+  async startClassicSession(userId, { category_id, level_number, difficulty, questions_count }) {
+    const cid = String(category_id || '').trim();
+    const levelNum = Number(level_number);
+
+    // Prefer level-based classic (story-like per category) when configured and requested.
+    if (cid && Number.isFinite(levelNum) && this.classicCategoryLevelRepository) {
+      const level = await this.classicCategoryLevelRepository.findByCategoryAndLevelNumber(
+        cid,
+        levelNum
+      );
+      if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
+
+      if (userId && this.classicCategoryService) {
+        await this.classicCategoryService.assertLevelUnlocked(userId, level);
+      }
+
+      const questions = await this.listQuestionsForClassicLevel(level.id);
+
+      let sessionId = null;
+      let status = 'in_progress';
+
+      if (userId) {
+        const session = await this.gameSessionRepository.create({
+          user_id: userId,
+          mode: 'classic',
+          category_id: cid,
+          difficulty:
+            level.difficulty_max <= 3 ? 'easy' : level.difficulty_max <= 6 ? 'medium' : 'hard',
+          total_questions: questions.length,
+          status: 'in_progress',
+        });
+        if (!session) throw new AppError('Failed to create session', 500, 'DB_ERROR');
+        sessionId = session.id;
+        status = session.status;
+
+        try {
+          await this.classicSessionRepository?.create({
+            session_id: session.id,
+            category_id: cid,
+            level_id: level.id,
+            level_number: level.level_number,
+          });
+        } catch (err) {
+          if (err?.code !== 'NOT_CONFIGURED') throw err;
+          // If classic_sessions isn't configured, gameplay still works but progress unlock won't persist.
+        }
+
+        await this.snapshotSessionQuestions(session.id, questions);
+
+        // Cache is an optimization. If it fails, gameplay still works via DB.
+        try {
+          await this.primeSessionCache(session, userId);
+        } catch {
+          // ignore
+        }
+      } else {
+        sessionId = randomUUID();
+        await this.primeGuestSessionCache(sessionId, 'classic', questions);
+      }
+
+      return {
+        session_id: sessionId,
+        mode: 'classic',
+        category_id: cid,
+        level_number: level.level_number,
+        status,
+        total_questions: questions.length,
+      };
+    }
+
+    // Legacy classic (random/pool-based). Keep for older clients.
     const questions = await this.listQuestionsForClassic({
-      category_id,
+      category_id: cid || null,
       limit: questions_count,
     });
     if (questions.length === 0) {
@@ -938,7 +1045,7 @@ export class SessionStartService {
       const session = await this.gameSessionRepository.create({
         user_id: userId,
         mode: 'classic',
-        category_id,
+        category_id: cid || null,
         difficulty,
         total_questions: questions.length,
         status: 'in_progress',
@@ -949,7 +1056,6 @@ export class SessionStartService {
 
       await this.snapshotSessionQuestions(session.id, questions);
 
-      // Cache is an optimization. If it fails, gameplay still works via DB.
       try {
         await this.primeSessionCache(session, userId);
       } catch {
@@ -963,6 +1069,7 @@ export class SessionStartService {
     return {
       session_id: sessionId,
       mode: 'classic',
+      category_id: cid || null,
       total_questions: questions.length,
       status,
     };

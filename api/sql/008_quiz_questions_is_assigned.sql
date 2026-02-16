@@ -29,6 +29,10 @@ begin
   has_story := to_regclass('public.story_level_pool') is not null;
   has_classic := to_regclass('public.classic_category_pool') is not null;
   has_mode := to_regclass('public.mode_question_pool') is not null;
+  -- New classic per-level pool
+  if to_regclass('public.classic_category_level_pool') is not null then
+    expr := expr || ' or exists (select 1 from public.classic_category_level_pool p where p.quiz_question_id = q.id)';
+  end if;
 
   -- Backfill current assignment state (best-effort).
   if has_story then
@@ -70,6 +74,17 @@ begin
   if to_regclass('public.classic_category_pool') is not null then
     execute
       'select exists (select 1 from public.classic_category_pool where quiz_question_id = $1 limit 1)'
+      into assigned
+      using p_question_id;
+    if assigned then
+      return true;
+    end if;
+  end if;
+
+  -- classic category level pool
+  if to_regclass('public.classic_category_level_pool') is not null then
+    execute
+      'select exists (select 1 from public.classic_category_level_pool where quiz_question_id = $1 limit 1)'
       into assigned
       using p_question_id;
     if assigned then
@@ -159,6 +174,18 @@ begin
     end if;
   end if;
 
+  -- classic_category_level_pool triggers (new)
+  if to_regclass('public.classic_category_level_pool') is not null then
+    if not exists (select 1 from pg_trigger where tgname = 'tv_classic_category_level_pool_refresh_assigned_trg') then
+      execute '
+        create trigger tv_classic_category_level_pool_refresh_assigned_trg
+        after insert or update or delete on public.classic_category_level_pool
+        for each row
+        execute function public.tv_pool_refresh_question_is_assigned()
+      ';
+    end if;
+  end if;
+
   -- mode_question_pool triggers
   if to_regclass('public.mode_question_pool') is not null then
     if not exists (select 1 from pg_trigger where tgname = 'tv_mode_question_pool_refresh_assigned_trg') then
@@ -171,4 +198,3 @@ begin
     end if;
   end if;
 end $$;
-

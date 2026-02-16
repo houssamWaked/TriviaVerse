@@ -238,4 +238,50 @@ export class AdminController {
     const data = await this.adminService.seedClassicCategoryPool(req.params.category_id, req.body);
     res.status(200).json(data);
   };
+
+  // classic category levels
+  listClassicCategoryLevels = async (req, res) => {
+    const data = await this.adminService.listClassicCategoryLevels(req.params.category_id);
+    res.status(200).json(data);
+  };
+
+  createClassicCategoryLevel = async (req, res) => {
+    const data = await this.adminService.createClassicCategoryLevel(req.params.category_id, req.body);
+    res.status(201).json(data);
+  };
+
+  deleteClassicCategoryLevel = async (req, res) => {
+    const data = await this.adminService.deleteClassicCategoryLevel(req.params.level_id);
+    res.status(200).json(data);
+  };
+
+  listClassicCategoryLevelPoolQuestions = async (req, res) => {
+    const data = await this.adminService.listClassicCategoryLevelPoolQuestions(req.params.level_id, req.query);
+    res.status(200).json(data);
+  };
+
+  listClassicCategoryLevelPoolQuestionIds = async (req, res) => {
+    const data = await this.adminService.listClassicCategoryLevelPoolQuestionIds(req.params.level_id);
+    res.status(200).json(data);
+  };
+
+  addClassicCategoryLevelPool = async (req, res) => {
+    const data = await this.adminService.addClassicCategoryLevelPool(req.params.level_id, req.body.question_ids);
+    res.status(200).json(data);
+  };
+
+  removeClassicCategoryLevelPool = async (req, res) => {
+    const data = await this.adminService.removeClassicCategoryLevelPool(req.params.level_id, req.body.question_ids);
+    res.status(200).json(data);
+  };
+
+  replaceClassicCategoryLevelPool = async (req, res) => {
+    const data = await this.adminService.replaceClassicCategoryLevelPool(req.params.level_id, req.body.question_ids);
+    res.status(200).json(data);
+  };
+
+  seedClassicCategoryLevelPool = async (req, res) => {
+    const data = await this.adminService.seedClassicCategoryLevelPool(req.params.level_id, req.body);
+    res.status(200).json(data);
+  };
 }

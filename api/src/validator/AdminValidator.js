@@ -9,6 +9,14 @@ export const createStoryLevelBody = [
   body('xp_reward').optional().isInt({ min: 0, max: 1000000 }),
 ];
 
+export const createClassicCategoryLevelBody = [
+  body('level_number').optional().isInt({ min: 1, max: 1000 }),
+  body('title').isString().trim().isLength({ min: 1, max: 80 }),
+  body('difficulty_min').optional().isInt({ min: 1, max: 10 }),
+  body('difficulty_max').optional().isInt({ min: 1, max: 10 }),
+  body('xp_reward').optional().isInt({ min: 0, max: 1000000 }),
+];
+
 export const levelIdParam = [
   param('level_id').isUUID().withMessage('level_id must be a uuid'),
 ];
