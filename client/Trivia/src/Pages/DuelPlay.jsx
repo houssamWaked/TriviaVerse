@@ -32,6 +32,10 @@ export default function DuelPlay({ user, duelId, onRequireAuth, onBack }) {
       const res = await api.getDuelState(duelId);
       setState(res);
       setError('');
+      if (res?.status === 'completed' && pollRef.current) {
+        window.clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
     } catch (err) {
       if (isUnauthorized(err)) return onRequireAuth?.();
       setError(getApiErrorMessage(err));
@@ -52,6 +56,7 @@ export default function DuelPlay({ user, duelId, onRequireAuth, onBack }) {
   const question = state?.question || null;
   const msUntilStart = Number(state?.ms_until_start) || 0;
   const isCompleted = state?.status === 'completed';
+  const duelMode = String(state?.mode || 'custom').trim().toLowerCase();
 
   const myUserId = user?.id;
   const myPoints =
@@ -69,6 +74,8 @@ export default function DuelPlay({ user, duelId, onRequireAuth, onBack }) {
     if (!Number.isFinite(a) || !Number.isFinite(b) || b <= 0) return 0;
     return clampPct(Math.round((a / b) * 100));
   }, [question?.question_index, question?.total_questions]);
+
+  const headerPct = isCompleted ? 100 : progressPct;
 
   const myAnswered = useMemo(() => {
     if (!myUserId) return false;
@@ -103,6 +110,59 @@ export default function DuelPlay({ user, duelId, onRequireAuth, onBack }) {
       ? STRINGS.DUEL_PLAY.youWonPoint
       : STRINGS.DUEL_PLAY.opponentWonPoint;
   }, [claim, myUserId]);
+
+  const opponentUserId = useMemo(() => {
+    if (!myUserId) return null;
+    if (!state?.challenger_user_id || !state?.opponent_user_id) return null;
+    return state.challenger_user_id === myUserId ? state.opponent_user_id : state.challenger_user_id;
+  }, [myUserId, state?.challenger_user_id, state?.opponent_user_id]);
+
+  const resultText = useMemo(() => {
+    const winner = state?.winner_user_id ? String(state.winner_user_id) : '';
+    if (winner) {
+      if (!myUserId) return STRINGS.DUELS.result.tie;
+      return winner === String(myUserId) ? STRINGS.PROFILE.duels.result.youWon : STRINGS.PROFILE.duels.result.youLost;
+    }
+    if (Number(myPoints) === Number(oppPoints)) return STRINGS.DUELS.result.tie;
+    return Number(myPoints) > Number(oppPoints)
+      ? STRINGS.PROFILE.duels.result.youWon
+      : STRINGS.PROFILE.duels.result.youLost;
+  }, [myPoints, myUserId, oppPoints, state?.winner_user_id]);
+
+  const startRematch = async () => {
+    if (busy) return;
+    if (!opponentUserId) {
+      setError('Missing opponent user id.');
+      return;
+    }
+
+    const body = {
+      friend_user_id: opponentUserId,
+      mode: duelMode === 'blitz' ? 'blitz' : 'custom',
+      ...(duelMode === 'blitz'
+        ? {
+            difficulty: state?.difficulty ?? null,
+            category_id: state?.category_id ?? null,
+          }
+        : { quiz_id: state?.quiz_id }),
+    };
+
+    setBusy(true);
+    setError('');
+    try {
+      const created = await api.createDuel(body);
+      const nextDuelId = created?.id || created?.duel_id;
+      if (!nextDuelId) throw new Error('Failed to create rematch duel.');
+      if (typeof window !== 'undefined') {
+        window.location.hash = `#/duels/${encodeURIComponent(String(nextDuelId))}/play`;
+      }
+    } catch (err) {
+      if (isUnauthorized(err)) return onRequireAuth?.();
+      setError(getApiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const answer = async (sessionOptionId) => {
     if (!duelId || !sessionOptionId) return;
@@ -177,9 +237,49 @@ export default function DuelPlay({ user, duelId, onRequireAuth, onBack }) {
         {!!error && <div style={DuelPlayStyle.errorCard}>{error}</div>}
 
         <div className="tv-card" style={DuelPlayStyle.card}>
-          <h2 style={DuelPlayStyle.qTitle}>{STRINGS.DUEL_PLAY.title(progressPct)}</h2>
+          <h2 style={DuelPlayStyle.qTitle}>{STRINGS.DUEL_PLAY.title(headerPct)}</h2>
 
-          {!question ? (
+          {isCompleted ? (
+            <>
+              <div style={DuelPlayStyle.resultHeadline}>{resultText}</div>
+              <div style={DuelPlayStyle.resultSub}>
+                {duelMode === 'blitz' ? 'Blitz duel finished.' : 'Custom duel finished.'}
+              </div>
+
+              <div style={DuelPlayStyle.resultGrid}>
+                <div style={DuelPlayStyle.resultStat}>
+                  <div style={DuelPlayStyle.resultStatLabel}>You</div>
+                  <div style={DuelPlayStyle.resultStatValue}>{myPoints}</div>
+                </div>
+                <div style={DuelPlayStyle.resultStat}>
+                  <div style={DuelPlayStyle.resultStatLabel}>Opponent</div>
+                  <div style={DuelPlayStyle.resultStatValue}>{oppPoints}</div>
+                </div>
+              </div>
+
+              <div style={DuelPlayStyle.resultActions}>
+                <button
+                  type="button"
+                  className="tv-card tv-card--hover"
+                  style={DuelPlayStyle.btnWhite}
+                  onClick={onBack}
+                  disabled={busy}
+                >
+                  {STRINGS.COMMON.symbols.leftArrow} {STRINGS.COMMON.buttons.back}
+                </button>
+                <button
+                  type="button"
+                  className="tv-card tv-card--hover"
+                  style={DuelPlayStyle.btnPrimary}
+                  onClick={startRematch}
+                  disabled={busy || !opponentUserId || (duelMode !== 'blitz' && !state?.quiz_id)}
+                  title={!opponentUserId ? 'Missing opponent' : undefined}
+                >
+                  {ICONS.common.bolt} Rematch
+                </button>
+              </div>
+            </>
+          ) : !question ? (
             <div style={DuelPlayStyle.toast}>
               {msUntilStart > 0 ? STRINGS.DUEL_PLAY.waiting : STRINGS.COMMON.loading}
             </div>
