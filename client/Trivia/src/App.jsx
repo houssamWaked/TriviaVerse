@@ -201,11 +201,9 @@ function App() {
         }
       } catch {
         if (cancelled) return;
-        // Refresh cookie missing/blocked/expired: clear the persisted user so
-        // the UI doesn’t show “logged in” while protected API calls 401.
-        clearAuthToken();
-        clearCurrentUser();
-        setUser(null);
+        // If refresh fails here, keep the user snapshot and let the API layer
+        // attempt refresh on-demand (first protected 401). This avoids "random"
+        // logouts on transient network errors or mobile tab discards.
       }
     }
 

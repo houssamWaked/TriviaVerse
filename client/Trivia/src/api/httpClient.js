@@ -6,11 +6,15 @@ import { clearAuthToken, getAuthToken, setAuthToken } from './tokenStore';
 import { endpoints } from './endpoints';
 import { clearCurrentUser, getCurrentUser } from './userStore';
 
-const envBase = typeof import.meta.env.VITE_API_BASE_URL === 'string' ? import.meta.env.VITE_API_BASE_URL.trim() : '';
+const envBase =
+  typeof import.meta.env.VITE_API_BASE_URL === 'string'
+    ? import.meta.env.VITE_API_BASE_URL.trim()
+    : '';
 // Defaults:
-// - dev: hit local API
-// - prod: use same-origin relative `/api/...` (works on Vercel when API is hosted on same domain)
-const baseURL = envBase || (import.meta.env.PROD ? '' : 'http://localhost:3001');
+// - dev: hit local API (or an explicit VITE_API_BASE_URL)
+// - prod: always use same-origin relative `/api/...` so refresh cookies remain first-party
+//   (use Vercel rewrites / a reverse proxy to forward `/api/*` to your backend).
+const baseURL = import.meta.env.PROD ? '' : envBase || 'http://localhost:3001';
 
 export const http = axios.create({
   baseURL,
@@ -91,10 +95,11 @@ http.interceptors.response.use(
     if (config._retry) return Promise.reject(error);
     if (isAuthEndpoint(config.url)) return Promise.reject(error);
 
-    // Don't hammer `/api/auth/refresh` when there's no access token to refresh.
-    // (e.g. guest users hitting protected routes, or after we cleared the token.)
+    // Don't hammer `/api/auth/refresh` when we clearly don't have a session.
+    // If a user snapshot exists (localStorage) but the access token is missing
+    // (e.g. mobile tab discard), allow one refresh attempt to restore the session.
     const token = getAuthToken();
-    if (!token) return Promise.reject(error);
+    if (!token && !getCurrentUser()) return Promise.reject(error);
 
     config._retry = true;
     try {
@@ -117,9 +122,12 @@ http.interceptors.response.use(
 
       clearAuthToken();
 
-      // If we thought we had a session but refresh can't restore it,
-      // clear the persisted user so the UI doesn't look "logged in".
-      if (getCurrentUser()) clearCurrentUser();
+      // Only clear the persisted user when the server explicitly says the session
+      // cannot be refreshed (cookie missing/expired, blocked, etc). For transient
+      // failures (network/5xx), keep the user snapshot so the app can recover.
+      if ((refreshStatus === 401 || refreshStatus === 403) && getCurrentUser()) {
+        clearCurrentUser();
+      }
       return Promise.reject(error);
     }
   }
