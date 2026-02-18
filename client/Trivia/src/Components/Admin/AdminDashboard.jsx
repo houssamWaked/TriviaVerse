@@ -239,6 +239,9 @@ export default function AdminDashboard({
   const openClassicLevels = async (category) => {
     const c = category && typeof category === 'object' ? category : null;
     if (!c?.id) return;
+    // Prevent stacking modals (categories -> levels -> picker/pool) which can feel like "going back"
+    // when the top modal closes.
+    setClassicCategoriesOpen(false);
     setClassicLevelsCategory({ id: c.id, name: c.name });
     setClassicLevelsOpen(true);
     setClassicLevelForm((v) => ({ ...v, title: '' }));
@@ -2413,7 +2416,10 @@ export default function AdminDashboard({
                     type="button"
                     className="tv-card tv-card--hover"
                     style={AdminStyle.btn}
-                    onClick={() => openClassicLevels(c)}
+                    onClick={() => {
+                      setClassicCategoriesOpen(false);
+                      openClassicLevels(c);
+                    }}
                     disabled={busy}
                     title="Manage classic levels for this category"
                   >
