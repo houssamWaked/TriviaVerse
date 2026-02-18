@@ -14,11 +14,15 @@ export class CategoryService {
   constructor(
     categoryRepository,
     quizQuestionRepository = null,
-    classicCategoryPoolRepository = null
+    classicCategoryPoolRepository = null,
+    classicCategoryLevelRepository = null,
+    classicCategoryLevelPoolRepository = null
   ) {
     this.categoryRepository = categoryRepository;
     this.quizQuestionRepository = quizQuestionRepository;
     this.classicCategoryPoolRepository = classicCategoryPoolRepository;
+    this.classicCategoryLevelRepository = classicCategoryLevelRepository;
+    this.classicCategoryLevelPoolRepository = classicCategoryLevelPoolRepository;
   }
 
   /**
@@ -85,6 +89,21 @@ export class CategoryService {
   async getCategoryStats(categoryId) {
     const exists = await this.categoryRepository.findById(categoryId);
     if (!exists) return null;
+
+    // Prefer classic levels: sum of questions across all levels in the category.
+    // This is what players actually play when the classic-level schema is enabled.
+    if (this.classicCategoryLevelRepository && this.classicCategoryLevelPoolRepository) {
+      try {
+        const levels = await this.classicCategoryLevelRepository.listByCategoryId(categoryId);
+        if (Array.isArray(levels) && levels.length > 0) {
+          const levelIds = levels.map((l) => l?.id).filter(Boolean);
+          const count = await this.classicCategoryLevelPoolRepository.countByLevelIds(levelIds);
+          return { category_id: categoryId, questions_available: count };
+        }
+      } catch (err) {
+        if (err?.code !== 'NOT_CONFIGURED') throw err;
+      }
+    }
 
     // If classic category pools are configured, show the per-category count.
     if (this.classicCategoryPoolRepository) {

@@ -18,6 +18,18 @@ function toAppError(error) {
 }
 
 export class ClassicCategoryLevelPoolRepository {
+  async countByLevelIds(levelIds = []) {
+    const ids = Array.from(new Set((levelIds || []).filter(Boolean)));
+    if (ids.length === 0) return 0;
+
+    const { count, error } = await supabase
+      .from('classic_category_level_pool')
+      .select('*', { count: 'exact', head: true })
+      .in('level_id', ids);
+    if (error) throw toAppError(error);
+    return count ?? 0;
+  }
+
   async listAllQuestionIds() {
     const pageSize = 1000;
     const ids = [];
@@ -145,4 +157,3 @@ export class ClassicCategoryLevelPoolRepository {
     return true;
   }
 }
-

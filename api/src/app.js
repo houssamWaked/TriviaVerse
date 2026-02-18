@@ -195,7 +195,9 @@ const quizReportRepository = new QuizReportRepository();
 const categoryService = new CategoryService(
   categoryRepository,
   quizQuestionRepository,
-  classicCategoryPoolRepository
+  classicCategoryPoolRepository,
+  classicCategoryLevelRepository,
+  classicCategoryLevelPoolRepository
 );
 const authService = new AuthService(userRepository, userStatsRepository);
 const publicService = new PublicService(
