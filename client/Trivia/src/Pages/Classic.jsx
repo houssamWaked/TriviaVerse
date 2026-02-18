@@ -9,12 +9,6 @@ import {
   loadGuestClassicProgress,
 } from '@/utils/guestClassicProgress';
 
-function clampInt(value, min, max) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return min;
-  return Math.min(max, Math.max(min, Math.floor(n)));
-}
-
 function toDifficultyLabel(max) {
   const m = Number(max) || 0;
   if (m <= 3) return 'easy';
@@ -46,10 +40,6 @@ export default function Classic({
 
   const [view, setView] = useState('categories'); // categories | levels
   const [categoryId, setCategoryId] = useState('');
-  const [difficulty, setDifficulty] = useState(
-    STRINGS.CLASSIC.difficulty.options[0]
-  );
-  const [questionsCount, setQuestionsCount] = useState(10);
 
   const [levelsBusy, setLevelsBusy] = useState(false);
   const [levelsError, setLevelsError] = useState('');
@@ -80,6 +70,20 @@ export default function Classic({
 
     Promise.all(
       categories.map(async (c) => {
+        try {
+          // Prefer classic "levels" counts: sum of pool_count across all levels in the category.
+          // This matches classic gameplay when classic levels are configured.
+          const levelsRes = await api.getClassicCategoryLevels(c.id);
+          const list = Array.isArray(levelsRes?.levels) ? levelsRes.levels : [];
+          const hasCounts = list.some((l) => Number.isFinite(Number(l?.pool_count)));
+          if (list.length > 0 && hasCounts) {
+            const sum = list.reduce((acc, l) => acc + (Number(l?.pool_count) || 0), 0);
+            return [c.id, sum];
+          }
+        } catch {
+          // fall through
+        }
+
         try {
           const s = await api.getCategoryStats(c.id);
           return [c.id, Number(s?.questions_available)];
@@ -219,8 +223,8 @@ export default function Classic({
     try {
       const res = await api.startClassicSession({
         category_id: categoryId,
-        difficulty,
-        questions_count: clampInt(questionsCount, 1, 50),
+        difficulty: STRINGS.CLASSIC.difficulty.options[0],
+        questions_count: 10,
       });
       if (res?.session_id) onPlaySession?.(res.session_id, categoryId, null);
     } catch (err) {
@@ -566,77 +570,6 @@ export default function Classic({
               <div style={ClassicStyle.statsLabel}>{s.label}</div>
             </div>
           ))}
-        </div>
-
-        {/* ADVANCED (styled like the reference bar) */}
-        <div style={ClassicStyle.advancedWrap}>
-          <details className="tv-card" style={ClassicStyle.advancedDetails}>
-            <summary style={ClassicStyle.advancedSummary}>
-              {ICONS.common.play} {STRINGS.CLASSIC.advanced.title}
-            </summary>
-
-            <div style={ClassicStyle.advancedBody}>
-              <div style={ClassicStyle.advancedRow}>
-                <div style={ClassicStyle.advancedGroup}>
-                  <div style={ClassicStyle.advancedLabel}>
-                    {STRINGS.CLASSIC.difficultyTitle}
-                  </div>
-                  <div style={ClassicStyle.pillsRow}>
-                    {STRINGS.CLASSIC.difficulty.options.map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        className="tv-card tv-card--hover"
-                        disabled={busy}
-                        onClick={() => setDifficulty(d)}
-                        style={ClassicStyle.pillBtn(difficulty === d)}
-                      >
-                        {d}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={ClassicStyle.advancedGroup}>
-                  <div style={ClassicStyle.advancedLabel}>
-                    {STRINGS.CLASSIC.advanced.questionsLabel}
-                  </div>
-                  <input
-                    style={ClassicStyle.questionsInput}
-                    type="number"
-                    min={1}
-                    max={50}
-                    value={questionsCount}
-                    onChange={(e) => setQuestionsCount(e.target.value)}
-                    disabled={busy}
-                  />
-                </div>
-              </div>
-
-              <div style={ClassicStyle.advancedCurrent}>
-                {STRINGS.CLASSIC.advanced.currentPrefix}{' '}
-                {selectedCategory
-                  ? selectedCategory.name
-                  : STRINGS.COMMON.separators.emDash}{' '}
-                {STRINGS.COMMON.separators.dot} {difficulty}{' '}
-                {STRINGS.COMMON.separators.dot}{' '}
-                {clampInt(questionsCount, 1, 50)}{' '}
-                {STRINGS.CLASSIC.advanced.questionsSuffix}
-              </div>
-
-              <div style={{ marginTop: 12 }}>
-                <button
-                  type="button"
-                  className="tv-card tv-card--hover"
-                  style={ClassicStyle.levelsActionBtn}
-                  onClick={startLegacy}
-                  disabled={busy || !categoryId}
-                >
-                  {ICONS.common.play} {STRINGS.CLASSIC.advanced.playEndless}
-                </button>
-              </div>
-            </div>
-          </details>
         </div>
 
         {/* STATUS */}
