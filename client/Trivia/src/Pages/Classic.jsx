@@ -44,6 +44,7 @@ export default function Classic({
   const [metrics, setMetrics] = useState(null);
   const [categoryCounts, setCategoryCounts] = useState({});
 
+  const [view, setView] = useState('categories'); // categories | levels
   const [categoryId, setCategoryId] = useState('');
   const [difficulty, setDifficulty] = useState(
     STRINGS.CLASSIC.difficulty.options[0]
@@ -64,7 +65,6 @@ export default function Classic({
         const rows = Array.isArray(cats) ? cats : [];
         setCategories(rows);
         setMetrics(m || null);
-        if (!categoryId && rows[0]?.id) setCategoryId(rows[0].id);
       })
       .catch(() => {});
 
@@ -109,6 +109,7 @@ export default function Classic({
 
   useEffect(() => {
     let cancelled = false;
+    if (view !== 'levels') return () => {};
     if (!categoryId) return () => {};
 
     setLevelsBusy(true);
@@ -134,11 +135,11 @@ export default function Classic({
     return () => {
       cancelled = true;
     };
-  }, [categoryId]);
+  }, [view, categoryId]);
 
   useEffect(() => {
     let cancelled = false;
-    if (!user || !categoryId) {
+    if (view !== 'levels' || !user || !categoryId) {
       setProgress(null);
       return () => {};
     }
@@ -160,7 +161,7 @@ export default function Classic({
     return () => {
       cancelled = true;
     };
-  }, [!!user, user?.id, categoryId]);
+  }, [view, !!user, user?.id, categoryId]);
 
   const displayLevels = useMemo(() => {
     if (progress && Array.isArray(progress?.levels)) return progress.levels;
@@ -282,231 +283,260 @@ export default function Classic({
           </div>
         )}
 
-        {/* GRID */}
-        <div className="tv-classic-grid" style={ClassicStyle.categoriesGrid}>
-          {categories.length === 0
-            ? Array.from({ length: 12 }).map((_, idx) => (
-                <div
-                  key={`sk-${idx}`}
-                  className="tv-card"
-                  style={ClassicStyle.skeletonCard}
-                >
-                  <div style={ClassicStyle.skeletonIcon} />
-                  <div style={ClassicStyle.skeletonLine1} />
-                  <div style={ClassicStyle.skeletonLine2} />
-                </div>
-              ))
-            : categories.map((c) => {
-                const accent = pickAccent(c.id || c.name);
-                const isSelected = c.id === categoryId;
-                const count = categoryCounts[c.id];
+        {view === 'categories' ? (
+          <>
+            {/* GRID */}
+            <div className="tv-classic-grid" style={ClassicStyle.categoriesGrid}>
+              {categories.length === 0
+                ? Array.from({ length: 12 }).map((_, idx) => (
+                    <div
+                      key={`sk-${idx}`}
+                      className="tv-card"
+                      style={ClassicStyle.skeletonCard}
+                    >
+                      <div style={ClassicStyle.skeletonIcon} />
+                      <div style={ClassicStyle.skeletonLine1} />
+                      <div style={ClassicStyle.skeletonLine2} />
+                    </div>
+                  ))
+                : categories.map((c) => {
+                    const accent = pickAccent(c.id || c.name);
+                    const isSelected = c.id === categoryId;
+                    const count = categoryCounts[c.id];
 
-                return (
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className="tv-card tv-card--hover"
+                        onClick={() => {
+                          setCategoryId(c.id);
+                          setView('levels');
+                        }}
+                        disabled={busy}
+                        style={ClassicStyle.categoryBtn(isSelected)}
+                      >
+                        <div
+                          style={ClassicStyle.categoryIconTile(accent)}
+                          aria-hidden="true"
+                        >
+                          <span style={ClassicStyle.categoryIconChar}>
+                            {c.icon || ICONS.common.diamond}
+                          </span>
+                        </div>
+
+                        <div style={ClassicStyle.categoryName}>{c.name}</div>
+                        <div style={ClassicStyle.categoryCount}>
+                          {STRINGS.CLASSIC.questionsAvailable(
+                            Number.isFinite(Number(count)) ? count : null
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* LEVELS (per category) */}
+            <div className="tv-card" style={ClassicStyle.levelsCard}>
+              <div style={ClassicStyle.levelsHeader}>
+                <div style={ClassicStyle.levelsTitleWrap}>
+                  <div style={ClassicStyle.levelsTitle}>
+                    {selectedCategory
+                      ? `${selectedCategory.name} levels`
+                      : STRINGS.CLASSIC.levels.title}
+                  </div>
+                  <div style={ClassicStyle.levelsSubtitle}>
+                    {STRINGS.CLASSIC.levels.subtitle}
+                  </div>
+                </div>
+
+                <div style={ClassicStyle.levelsActions}>
                   <button
-                    key={c.id}
                     type="button"
                     className="tv-card tv-card--hover"
-                    onClick={() => {
-                      setCategoryId(c.id);
-                    }}
+                    style={ClassicStyle.levelsActionBtn}
+                    onClick={() => setView('categories')}
                     disabled={busy}
-                    style={ClassicStyle.categoryBtn(isSelected)}
                   >
+                    {STRINGS.COMMON.symbols.leftArrow} {STRINGS.COMMON.buttons.back}
+                  </button>
+                  <button
+                    type="button"
+                    className="tv-card tv-card--hover"
+                    style={ClassicStyle.levelsActionBtn}
+                    onClick={() => {
+                      if (!categoryId) return;
+                      setProgress(null);
+                      setLevels([]);
+                      setLevelsBusy(true);
+                      api
+                        .getClassicCategoryLevels(categoryId)
+                        .then((res) => setLevels(Array.isArray(res?.levels) ? res.levels : []))
+                        .catch((err) => setLevelsError(getApiErrorMessage(err)))
+                        .finally(() => setLevelsBusy(false));
+                      if (user) {
+                        api
+                          .getClassicCategoryProgress(categoryId)
+                          .then((res) => setProgress(res || null))
+                          .catch(() => {});
+                      }
+                    }}
+                    disabled={busy || !categoryId}
+                  >
+                    {ICONS.common.refresh} {STRINGS.COMMON.buttons.refresh}
+                  </button>
+                </div>
+              </div>
+
+              {!categoryId ? (
+                <div style={ClassicStyle.levelsEmpty}>
+                  Select a category first.
+                </div>
+              ) : (
+                <>
+                  <div style={{ marginTop: 12 }}>
+                    <div style={ClassicStyle.levelsSubtitle}>
+                      {ICONS.common.target}{' '}
+                      {progressSummary.completed} / {progressSummary.total}{' '}
+                      Levels {STRINGS.COMMON.separators.dot}{' '}
+                      {progressPct}%
+                    </div>
                     <div
-                      style={ClassicStyle.categoryIconTile(accent)}
+                      style={{
+                        marginTop: 8,
+                        height: 10,
+                        borderRadius: 999,
+                        background: 'rgba(255,255,255,0.12)',
+                        border: '1px solid rgba(255,255,255,0.18)',
+                        overflow: 'hidden',
+                      }}
                       aria-hidden="true"
                     >
-                      <span style={ClassicStyle.categoryIconChar}>
-                        {c.icon || ICONS.common.diamond}
-                      </span>
-                    </div>
-
-                    <div style={ClassicStyle.categoryName}>{c.name}</div>
-                    <div style={ClassicStyle.categoryCount}>
-                      {STRINGS.CLASSIC.questionsAvailable(
-                        Number.isFinite(Number(count)) ? count : null
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-        </div>
-
-        {/* LEVELS (per category) */}
-        <div className="tv-card" style={ClassicStyle.levelsCard}>
-          <div style={ClassicStyle.levelsHeader}>
-            <div style={ClassicStyle.levelsTitleWrap}>
-              <div style={ClassicStyle.levelsTitle}>
-                {selectedCategory
-                  ? `${selectedCategory.name} levels`
-                  : STRINGS.CLASSIC.levels.title}
-              </div>
-              <div style={ClassicStyle.levelsSubtitle}>
-                {STRINGS.CLASSIC.levels.subtitle}
-              </div>
-            </div>
-
-            <div style={ClassicStyle.levelsActions}>
-              <button
-                type="button"
-                className="tv-card tv-card--hover"
-                style={ClassicStyle.levelsActionBtn}
-                onClick={() => {
-                  if (!categoryId) return;
-                  setProgress(null);
-                  setLevels([]);
-                  setLevelsBusy(true);
-                  api
-                    .getClassicCategoryLevels(categoryId)
-                    .then((res) => setLevels(Array.isArray(res?.levels) ? res.levels : []))
-                    .catch((err) => setLevelsError(getApiErrorMessage(err)))
-                    .finally(() => setLevelsBusy(false));
-                  if (user) {
-                    api
-                      .getClassicCategoryProgress(categoryId)
-                      .then((res) => setProgress(res || null))
-                      .catch(() => {});
-                  }
-                }}
-                disabled={busy || !categoryId}
-              >
-                {ICONS.common.refresh} {STRINGS.COMMON.buttons.refresh}
-              </button>
-            </div>
-          </div>
-
-          <div style={{ marginTop: 12 }}>
-            <div style={ClassicStyle.levelsSubtitle}>
-              {ICONS.common.target}{' '}
-              {progressSummary.completed} / {progressSummary.total}{' '}
-              Levels {STRINGS.COMMON.separators.dot}{' '}
-              {progressPct}%
-            </div>
-            <div
-              style={{
-                marginTop: 8,
-                height: 10,
-                borderRadius: 999,
-                background: 'rgba(255,255,255,0.12)',
-                border: '1px solid rgba(255,255,255,0.18)',
-                overflow: 'hidden',
-              }}
-              aria-hidden="true"
-            >
-              <div
-                style={{
-                  height: '100%',
-                  width: `${progressPct}%`,
-                  borderRadius: 999,
-                  background: 'linear-gradient(90deg, rgba(255,44,128,0.88), rgba(139,44,255,0.88))',
-                }}
-              />
-            </div>
-          </div>
-
-          {!!levelsError && (
-            <div style={{ ...ClassicStyle.levelsEmpty, marginTop: 12 }}>
-              {levelsError}
-            </div>
-          )}
-
-          {levelsBusy ? (
-            <div className="tv-classic-level-grid" style={{ marginTop: 14 }}>
-              {Array.from({ length: 6 }).map((_, idx) => (
-                <div key={`lvl-sk-${idx}`} className="tv-card" style={ClassicStyle.skeletonCard}>
-                  <div style={ClassicStyle.skeletonLine1} />
-                  <div style={ClassicStyle.skeletonLine2} />
-                </div>
-              ))}
-            </div>
-          ) : displayLevels.length > 0 ? (
-            <div className="tv-classic-level-grid">
-              {displayLevels.map((lvl) => {
-                const unlocked = !!lvl.is_unlocked;
-                const locked = !unlocked;
-                const stars = clampStars(lvl.stars_earned);
-                const diff = String(lvl.difficulty || '').toLowerCase();
-
-                return (
-                  <button
-                    key={lvl.level_id || lvl.level_number}
-                    type="button"
-                    className="tv-card tv-card--hover"
-                    style={ClassicStyle.levelCard(locked)}
-                    disabled={busy || locked}
-                    onClick={() => startLevel(lvl.level_number, unlocked)}
-                    title={locked ? 'Locked' : 'Play'}
-                  >
-                    <div style={ClassicStyle.levelTopRow}>
-                      <span
+                      <div
                         style={{
-                          ...ClassicStyle.levelBadge,
-                          ...(locked ? ClassicStyle.levelBadgeLocked : {}),
+                          height: '100%',
+                          width: `${progressPct}%`,
+                          borderRadius: 999,
+                          background:
+                            'linear-gradient(90deg, rgba(255,44,128,0.88), rgba(139,44,255,0.88))',
                         }}
-                      >
-                        {lvl.level_number}
-                      </span>
-                      <span style={ClassicStyle.starsRow} aria-label={`${stars} stars`}>
-                        {Array.from({ length: 3 }).map((_, i) => (
-                          <span
-                            key={i}
-                            style={i < stars ? ClassicStyle.starOn : ClassicStyle.starOff}
+                      />
+                    </div>
+                  </div>
+
+                  {!!levelsError && (
+                    <div style={{ ...ClassicStyle.levelsEmpty, marginTop: 12 }}>
+                      {levelsError}
+                    </div>
+                  )}
+
+                  {levelsBusy ? (
+                    <div className="tv-classic-level-grid" style={{ marginTop: 14 }}>
+                      {Array.from({ length: 6 }).map((_, idx) => (
+                        <div
+                          key={`lvl-sk-${idx}`}
+                          className="tv-card"
+                          style={ClassicStyle.skeletonCard}
+                        >
+                          <div style={ClassicStyle.skeletonLine1} />
+                          <div style={ClassicStyle.skeletonLine2} />
+                        </div>
+                      ))}
+                    </div>
+                  ) : displayLevels.length > 0 ? (
+                    <div className="tv-classic-level-grid">
+                      {displayLevels.map((lvl) => {
+                        const unlocked = !!lvl.is_unlocked;
+                        const locked = !unlocked;
+                        const stars = clampStars(lvl.stars_earned);
+                        const diff = String(lvl.difficulty || '').toLowerCase();
+
+                        return (
+                          <button
+                            key={lvl.level_id || lvl.level_number}
+                            type="button"
+                            className="tv-card tv-card--hover"
+                            style={ClassicStyle.levelCard(locked)}
+                            disabled={busy || locked}
+                            onClick={() => startLevel(lvl.level_number, unlocked)}
+                            title={locked ? 'Locked' : 'Play'}
                           >
-                            ★
-                          </span>
-                        ))}
-                      </span>
-                    </div>
+                            <div style={ClassicStyle.levelTopRow}>
+                              <span
+                                style={{
+                                  ...ClassicStyle.levelBadge,
+                                  ...(locked ? ClassicStyle.levelBadgeLocked : {}),
+                                }}
+                              >
+                                {lvl.level_number}
+                              </span>
+                              <span style={ClassicStyle.starsRow} aria-label={`${stars} stars`}>
+                                {Array.from({ length: 3 }).map((_, i) => (
+                                  <span
+                                    key={i}
+                                    style={i < stars ? ClassicStyle.starOn : ClassicStyle.starOff}
+                                  >
+                                    ★
+                                  </span>
+                                ))}
+                              </span>
+                            </div>
 
-                    <div style={ClassicStyle.levelTitle}>
-                      {lvl.title || `Level ${lvl.level_number}`}
-                    </div>
+                            <div style={ClassicStyle.levelTitle}>
+                              {lvl.title || `Level ${lvl.level_number}`}
+                            </div>
 
-                    <div style={ClassicStyle.levelMetaRow}>
-                      <span
-                        style={{
-                          ...ClassicStyle.diffPill,
-                          ...(diff === 'easy'
-                            ? ClassicStyle.diffEasy
-                            : diff === 'medium'
-                              ? ClassicStyle.diffMedium
-                              : ClassicStyle.diffHard),
-                        }}
-                      >
-                        {diff || 'difficulty'}
-                      </span>
-                      {lvl.pool_count != null ? (
-                        <span style={ClassicStyle.poolCount}>
-                          {Number(lvl.pool_count) || 0} questions
-                        </span>
-                      ) : null}
-                      {!unlocked ? (
-                        <span style={ClassicStyle.poolCount}>
-                          {ICONS.common.lock} Locked
-                        </span>
-                      ) : null}
+                            <div style={ClassicStyle.levelMetaRow}>
+                              <span
+                                style={{
+                                  ...ClassicStyle.diffPill,
+                                  ...(diff === 'easy'
+                                    ? ClassicStyle.diffEasy
+                                    : diff === 'medium'
+                                      ? ClassicStyle.diffMedium
+                                      : ClassicStyle.diffHard),
+                                }}
+                              >
+                                {diff || 'difficulty'}
+                              </span>
+                              {lvl.pool_count != null ? (
+                                <span style={ClassicStyle.poolCount}>
+                                  {Number(lvl.pool_count) || 0} questions
+                                </span>
+                              ) : null}
+                              {!unlocked ? (
+                                <span style={ClassicStyle.poolCount}>
+                                  {ICONS.common.lock} Locked
+                                </span>
+                              ) : null}
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
-                  </button>
-                );
-              })}
+                  ) : (
+                    <div style={ClassicStyle.levelsEmpty}>
+                      {STRINGS.CLASSIC.levels.empty}
+                      <div style={{ marginTop: 10 }}>
+                        <button
+                          type="button"
+                          className="tv-card tv-card--hover"
+                          style={ClassicStyle.levelsActionBtn}
+                          onClick={startLegacy}
+                          disabled={busy || !categoryId}
+                        >
+                          {ICONS.common.play} {STRINGS.CLASSIC.levels.playEndless}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-          ) : (
-            <div style={ClassicStyle.levelsEmpty}>
-              {STRINGS.CLASSIC.levels.empty}
-              <div style={{ marginTop: 10 }}>
-                <button
-                  type="button"
-                  className="tv-card tv-card--hover"
-                  style={ClassicStyle.levelsActionBtn}
-                  onClick={startLegacy}
-                  disabled={busy || !categoryId}
-                >
-                  {ICONS.common.play} {STRINGS.CLASSIC.levels.playEndless}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+          </>
+        )}
 
         {/* STATS */}
         <div className="tv-classic-stats-grid" style={ClassicStyle.statsGrid}>
