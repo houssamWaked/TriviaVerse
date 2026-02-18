@@ -51,9 +51,12 @@ export default function PlaySession({
   // Story + Blitz intentionally pause to show correct/wrong feedback.
   const storyTransitionMs = 1000;
   const blitzTransitionMs = 1000;
+  const classicTransitionMs = 1000;
   const getNextTransitionMs = (q) => {
     if (isStory) return storyTransitionMs;
-    if (String(q?.mode || '').toLowerCase() === 'blitz') return blitzTransitionMs;
+    const m = String(q?.mode || '').toLowerCase();
+    if (m === 'blitz') return blitzTransitionMs;
+    if (m === 'classic') return classicTransitionMs;
     return 0;
   };
   const sleep = (ms) => new Promise((r) => window.setTimeout(r, ms));
@@ -255,6 +258,7 @@ export default function PlaySession({
 
   const timeInfo = useMemo(() => {
     if (!question) return null;
+    if (String(question.mode || '').toLowerCase() === 'classic') return null;
     if (question.mode === 'blitz' && Number.isFinite(blitzRemaining)) {
       const base = STRINGS.PLAY_SESSION.header.timeLeft(blitzRemaining);
       if (question.mode === 'blitz' && Number.isFinite(Number(question?.strikes_remaining))) {
