@@ -353,39 +353,60 @@ export default function AdminDashboard({
 
   const loadGlobalBank = async ({ q, offset, filter } = {}) => {
     const query = String(q ?? globalBank.q ?? '').trim();
-    const off = Math.max(0, Number(offset ?? globalBank.offset ?? 0) || 0);
+    let off = Math.max(0, Number(offset ?? globalBank.offset ?? 0) || 0);
     const lim = Math.min(50, Math.max(1, Number(globalBank.limit) || 50));
     const f = String(filter ?? globalBank.filter ?? 'all').trim() || 'all';
 
     setBusy(true);
     clearMessages();
     try {
-      const res = await api.adminListGlobalQuestions({
-        q: query,
-        limit: lim,
-        offset: off,
-        assigned: f,
-      });
+      let results = [];
+      let canNext = false;
 
-      const rawResults = Array.isArray(res?.results) ? res.results : [];
-      const canNext = rawResults.length >= lim;
-
-      let results = rawResults;
-
-      // Back-compat: if the DB boolean isn't deployed yet, compute assignment using legacy endpoint,
-      // then apply the filter client-side.
-      if (rawResults.some((r) => r?.id && r?.is_assigned == null)) {
+      if (f === 'all') {
+        const res = await api.adminListGlobalQuestions({
+          q: query,
+          limit: lim,
+          offset: off,
+          assigned: 'all',
+        });
+        const rawResults = Array.isArray(res?.results) ? res.results : [];
+        canNext = rawResults.length >= lim;
+        results = rawResults;
+      } else {
         const assigned = await api.adminAllAssignedQuestionIds().catch(() => null);
         const ids = Array.isArray(assigned?.ids) ? assigned.ids : [];
         const assignedSet = new Set((ids || []).filter(Boolean));
 
-        results = rawResults.map((r) => ({
-          ...r,
-          is_assigned: r?.id ? assignedSet.has(r.id) : false,
-        }));
+        // Always fetch from the full global bank and filter client-side so the
+        // Assigned/Unassigned toggle stays correct even if the DB boolean is stale.
+        for (let i = 0; i < 6; i += 1) {
+          // eslint-disable-next-line no-await-in-loop
+          const res = await api.adminListGlobalQuestions({
+            q: query,
+            limit: lim,
+            offset: off,
+            assigned: 'all',
+          });
 
-        if (f === 'assigned') results = results.filter((r) => r?.is_assigned === true);
-        if (f === 'unassigned') results = results.filter((r) => r?.id && r?.is_assigned !== true);
+          const rawResults = Array.isArray(res?.results) ? res.results : [];
+          canNext = rawResults.length >= lim;
+
+          const annotated = rawResults.map((r) => ({
+            ...r,
+            is_assigned: r?.id ? assignedSet.has(r.id) : false,
+          }));
+
+          const filtered =
+            f === 'assigned'
+              ? annotated.filter((r) => r?.is_assigned === true)
+              : annotated.filter((r) => r?.id && r?.is_assigned !== true);
+
+          results = filtered;
+          if (results.length > 0) break;
+          if (rawResults.length < lim) break;
+          off += lim;
+        }
       }
 
       setGlobalBank((v) => ({
@@ -770,6 +791,7 @@ export default function AdminDashboard({
       let rawResults = [];
       let filteredResults = [];
       let canNext = false;
+      const asg = await ensureAssignedSet();
 
       // When we exclude many ids (e.g. "show only unassigned"), a page can be fully filtered out.
       // Auto-advance a few pages so the picker doesn't look empty even when eligible items exist.
@@ -779,21 +801,19 @@ export default function AdminDashboard({
           q: query,
           limit: lim,
           offset: off,
-          assigned: 'unassigned',
+          // Always fetch from the full global bank and filter client-side using the
+          // authoritative pool assignment list. This avoids depending on
+          // `quiz_questions.is_assigned` being deployed and/or perfectly in sync.
+          assigned: 'all',
         });
         rawResults = Array.isArray(res?.results) ? res.results : [];
 
-        // Back-compat: if the DB boolean isn't deployed yet, compute assignment using legacy endpoint.
-        if (rawResults.some((r) => r?.id && r?.is_assigned == null)) {
-          // eslint-disable-next-line no-await-in-loop
-          const legacyAssignedSet = await ensureAssignedSet();
-          rawResults = rawResults.map((r) => ({
+        filteredResults = rawResults
+          .map((r) => ({
             ...r,
-            is_assigned: r?.id ? legacyAssignedSet.has(r.id) : false,
-          }));
-        }
-
-        filteredResults = rawResults.filter((r) => !excludeSet.has(r.id) && r?.is_assigned !== true);
+            is_assigned: r?.id ? asg.has(r.id) : false,
+          }))
+          .filter((r) => !excludeSet.has(r.id) && r?.is_assigned !== true);
         canNext = rawResults.length >= lim;
 
         if (filteredResults.length > 0) break;
