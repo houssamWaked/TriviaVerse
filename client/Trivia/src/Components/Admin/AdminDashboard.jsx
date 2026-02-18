@@ -2112,6 +2112,11 @@ export default function AdminDashboard({
           {picker.results.length === 0 && (
             <div style={AdminDashboardStyle.emptyText}>
               {STRINGS.ADMIN.sections.noResults}
+              <div style={{ marginTop: 6, opacity: 0.9 }}>
+                Only <b>unassigned global</b> questions are shown here. If this list is empty, create
+                more global questions or remove some questions from other pools (Story / Mode / Classic)
+                so they become eligible.
+              </div>
             </div>
           )}
         </div>
