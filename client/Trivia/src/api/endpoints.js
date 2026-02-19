@@ -31,8 +31,6 @@ export const endpoints = {
 
   // public categories (read-only)
   publicCategories: () => '/api/public/categories',
-  publicCategoryById: (id) => `/api/public/categories/${id}`,
-  publicCategorySearch: () => '/api/public/categories/search',
   publicCategoryStats: (id) => `/api/public/categories/${id}/stats`,
 
   // auth
@@ -43,10 +41,6 @@ export const endpoints = {
   verifyEmail: () => '/api/auth/verify-email',
   resendVerification: () => '/api/auth/resend-verification',
   googleAuth: () => '/api/auth/google',
-
-  // categories (protected write routes)
-  categories: () => '/api/categories',
-  categoryById: (id) => `/api/categories/${id}`,
 
   // story (protected)
   storyProgress: () => '/api/story/progress',
@@ -60,7 +54,6 @@ export const endpoints = {
   quizById: (quizId) => `/api/quizzes/${quizId}`,
   quizQuestions: (quizId) => `/api/quizzes/${quizId}/questions`,
   quizPublish: (quizId) => `/api/quizzes/${quizId}/publish`,
-  quizShare: (quizId) => `/api/quizzes/${quizId}/share`,
   quizRatings: (quizId) => `/api/quizzes/${quizId}/ratings`,
   quizReport: (quizId) => `/api/quizzes/${quizId}/report`,
   quizAccess: (quizId) => `/api/quizzes/${quizId}/access`,
@@ -76,7 +69,6 @@ export const endpoints = {
   friendRequestAccept: (requestId) => `/api/friends/requests/${requestId}/accept`,
   friendRequestDecline: (requestId) => `/api/friends/requests/${requestId}/decline`,
   friendRequestCancel: (requestId) => `/api/friends/requests/${requestId}`,
-  friendStats: (friendUserId) => `/api/friends/${friendUserId}/stats`,
   friendProfile: (friendUserId) => `/api/friends/${friendUserId}/profile`,
 
   // me
@@ -84,7 +76,6 @@ export const endpoints = {
 
   // duels
   duels: () => '/api/duels',
-  duelById: (duelId) => `/api/duels/${duelId}`,
   duelAccept: (duelId) => `/api/duels/${duelId}/accept`,
   duelDecline: (duelId) => `/api/duels/${duelId}/decline`,
   duelCancel: (duelId) => `/api/duels/${duelId}/cancel`,
@@ -93,7 +84,6 @@ export const endpoints = {
 
   // admin
   adminStoryLevels: () => '/api/admin/story/levels',
-  adminStoryAssignedQuestionIds: () => '/api/admin/story/pool/assigned',
   adminAllAssignedQuestionIds: () => '/api/admin/pools/assigned',
   adminCreateStoryLevel: () => '/api/admin/story/levels',
   adminDeleteStoryLevel: (levelId) => `/api/admin/story/levels/${levelId}`,
@@ -101,7 +91,6 @@ export const endpoints = {
   adminSeedStoryLevelPool: (levelId) => `/api/admin/story/levels/${levelId}/pool/seed`,
   adminCreateGlobalQuestion: () => '/api/admin/questions',
   adminListGlobalQuestions: () => '/api/admin/questions',
-  adminSearchGlobalQuestions: () => '/api/admin/questions/search',
   adminGlobalQuestionById: (questionId) => `/api/admin/questions/${questionId}`,
   adminReplaceGlobalQuestionOptions: (questionId) => `/api/admin/questions/${questionId}/options`,
   adminDeleteGlobalQuestion: (questionId) => `/api/admin/questions/${questionId}`,
@@ -119,7 +108,6 @@ export const endpoints = {
   adminResolveQuizReport: (reportId) => `/api/admin/reports/${reportId}/resolve`,
   adminDeleteCustomQuiz: (quizId) => `/api/admin/quizzes/${quizId}`,
   adminBanUser: (userId) => `/api/admin/users/${userId}/ban`,
-  adminUnbanUser: (userId) => `/api/admin/users/${userId}/unban`,
 
   // classic category pools (classic mode only)
   adminClassicCategories: () => '/api/admin/classic/categories',

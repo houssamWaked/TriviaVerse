@@ -21,7 +21,5 @@ export function validateRequest(req, res, next) {
     message: e.msg,
   }));
 
-  return next(
-    new AppError('Validation failed', 400, 'VALIDATION_ERROR', { errors })
-  );
+  return next(new AppError('Validation failed', 400, 'VALIDATION_ERROR', { errors }));
 }

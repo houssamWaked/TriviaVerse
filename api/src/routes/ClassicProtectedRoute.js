@@ -22,4 +22,3 @@ export default function createClassicProtectedRouter(classicController) {
 
   return router;
 }
-

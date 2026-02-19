@@ -16,14 +16,10 @@ export const quizSearchQuery = [
     .withMessage('limit must be between 1 and 50'),
 ];
 
-export const quizIdParam = [
-  param('quiz_id').isUUID().withMessage('quiz_id must be a valid UUID'),
-];
+export const quizIdParam = [param('quiz_id').isUUID().withMessage('quiz_id must be a valid UUID')];
 
 export const ratingBody = [
-  body('rating')
-    .isInt({ min: 1, max: 5 })
-    .withMessage('rating must be between 1 and 5'),
+  body('rating').isInt({ min: 1, max: 5 }).withMessage('rating must be between 1 and 5'),
 ];
 
 export const accessBody = [
@@ -38,4 +34,3 @@ export const accessBody = [
 export const accessUserIdParam = [
   param('user_id').isUUID().withMessage('user_id must be a valid UUID'),
 ];
-

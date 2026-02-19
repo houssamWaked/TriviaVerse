@@ -53,14 +53,6 @@ export default function createFriendsRouter(friendController) {
   );
 
   router.get(
-    '/:friend_user_id/stats',
-    requireAuth,
-    friendUserIdParam,
-    validateRequest,
-    asyncHandler(friendController.friendStats)
-  );
-
-  router.get(
     '/:friend_user_id/profile',
     requireAuth,
     friendUserIdParam,

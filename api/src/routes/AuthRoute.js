@@ -35,19 +35,9 @@ export default function createAuthRouter(authController) {
     asyncHandler(authController.register)
   );
 
-  router.post(
-    '/login',
-    loginValidator,
-    validateRequest,
-    asyncHandler(authController.login)
-  );
+  router.post('/login', loginValidator, validateRequest, asyncHandler(authController.login));
 
-  router.post(
-    '/google',
-    googleAuthValidator,
-    validateRequest,
-    asyncHandler(authController.google)
-  );
+  router.post('/google', googleAuthValidator, validateRequest, asyncHandler(authController.google));
 
   router.post('/refresh', asyncHandler(authController.refresh));
   router.post('/logout', asyncHandler(authController.logout));

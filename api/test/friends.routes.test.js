@@ -25,7 +25,7 @@ function createTestApp() {
     acceptRequest: async (req, res) => res.status(200).json({ success: true }),
     declineRequest: async (req, res) => res.status(200).json({ success: true }),
     cancelRequest: async (req, res) => res.status(200).json({ success: true }),
-    friendStats: async (req, res) =>
+    friendProfile: async (req, res) =>
       res.status(200).json({ user: { id: req.params.friend_user_id } }),
   };
 

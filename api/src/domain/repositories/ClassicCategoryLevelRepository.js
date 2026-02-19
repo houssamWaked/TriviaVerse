@@ -99,4 +99,3 @@ export class ClassicCategoryLevelRepository {
     return (count ?? 0) > 0;
   }
 }
-

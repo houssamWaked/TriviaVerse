@@ -11,12 +11,7 @@ import { leaderboardQuery } from '../validator/LeaderboardValidator.js';
 export default function createLeaderboardRouter(leaderboardController) {
   const router = Router();
 
-  router.get(
-    '/',
-    leaderboardQuery,
-    validateRequest,
-    asyncHandler(leaderboardController.get)
-  );
+  router.get('/', leaderboardQuery, validateRequest, asyncHandler(leaderboardController.get));
 
   return router;
 }

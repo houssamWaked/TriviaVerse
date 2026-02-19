@@ -34,4 +34,3 @@ export class QuizReportService {
     return { success: true, report_id: created?.id || null };
   }
 }
-

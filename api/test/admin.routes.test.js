@@ -28,16 +28,14 @@ function createTestApp() {
     seedStoryLevelPool: async (req, res) => res.status(200).json({}),
     listStoryLevelPoolQuestions: async (req, res) => res.status(200).json({ questions: [] }),
     listStoryLevelPoolQuestionIds: async (req, res) => res.status(200).json({ ids: [], count: 0 }),
-    listStoryAssignedQuestionIds: async (req, res) => res.status(200).json({ count: 0, ids: [] }),
+    listAllAssignedQuestionIds: async (req, res) => res.status(200).json({ ids: [], count: 0 }),
     removeStoryLevelPoolQuestions: async (req, res) => res.status(200).json({}),
     replaceStoryLevelPool: async (req, res) => res.status(200).json({}),
     createGlobalQuestion: async (req, res) => res.status(201).json({}),
     listGlobalQuestions: async (req, res) => res.status(200).json({ results: [] }),
-    searchGlobalQuestions: async (req, res) => res.status(200).json({ results: [] }),
     getGlobalQuestion: async (req, res) =>
       res.status(200).json({ id: req.params.question_id, options: [] }),
-    patchGlobalQuestion: async (req, res) =>
-      res.status(200).json({ id: req.params.question_id }),
+    patchGlobalQuestion: async (req, res) => res.status(200).json({ id: req.params.question_id }),
     replaceGlobalQuestionOptions: async (req, res) =>
       res.status(200).json({ success: true, options: [] }),
     deleteGlobalQuestion: async (req, res) =>
@@ -53,7 +51,8 @@ function createTestApp() {
     createClassicCategory: async (req, res) => res.status(201).json({}),
     deleteClassicCategory: async (req, res) => res.status(200).json({ success: true }),
     listClassicCategoryPoolQuestions: async (req, res) => res.status(200).json({ questions: [] }),
-    listClassicCategoryPoolQuestionIds: async (req, res) => res.status(200).json({ ids: [], count: 0 }),
+    listClassicCategoryPoolQuestionIds: async (req, res) =>
+      res.status(200).json({ ids: [], count: 0 }),
     addClassicCategoryPool: async (req, res) => res.status(200).json({}),
     removeClassicCategoryPool: async (req, res) => res.status(200).json({}),
     replaceClassicCategoryPool: async (req, res) => res.status(200).json({}),
@@ -70,25 +69,21 @@ function createTestApp() {
 
 test('DELETE /api/admin/questions/:question_id validates question_id', async () => {
   const app = createTestApp();
-  const res = await request(app)
-    .delete('/api/admin/questions/not-a-uuid')
-    .set(adminHeader());
+  const res = await request(app).delete('/api/admin/questions/not-a-uuid').set(adminHeader());
   assert.equal(res.status, 400);
   assert.equal(res.body.code, 'VALIDATION_ERROR');
 });
 
 test('DELETE /api/admin/story/levels/:level_id validates level_id', async () => {
   const app = createTestApp();
-  const res = await request(app)
-    .delete('/api/admin/story/levels/not-a-uuid')
-    .set(adminHeader());
+  const res = await request(app).delete('/api/admin/story/levels/not-a-uuid').set(adminHeader());
   assert.equal(res.status, 400);
   assert.equal(res.body.code, 'VALIDATION_ERROR');
 });
 
-test('GET /api/admin/story/pool/assigned returns ids', async () => {
+test('GET /api/admin/pools/assigned returns ids', async () => {
   const app = createTestApp();
-  const res = await request(app).get('/api/admin/story/pool/assigned').set(adminHeader());
+  const res = await request(app).get('/api/admin/pools/assigned').set(adminHeader());
   assert.equal(res.status, 200);
   assert.ok(Array.isArray(res.body.ids));
   assert.equal(res.body.count, 0);

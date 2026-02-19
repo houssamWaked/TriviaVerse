@@ -68,4 +68,3 @@ export class ClassicCategoryService {
     return progress;
   }
 }
-

@@ -8,11 +8,7 @@ function toAppError(error) {
   if (!error) return null;
   const code = String(error.code || '').trim();
   if (code === '42P01') {
-    return new AppError(
-      'Leaderboard entries table is not configured',
-      501,
-      'NOT_CONFIGURED'
-    );
+    return new AppError('Leaderboard entries table is not configured', 501, 'NOT_CONFIGURED');
   }
   if (code === '42P10') {
     return new AppError(
@@ -81,10 +77,7 @@ export class LeaderboardRepository {
 
     const { data, error } = await supabase
       .from('leaderboard_entries')
-      .upsert(
-        { user_id, period, mode, score_value: score },
-        { onConflict: 'user_id,period' }
-      )
+      .upsert({ user_id, period, mode, score_value: score }, { onConflict: 'user_id,period' })
       .select('user_id, period, mode, score_value')
       .limit(1);
     if (error) throw toAppError(error);

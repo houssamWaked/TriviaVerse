@@ -14,14 +14,12 @@ export default function createDuelsRouter(duelController) {
 
   router.get('/', requireAuth, asyncHandler(duelController.listMine));
 
-  router.post('/', requireAuth, createDuelBody, validateRequest, asyncHandler(duelController.create));
-
-  router.get(
-    '/:duel_id',
+  router.post(
+    '/',
     requireAuth,
-    duelIdParam,
+    createDuelBody,
     validateRequest,
-    asyncHandler(duelController.get)
+    asyncHandler(duelController.create)
   );
 
   router.post(

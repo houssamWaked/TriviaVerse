@@ -8,12 +8,8 @@ export const sessionIdParam = [
 ];
 
 export const answerValidator = [
-  body('session_question_id')
-    .isUUID()
-    .withMessage('session_question_id must be a valid UUID'),
-  body('chosen_option_id')
-    .isUUID()
-    .withMessage('chosen_option_id must be a valid UUID'),
+  body('session_question_id').isUUID().withMessage('session_question_id must be a valid UUID'),
+  body('chosen_option_id').isUUID().withMessage('chosen_option_id must be a valid UUID'),
   body('answered_in_sec')
     .optional()
     .isInt({ min: 0, max: 3600 })
@@ -24,9 +20,7 @@ export const lifelineValidator = [
   body('lifeline_type')
     .isIn(['fifty_fifty', 'skip', 'audience', 'phone'])
     .withMessage('lifeline_type is invalid'),
-  body('session_question_id')
-    .isUUID()
-    .withMessage('session_question_id must be a valid UUID'),
+  body('session_question_id').isUUID().withMessage('session_question_id must be a valid UUID'),
 ];
 
 export const finishValidator = [

@@ -21,7 +21,6 @@ import {
   quizIdParam,
   userIdParam,
   modeParam,
-  searchQuestionsQuery,
   listQuestionsQuery,
   listPoolQuery,
   listReportsQuery,
@@ -37,11 +36,10 @@ export default function createAdminRouter(adminController) {
   // story levels
   router.get('/story/levels', requireAdmin, asyncHandler(adminController.listStoryLevels));
   router.get(
-    '/story/pool/assigned',
+    '/pools/assigned',
     requireAdmin,
-    asyncHandler(adminController.listStoryAssignedQuestionIds)
+    asyncHandler(adminController.listAllAssignedQuestionIds)
   );
-  router.get('/pools/assigned', requireAdmin, asyncHandler(adminController.listAllAssignedQuestionIds));
 
   router.post(
     '/story/levels',
@@ -127,14 +125,6 @@ export default function createAdminRouter(adminController) {
     listQuestionsQuery,
     validateRequest,
     asyncHandler(adminController.listGlobalQuestions)
-  );
-
-  router.get(
-    '/questions/search',
-    requireAdmin,
-    searchQuestionsQuery,
-    validateRequest,
-    asyncHandler(adminController.searchGlobalQuestions)
   );
 
   router.get(
@@ -419,14 +409,6 @@ export default function createAdminRouter(adminController) {
     banUserBody,
     validateRequest,
     asyncHandler(adminController.banUser)
-  );
-
-  router.post(
-    '/users/:user_id/unban',
-    requireAdmin,
-    userIdParam,
-    validateRequest,
-    asyncHandler(adminController.unbanUser)
   );
 
   return router;

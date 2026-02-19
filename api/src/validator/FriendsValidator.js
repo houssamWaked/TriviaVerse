@@ -15,4 +15,3 @@ export const requestIdParam = [
 export const friendUserIdParam = [
   param('friend_user_id').isUUID().withMessage('friend_user_id must be a uuid'),
 ];
-

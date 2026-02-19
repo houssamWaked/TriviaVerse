@@ -11,10 +11,7 @@ export const registerValidator = [
     .isLength({ min: 3, max: 30 })
     .withMessage('username must be between 3 and 30 characters'),
 
-  body('email')
-    .isEmail()
-    .withMessage('email must be a valid email')
-    .normalizeEmail(),
+  body('email').isEmail().withMessage('email must be a valid email').normalizeEmail(),
 
   body('password')
     .isString()
@@ -24,10 +21,7 @@ export const registerValidator = [
 ];
 
 export const loginValidator = [
-  body('email')
-    .isEmail()
-    .withMessage('email must be a valid email')
-    .normalizeEmail(),
+  body('email').isEmail().withMessage('email must be a valid email').normalizeEmail(),
 
   body('password')
     .isString()
@@ -45,10 +39,7 @@ export const verifyEmailGetValidator = [
 ];
 
 export const resendVerificationValidator = [
-  body('email')
-    .isEmail()
-    .withMessage('email must be a valid email')
-    .normalizeEmail(),
+  body('email').isEmail().withMessage('email must be a valid email').normalizeEmail(),
 ];
 
 export const googleAuthValidator = [

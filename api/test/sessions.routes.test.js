@@ -42,9 +42,7 @@ test('GET /api/public/sessions/:id/current allows guest access (router level)', 
 
 test('GET /api/public/sessions/:id/current validates session_id', async () => {
   const app = createTestApp();
-  const res = await request(app)
-    .get('/api/public/sessions/not-a-uuid/current')
-    .set(authHeader());
+  const res = await request(app).get('/api/public/sessions/not-a-uuid/current').set(authHeader());
   assert.equal(res.status, 400);
   assert.equal(res.body.code, 'VALIDATION_ERROR');
 });

@@ -14,4 +14,3 @@ export default class QuestionOptionDTO {
     return new QuestionOptionDTO(row);
   }
 }
-

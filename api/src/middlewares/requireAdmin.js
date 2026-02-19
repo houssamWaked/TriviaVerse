@@ -28,7 +28,9 @@ export function requireAdmin(req, res, next) {
   }
 
   const decoded = verifyAccessToken(token);
-  const email = String(decoded.email || '').trim().toLowerCase();
+  const email = String(decoded.email || '')
+    .trim()
+    .toLowerCase();
   const admins = getAdminEmailSet();
 
   if (admins.size === 0) {
@@ -42,4 +44,3 @@ export function requireAdmin(req, res, next) {
   req.user = { id: decoded.sub, email: decoded.email, username: decoded.username };
   return next();
 }
-

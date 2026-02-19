@@ -63,10 +63,7 @@ export class QuizScoreRepository {
       }
     }
 
-    const { data, error } = await supabase
-      .from('quiz_scores')
-      .select('quiz_id')
-      .in('quiz_id', ids);
+    const { data, error } = await supabase.from('quiz_scores').select('quiz_id').in('quiz_id', ids);
     if (error) throw toAppError(error);
 
     for (const r of data || []) {

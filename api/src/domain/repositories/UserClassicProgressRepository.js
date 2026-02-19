@@ -79,7 +79,10 @@ export class UserClassicProgressRepository {
     const existing = await this.findByUserAndLevelId(userId, levelId);
 
     const best_score = Math.max(existing?.best_score ?? 0, Math.max(0, Number(score_total) || 0));
-    const best_stars = Math.max(existing?.stars_earned ?? 0, Math.max(0, Number(stars_earned) || 0));
+    const best_stars = Math.max(
+      existing?.stars_earned ?? 0,
+      Math.max(0, Number(stars_earned) || 0)
+    );
     const completed = Boolean(existing?.is_completed) || Boolean(is_completed);
 
     return await this.upsertByUserAndLevelId(userId, levelId, {

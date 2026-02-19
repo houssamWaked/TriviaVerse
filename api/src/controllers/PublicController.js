@@ -11,4 +11,3 @@ export class PublicController {
     res.status(200).json(data);
   };
 }
-

@@ -3,9 +3,7 @@
  */
 import { body, param } from 'express-validator';
 
-export const quizIdParam = [
-  param('quiz_id').isUUID().withMessage('quiz_id must be a valid UUID'),
-];
+export const quizIdParam = [param('quiz_id').isUUID().withMessage('quiz_id must be a valid UUID')];
 
 export const questionIdParam = [
   param('question_id').isUUID().withMessage('question_id must be a valid UUID'),
@@ -109,10 +107,7 @@ export const addQuestionValidator = [
     .optional()
     .isInt({ min: 3, max: 600 })
     .withMessage('time_limit_sec must be between 3 and 600'),
-  body('points')
-    .optional()
-    .isInt({ min: 0, max: 100000 })
-    .withMessage('points must be >= 0'),
+  body('points').optional().isInt({ min: 0, max: 100000 }).withMessage('points must be >= 0'),
   body('order_index')
     .optional()
     .isInt({ min: 1, max: 10000 })
@@ -138,10 +133,7 @@ export const patchQuestionValidator = [
     .optional()
     .isInt({ min: 3, max: 600 })
     .withMessage('time_limit_sec must be between 3 and 600'),
-  body('points')
-    .optional()
-    .isInt({ min: 0, max: 100000 })
-    .withMessage('points must be >= 0'),
+  body('points').optional().isInt({ min: 0, max: 100000 }).withMessage('points must be >= 0'),
   body('order_index')
     .optional()
     .isInt({ min: 1, max: 10000 })
@@ -155,13 +147,8 @@ export const addOptionValidator = [
     .trim()
     .isLength({ min: 1, max: 300 })
     .withMessage('option_text must be between 1 and 300 characters'),
-  body('is_correct')
-    .optional()
-    .isBoolean()
-    .withMessage('is_correct must be a boolean'),
-  body('order_index')
-    .isInt({ min: 1, max: 100 })
-    .withMessage('order_index must be >= 1'),
+  body('is_correct').optional().isBoolean().withMessage('is_correct must be a boolean'),
+  body('order_index').isInt({ min: 1, max: 100 }).withMessage('order_index must be >= 1'),
 ];
 
 export const patchOptionValidator = [
@@ -172,20 +159,11 @@ export const patchOptionValidator = [
     .trim()
     .isLength({ min: 1, max: 300 })
     .withMessage('option_text must be between 1 and 300 characters'),
-  body('is_correct')
-    .optional()
-    .isBoolean()
-    .withMessage('is_correct must be a boolean'),
+  body('is_correct').optional().isBoolean().withMessage('is_correct must be a boolean'),
   body('order_index')
     .optional()
     .isInt({ min: 1, max: 100 })
     .withMessage('order_index must be >= 1'),
-];
-
-export const shareQuizValidator = [
-  body('visibility')
-    .isIn(['unlisted'])
-    .withMessage('visibility must be unlisted'),
 ];
 
 export const reportQuizBody = [

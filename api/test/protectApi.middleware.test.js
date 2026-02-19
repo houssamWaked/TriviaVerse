@@ -60,4 +60,3 @@ test('/api/auth/* stays public (no requireAuth) even when route is missing', asy
   assert.equal(res.status, 404);
   assert.equal(called, false);
 });
-

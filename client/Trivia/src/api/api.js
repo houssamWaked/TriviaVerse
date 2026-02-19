@@ -167,21 +167,6 @@ export const api = {
       prefer: 'localStorage',
       cache: 'essential',
     }),
-  searchCategories: async (q) =>
-    cachedGet(endpoints.publicCategorySearch(), {
-      params: { q },
-      ttlMs: 60 * 60_000,
-      scope: 'public',
-      prefer: 'localStorage',
-      cache: 'essential',
-    }),
-  getCategory: async (id) =>
-    cachedGet(endpoints.publicCategoryById(id), {
-      ttlMs: 24 * 60 * 60_000,
-      scope: 'public',
-      prefer: 'localStorage',
-      cache: 'essential',
-    }),
   getCategoryStats: async (id) =>
     cachedGet(endpoints.publicCategoryStats(id), {
       ttlMs: 30 * 60_000,
@@ -189,12 +174,6 @@ export const api = {
       prefer: 'localStorage',
       cache: 'essential',
     }),
-  createCategory: async (body) =>
-    (await http.post(endpoints.categories(), body)).data,
-  updateCategory: async (id, body) =>
-    (await http.put(endpoints.categoryById(id), body)).data,
-  deleteCategory: async (id) =>
-    (await http.delete(endpoints.categoryById(id))).data,
 
   // story
   getStoryLevels: async () =>
@@ -305,12 +284,6 @@ export const api = {
     invalidatePublicCacheByPathPrefix(`/api/public/quizzes/${quizId}`);
     return data;
   },
-  shareQuiz: async (quizId, body) => {
-    const data = (await http.post(endpoints.quizShare(quizId), body)).data;
-    invalidateUserCacheByPathPrefix('/api/quizzes');
-    invalidatePublicCacheByPathPrefix(`/api/public/quizzes/${quizId}`);
-    return data;
-  },
   rateQuiz: async (quizId, body) => {
     const data = (await http.post(endpoints.quizRatings(quizId), body)).data;
     invalidatePublicCacheByPathPrefix(`/api/public/quizzes/${quizId}/ratings`);
@@ -358,14 +331,6 @@ export const api = {
     if (quizId) invalidateUserCacheByPathPrefix(`/api/quizzes/${quizId}/questions`);
     return data;
   },
-  deleteQuestion: async (questionId) => {
-    const quizId = getQuizIdForQuestionId(questionId);
-    const data = (await http.delete(endpoints.questionById(questionId))).data;
-    if (quizId) invalidateUserCacheByPathPrefix(`/api/quizzes/${quizId}/questions`);
-    quizBuilderIndex.questionIdToQuizId.delete(String(questionId));
-    invalidatePublicCacheByPathPrefix('/api/public/home-metrics');
-    return data;
-  },
 
   addOption: async (questionId, body) => {
     const data = (await http.post(endpoints.questionOptions(questionId), body)).data;
@@ -380,13 +345,6 @@ export const api = {
       getQuizIdForOptionId(optionId) || getQuizIdForQuestionId(data?.question_id);
     if (quizId) invalidateUserCacheByPathPrefix(`/api/quizzes/${quizId}/questions`);
     if (quizId && data?.id) quizBuilderIndex.optionIdToQuizId.set(String(data.id), String(quizId));
-    return data;
-  },
-  deleteOption: async (optionId) => {
-    const quizId = getQuizIdForOptionId(optionId);
-    const data = (await http.delete(endpoints.optionById(optionId))).data;
-    if (quizId) invalidateUserCacheByPathPrefix(`/api/quizzes/${quizId}/questions`);
-    quizBuilderIndex.optionIdToQuizId.delete(String(optionId));
     return data;
   },
 
@@ -414,8 +372,6 @@ export const api = {
     invalidateUserCacheByPathPrefix('/api/friends');
     return data;
   },
-  getFriendStats: async (friendUserId) =>
-    cachedGet(endpoints.friendStats(friendUserId), { ttlMs: 10 * 60_000, scope: 'user', prefer: 'localStorage' }),
   getFriendProfile: async (friendUserId) =>
     cachedGet(endpoints.friendProfile(friendUserId), {
       ttlMs: 10 * 60_000,
@@ -437,8 +393,6 @@ export const api = {
     invalidateUserCacheByPathPrefix('/api/duels');
     return data;
   },
-  getDuel: async (duelId) =>
-    cachedGet(endpoints.duelById(duelId), { ttlMs: 60_000, scope: 'user', prefer: 'localStorage' }),
   acceptDuel: async (duelId) => {
     const data = (await http.post(endpoints.duelAccept(duelId), {})).data;
     invalidateUserCacheByPathPrefix('/api/duels');
@@ -475,12 +429,6 @@ export const api = {
   // admin
   adminListStoryLevels: async () =>
     cachedGet(endpoints.adminStoryLevels(), { ttlMs: 10_000, scope: 'user', prefer: 'localStorage' }),
-  adminStoryAssignedQuestionIds: async () =>
-    cachedGet(endpoints.adminStoryAssignedQuestionIds(), {
-      ttlMs: 10_000,
-      scope: 'user',
-      prefer: 'localStorage',
-    }),
   adminAllAssignedQuestionIds: async () =>
     cachedGet(endpoints.adminAllAssignedQuestionIds(), {
       ttlMs: 10_000,
@@ -518,13 +466,6 @@ export const api = {
   adminListGlobalQuestions: async (params) =>
     cachedGet(endpoints.adminListGlobalQuestions(), {
       params,
-      ttlMs: 30_000,
-      scope: 'user',
-      prefer: 'localStorage',
-    }),
-  adminSearchGlobalQuestions: async (q, limit = 20) =>
-    cachedGet(endpoints.adminSearchGlobalQuestions(), {
-      params: { q, limit },
       ttlMs: 30_000,
       scope: 'user',
       prefer: 'localStorage',
@@ -714,11 +655,6 @@ export const api = {
   },
   adminBanUser: async (userId, body) => {
     const data = (await http.post(endpoints.adminBanUser(userId), body)).data;
-    invalidateUserCacheByPathPrefix('/api/admin/reports');
-    return data;
-  },
-  adminUnbanUser: async (userId) => {
-    const data = (await http.post(endpoints.adminUnbanUser(userId), {})).data;
     invalidateUserCacheByPathPrefix('/api/admin/reports');
     return data;
   },

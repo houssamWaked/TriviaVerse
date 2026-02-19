@@ -2,7 +2,11 @@
  * Classic mode controller.
  */
 export class ClassicController {
-  constructor(sessionStartService, classicCategoryService, classicCategoryLevelPoolRepository = null) {
+  constructor(
+    sessionStartService,
+    classicCategoryService,
+    classicCategoryLevelPoolRepository = null
+  ) {
     this.sessionStartService = sessionStartService;
     this.classicCategoryService = classicCategoryService;
     this.classicCategoryLevelPoolRepository = classicCategoryLevelPoolRepository;

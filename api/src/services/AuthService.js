@@ -22,13 +22,17 @@ const EMAIL_SEND_THROTTLE_MS = Number(process.env.EMAIL_SEND_THROTTLE_MS || 60_0
 const lastVerificationAttemptMsByEmail = new Map();
 
 function markVerificationAttempt(email) {
-  const key = String(email || '').trim().toLowerCase();
+  const key = String(email || '')
+    .trim()
+    .toLowerCase();
   if (!key) return;
   lastVerificationAttemptMsByEmail.set(key, Date.now());
 }
 
 function isVerificationThrottled(email) {
-  const key = String(email || '').trim().toLowerCase();
+  const key = String(email || '')
+    .trim()
+    .toLowerCase();
   if (!key) return false;
   const last = lastVerificationAttemptMsByEmail.get(key);
   if (!Number.isFinite(last)) return false;
@@ -150,7 +154,9 @@ export class AuthService {
         hasSupabasePublicClient: Boolean(supabasePublic),
         hasRedirectUrl: Boolean(redirectTo),
         hasUrlBase: Boolean(String(process.env.EMAIL_VERIFICATION_URL_BASE || '').trim()),
-        hasRedirectBase: Boolean(String(process.env.EMAIL_VERIFICATION_REDIRECT_URL_BASE || '').trim()),
+        hasRedirectBase: Boolean(
+          String(process.env.EMAIL_VERIFICATION_REDIRECT_URL_BASE || '').trim()
+        ),
       });
 
       throw new AppError('Email verification is not configured', 503, 'EMAIL_NOT_CONFIGURED', {
@@ -187,7 +193,10 @@ export class AuthService {
     } catch (err) {
       // In production, don't fail signup just because email delivery is rate-limited
       // or the provider is temporarily down. The user can retry via "Resend verification".
-      if (this.#isProd() && (err?.code === 'EMAIL_SEND_FAILED' || err?.code === 'EMAIL_RATE_LIMITED')) {
+      if (
+        this.#isProd() &&
+        (err?.code === 'EMAIL_SEND_FAILED' || err?.code === 'EMAIL_RATE_LIMITED')
+      ) {
         // eslint-disable-next-line no-console
         console.warn('[auth] Verification email delivery failed during register (continuing)', {
           code: err?.code,
@@ -260,7 +269,9 @@ export class AuthService {
       throw new AppError('Invalid Google token', 401, 'UNAUTHORIZED');
     }
 
-    const email = String(payload?.email || '').trim().toLowerCase();
+    const email = String(payload?.email || '')
+      .trim()
+      .toLowerCase();
     const emailVerified = Boolean(payload?.email_verified);
     if (!email) throw new AppError('Google account missing email', 400, 'GOOGLE_PROFILE_INVALID');
     if (!emailVerified) {
@@ -321,7 +332,11 @@ export class AuthService {
 
     const user = await this.userRepository.findById(userId);
     if (!user) throw new AppError('Invalid verification token', 400, 'INVALID_TOKEN');
-    if (String(user.email || '').trim().toLowerCase() !== String(email).trim().toLowerCase()) {
+    if (
+      String(user.email || '')
+        .trim()
+        .toLowerCase() !== String(email).trim().toLowerCase()
+    ) {
       throw new AppError('Invalid verification token', 400, 'INVALID_TOKEN');
     }
 

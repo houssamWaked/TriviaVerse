@@ -108,7 +108,9 @@ export class QuizDiscoveryService {
         const played_count = playedCounts.get(quiz.id) || 0;
         return {
           ...quiz,
-          owner: owner ? { id: owner.id, username: owner.username, avatar_url: owner.avatar_url } : null,
+          owner: owner
+            ? { id: owner.id, username: owner.username, avatar_url: owner.avatar_url }
+            : null,
           ...ratings,
           played_count,
         };
@@ -182,9 +184,7 @@ export class QuizDiscoveryService {
       if (err?.code !== 'NOT_CONFIGURED') throw err;
     }
 
-    const ownerIds = Array.from(
-      new Set(visibleRows.map((r) => r.owner_user_id).filter(Boolean))
-    );
+    const ownerIds = Array.from(new Set(visibleRows.map((r) => r.owner_user_id).filter(Boolean)));
     const owners = await this.userRepository.findByIds(ownerIds);
     const ownerMap = new Map(owners.map((u) => [u.id, u]));
 
@@ -265,7 +265,9 @@ export class QuizDiscoveryService {
     return {
       quiz: {
         ...QuizDTO.fromRow(quiz),
-        owner: owner ? { id: owner.id, username: owner.username, avatar_url: owner.avatar_url } : null,
+        owner: owner
+          ? { id: owner.id, username: owner.username, avatar_url: owner.avatar_url }
+          : null,
       },
       questions_count,
       can_edit: isOwner,

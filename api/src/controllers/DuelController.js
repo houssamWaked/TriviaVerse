@@ -16,11 +16,6 @@ export class DuelController {
     res.status(201).json(data);
   };
 
-  get = async (req, res) => {
-    const data = await this.duelService.getDuel(req.user.id, req.params.duel_id);
-    res.status(200).json(data);
-  };
-
   accept = async (req, res) => {
     const data = await this.duelService.acceptChallenge(req.user.id, req.params.duel_id);
     res.status(200).json(data);

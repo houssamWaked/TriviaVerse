@@ -140,7 +140,10 @@ export class ClassicCategoryLevelPoolRepository {
     const lid = String(levelId || '').trim();
     if (!lid) return true;
 
-    const { error } = await supabase.from('classic_category_level_pool').delete().eq('level_id', lid);
+    const { error } = await supabase
+      .from('classic_category_level_pool')
+      .delete()
+      .eq('level_id', lid);
     if (error) throw toAppError(error);
     return true;
   }

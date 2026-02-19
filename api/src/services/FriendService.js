@@ -16,10 +16,7 @@ function isoMax(a, b) {
 function buildModeSummary(sessions = []) {
   const modes = ['story', 'classic', 'blitz', 'millionaire', 'custom'];
   const byMode = Object.fromEntries(
-    modes.map((m) => [
-      m,
-      { mode: m, played: 0, completed: 0, best_score: 0, last_played_at: null },
-    ])
+    modes.map((m) => [m, { mode: m, played: 0, completed: 0, best_score: 0, last_played_at: null }])
   );
 
   for (const s of sessions || []) {
@@ -140,10 +137,9 @@ export class FriendService {
 
     const userIds = Array.from(
       new Set(
-        [
-          ...incoming.map((r) => r.from_user_id),
-          ...outgoing.map((r) => r.to_user_id),
-        ].filter(Boolean)
+        [...incoming.map((r) => r.from_user_id), ...outgoing.map((r) => r.to_user_id)].filter(
+          Boolean
+        )
       )
     );
 
@@ -216,65 +212,6 @@ export class FriendService {
 
     const users = await this.userRepository.findByIds(friendIds);
     return users.map((u) => ({ id: u.id, username: u.username, avatar_url: u.avatar_url }));
-  }
-
-  async getFriendStats(userId, friendUserId) {
-    let ok = false;
-    ok = await this.friendRepository.areFriends(userId, friendUserId);
-    if (!ok) throw new AppError('Forbidden', 403, 'FORBIDDEN');
-
-    const friend = await this.userRepository.findById(friendUserId);
-    if (!friend) throw new AppError('User not found', 404, 'NOT_FOUND');
-
-    const stats = await this.userStatsRepository.findByUserId(friendUserId);
-
-    let scoreRows = [];
-    try {
-      scoreRows = await this.quizScoreRepository.listByUserId(friendUserId, 100);
-    } catch (err) {
-      if (err?.code === 'NOT_CONFIGURED') {
-        return {
-          user: { id: friend.id, username: friend.username, avatar_url: friend.avatar_url },
-          user_stats: stats,
-          custom_quiz_best: [],
-        };
-      }
-      throw err;
-    }
-
-    const quizIds = scoreRows.map((r) => r.quiz_id).filter(Boolean);
-    const quizzes = await this.quizRepository.findByIds(quizIds);
-    const quizMap = new Map(quizzes.map((q) => [q.id, q]));
-
-    const custom_quiz_best = scoreRows
-      .map((r) => {
-        const q = quizMap.get(r.quiz_id);
-        return {
-          quiz_id: r.quiz_id,
-          title: q?.title ?? null,
-          visibility: q?.visibility ?? null,
-          owner_user_id: q?.owner_user_id ?? null,
-          best_score: r.best_score ?? 0,
-          updated_at: r.updated_at ?? null,
-        };
-      })
-      .filter((x) => {
-        if (!x.title) return false;
-        if (x.visibility !== 'private') return true;
-        // Avoid leaking titles of third-party private quizzes.
-        // Viewer can safely see:
-        // - friend-owned private quizzes (friends-of-owner access)
-        // - viewer-owned private quizzes
-        return x.owner_user_id === friendUserId || x.owner_user_id === userId;
-      })
-      .map(({ owner_user_id, visibility, ...rest }) => rest)
-      .slice(0, 50);
-
-    return {
-      user: { id: friend.id, username: friend.username, avatar_url: friend.avatar_url },
-      user_stats: stats,
-      custom_quiz_best,
-    };
   }
 
   async getFriendProfile(userId, friendUserId) {

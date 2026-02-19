@@ -26,4 +26,3 @@ export function optionalAuth(req, res, next) {
   req.user = { id: decoded.sub };
   return next();
 }
-

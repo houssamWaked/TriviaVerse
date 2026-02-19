@@ -17,9 +17,7 @@ export const createClassicCategoryLevelBody = [
   body('xp_reward').optional().isInt({ min: 0, max: 1000000 }),
 ];
 
-export const levelIdParam = [
-  param('level_id').isUUID().withMessage('level_id must be a uuid'),
-];
+export const levelIdParam = [param('level_id').isUUID().withMessage('level_id must be a uuid')];
 
 export const categoryIdParam = [
   param('category_id').isUUID().withMessage('category_id must be a uuid'),
@@ -29,17 +27,11 @@ export const questionIdParam = [
   param('question_id').isUUID().withMessage('question_id must be a uuid'),
 ];
 
-export const reportIdParam = [
-  param('report_id').isUUID().withMessage('report_id must be a uuid'),
-];
+export const reportIdParam = [param('report_id').isUUID().withMessage('report_id must be a uuid')];
 
-export const quizIdParam = [
-  param('quiz_id').isUUID().withMessage('quiz_id must be a uuid'),
-];
+export const quizIdParam = [param('quiz_id').isUUID().withMessage('quiz_id must be a uuid')];
 
-export const userIdParam = [
-  param('user_id').isUUID().withMessage('user_id must be a uuid'),
-];
+export const userIdParam = [param('user_id').isUUID().withMessage('user_id must be a uuid')];
 
 export const listReportsQuery = [
   query('status').optional().isIn(['open', 'resolved']),
@@ -73,7 +65,11 @@ export const createGlobalQuestionBody = [
 export const patchGlobalQuestionBody = [
   body('question_text').optional().isString().trim().isLength({ min: 5, max: 300 }),
   body('difficulty_rating').optional().isInt({ min: 1, max: 10 }),
-  body('explanation').optional({ nullable: true }).isString().trim().isLength({ min: 1, max: 2000 }),
+  body('explanation')
+    .optional({ nullable: true })
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 2000 }),
   body('time_limit_sec').optional().isInt({ min: 3, max: 600 }),
   body('points').optional().isInt({ min: 0, max: 100000 }),
 ];
@@ -87,12 +83,6 @@ export const replaceGlobalQuestionOptionsBody = [
 export const createClassicCategoryBody = [
   body('name').isString().trim().isLength({ min: 2, max: 40 }),
   body('icon').optional({ nullable: true }).isString().trim().isLength({ max: 120 }),
-];
-
-export const searchQuestionsQuery = [
-  query('q').isString().trim().isLength({ min: 1, max: 200 }),
-  query('assigned').optional().isIn(['all', 'assigned', 'unassigned']),
-  query('limit').optional().isInt({ min: 1, max: 50 }),
 ];
 
 export const listQuestionsQuery = [

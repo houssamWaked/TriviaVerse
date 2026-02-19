@@ -132,10 +132,7 @@ export class ClassicCategoryPoolRepository {
     const cid = String(categoryId || '').trim();
     if (!cid) return true;
 
-    const { error } = await supabase
-      .from('classic_category_pool')
-      .delete()
-      .eq('category_id', cid);
+    const { error } = await supabase.from('classic_category_pool').delete().eq('category_id', cid);
     if (error) throw toAppError(error);
     return true;
   }

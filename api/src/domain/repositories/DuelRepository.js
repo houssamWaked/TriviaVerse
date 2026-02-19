@@ -53,11 +53,7 @@ export class DuelRepository {
   }
 
   async create(payload) {
-    const res = await supabase
-      .from('duels')
-      .insert(payload)
-      .select(this.selectFields())
-      .limit(1);
+    const res = await supabase.from('duels').insert(payload).select(this.selectFields()).limit(1);
 
     if (res.error && this.isMissingColumn(res.error)) {
       this._extendedSchema = false;
@@ -85,19 +81,11 @@ export class DuelRepository {
   }
 
   async findById(id) {
-    const res = await supabase
-      .from('duels')
-      .select(this.selectFields())
-      .eq('id', id)
-      .limit(1);
+    const res = await supabase.from('duels').select(this.selectFields()).eq('id', id).limit(1);
 
     if (res.error && this.isMissingColumn(res.error)) {
       this._extendedSchema = false;
-      const retry = await supabase
-        .from('duels')
-        .select(this.selectFields())
-        .eq('id', id)
-        .limit(1);
+      const retry = await supabase.from('duels').select(this.selectFields()).eq('id', id).limit(1);
       if (retry.error) throw toAppError(retry.error);
       return retry.data?.[0] || null;
     }
@@ -142,7 +130,11 @@ export class DuelRepository {
     if (res.error && this.isMissingColumn(res.error)) {
       this._extendedSchema = false;
 
-      if (patch?.mode !== undefined || patch?.category_id !== undefined || patch?.difficulty !== undefined) {
+      if (
+        patch?.mode !== undefined ||
+        patch?.category_id !== undefined ||
+        patch?.difficulty !== undefined
+      ) {
         throw toAppError(res.error);
       }
 

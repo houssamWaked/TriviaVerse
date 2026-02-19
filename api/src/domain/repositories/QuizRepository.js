@@ -75,11 +75,7 @@ export class QuizRepository {
   }
 
   async findById(id) {
-    const res = await supabase
-      .from('quizzes')
-      .select(this.selectColumns())
-      .eq('id', id)
-      .limit(1);
+    const res = await supabase.from('quizzes').select(this.selectColumns()).eq('id', id).limit(1);
     if (res.error && this.isSchemaMissingColumn(res.error)) {
       this._keywordsSupported = false;
       const retry = await supabase
@@ -98,16 +94,10 @@ export class QuizRepository {
     const unique = Array.from(new Set((ids || []).filter(Boolean)));
     if (unique.length === 0) return [];
 
-    const res = await supabase
-      .from('quizzes')
-      .select(this.selectColumns())
-      .in('id', unique);
+    const res = await supabase.from('quizzes').select(this.selectColumns()).in('id', unique);
     if (res.error && this.isSchemaMissingColumn(res.error)) {
       this._keywordsSupported = false;
-      const retry = await supabase
-        .from('quizzes')
-        .select(this.selectColumns())
-        .in('id', unique);
+      const retry = await supabase.from('quizzes').select(this.selectColumns()).in('id', unique);
       if (retry.error) throw toAppError(retry.error);
       return retry.data || [];
     }
@@ -302,10 +292,7 @@ export class QuizRepository {
   }
 
   async delete(id) {
-    const { error, count } = await supabase
-      .from('quizzes')
-      .delete({ count: 'exact' })
-      .eq('id', id);
+    const { error, count } = await supabase.from('quizzes').delete({ count: 'exact' }).eq('id', id);
     if (error) throw toAppError(error);
     return (count ?? 0) > 0;
   }

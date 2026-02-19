@@ -4,9 +4,7 @@
 import { body } from 'express-validator';
 
 export const storyStartValidator = [
-  body('level_number')
-    .isInt({ min: 1, max: 10000 })
-    .withMessage('level_number must be >= 1'),
+  body('level_number').isInt({ min: 1, max: 10000 }).withMessage('level_number must be >= 1'),
 ];
 
 export const millionaireStartValidator = [
@@ -35,7 +33,9 @@ export const classicStartValidator = [
     const hasLevel = req.body?.level_number != null;
     if (hasLevel) return true;
     if (!req.body?.difficulty || req.body?.questions_count == null) {
-      throw new Error('difficulty and questions_count are required when level_number is not provided');
+      throw new Error(
+        'difficulty and questions_count are required when level_number is not provided'
+      );
     }
     return true;
   }),
@@ -46,7 +46,5 @@ export const blitzStartValidator = [
     .optional({ nullable: true })
     .isUUID()
     .withMessage('category_id must be a valid UUID'),
-  body('difficulty')
-    .isIn(['easy', 'medium', 'hard'])
-    .withMessage('difficulty is invalid'),
+  body('difficulty').isIn(['easy', 'medium', 'hard']).withMessage('difficulty is invalid'),
 ];

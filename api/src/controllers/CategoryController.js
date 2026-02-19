@@ -23,46 +23,6 @@ export class CategoryController {
     res.json(data);
   };
 
-  get = async (req, res) => {
-    const data = await this.categoryService.getCategory(req.params.id);
-    if (!data) {
-      throw new AppError('Category not found', 404, 'NOT_FOUND');
-    }
-
-    res.status(200).json(data);
-  };
-
-  create = async (req, res) => {
-    const data = await this.categoryService.createCategory(req.body);
-    res.status(201).json(data);
-  };
-
-  update = async (req, res) => {
-    const data = await this.categoryService.updateCategory(
-      req.params.id,
-      req.body
-    );
-    if (!data) {
-      throw new AppError('Category not found', 404, 'NOT_FOUND');
-    }
-
-    res.status(200).json(data);
-  };
-
-  delete = async (req, res) => {
-    const ok = await this.categoryService.deleteCategory(req.params.id);
-    if (!ok) {
-      throw new AppError('Category not found', 404, 'NOT_FOUND');
-    }
-
-    res.status(204).send();
-  };
-
-  search = async (req, res) => {
-    const categories = await this.categoryService.searchCategories(req.query.q);
-    res.json(categories);
-  };
-
   stats = async (req, res) => {
     const data = await this.categoryService.getCategoryStats(req.params.id);
     if (!data) {

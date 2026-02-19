@@ -55,4 +55,3 @@ export class SessionCache {
 }
 
 export const sessionCache = new SessionCache();
-

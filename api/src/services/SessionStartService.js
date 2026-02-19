@@ -16,7 +16,9 @@ import { randomUUID } from 'node:crypto';
 const LABELS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 function difficultyToRatingRange(difficulty) {
-  const d = String(difficulty || '').trim().toLowerCase();
+  const d = String(difficulty || '')
+    .trim()
+    .toLowerCase();
   if (d === 'easy') return { min: 1, max: 4 };
   if (d === 'medium') return { min: 4, max: 7 };
   if (d === 'hard') return { min: 8, max: 10 };
@@ -146,7 +148,11 @@ export class SessionStartService {
     const total = Math.max(1, Number(limit) || 15);
     const desired = [
       { label: 'easy', count: Math.min(3, total), range: difficultyToRatingRange('easy') },
-      { label: 'medium', count: Math.min(6, Math.max(0, total - 3)), range: difficultyToRatingRange('medium') },
+      {
+        label: 'medium',
+        count: Math.min(6, Math.max(0, total - 3)),
+        range: difficultyToRatingRange('medium'),
+      },
       { label: 'hard', count: Math.max(0, total - 9), range: difficultyToRatingRange('hard') },
     ].filter((s) => s.count > 0);
 
@@ -240,7 +246,11 @@ export class SessionStartService {
           if (pickedIds.has(q.id)) continue;
           pickedIds.add(q.id);
           picked.push(q);
-          if (picked.length >= desired.slice(0, desired.indexOf(seg) + 1).reduce((a, s) => a + s.count, 0)) break;
+          if (
+            picked.length >=
+            desired.slice(0, desired.indexOf(seg) + 1).reduce((a, s) => a + s.count, 0)
+          )
+            break;
         }
       }
     } catch (err) {
@@ -323,7 +333,10 @@ export class SessionStartService {
     // we fail loudly (user selected a difficulty).
     const missing = Math.max(0, count - picked.length);
     try {
-      const filler = await this.quizQuestionRepository.listRandomGlobalByDifficultyRange(missing, range);
+      const filler = await this.quizQuestionRepository.listRandomGlobalByDifficultyRange(
+        missing,
+        range
+      );
       for (const q of filler) {
         if (!q?.id) continue;
         if (pickedIds.has(q.id)) continue;
@@ -431,7 +444,11 @@ export class SessionStartService {
     const questions = wantedIds.map((id) => byId.get(id)).filter(Boolean);
 
     if (questions.length === 0) {
-      throw new AppError('Some questions in this level pool no longer exist. Please rebuild the pool.', 400, 'POOL_CORRUPT');
+      throw new AppError(
+        'Some questions in this level pool no longer exist. Please rebuild the pool.',
+        400,
+        'POOL_CORRUPT'
+      );
     }
 
     return questions;
@@ -474,13 +491,10 @@ export class SessionStartService {
       time_limit_snapshot: q.time_limit_sec ?? 30,
     }));
 
-    const createdSessionQuestions = await this.sessionQuestionRepository.createMany(
-      sessionQuestionsRows
-    );
+    const createdSessionQuestions =
+      await this.sessionQuestionRepository.createMany(sessionQuestionsRows);
 
-    const bySourceId = new Map(
-      createdSessionQuestions.map((sq) => [sq.source_question_id, sq])
-    );
+    const bySourceId = new Map(createdSessionQuestions.map((sq) => [sq.source_question_id, sq]));
     const options = await this.questionOptionRepository.listByQuestionIds(
       sourceQuestions.map((q) => q.id)
     );
@@ -541,13 +555,10 @@ export class SessionStartService {
       time_limit_snapshot: q.time_limit_sec ?? 30,
     }));
 
-    const createdSessionQuestions = await this.sessionQuestionRepository.createMany(
-      sessionQuestionsRows
-    );
+    const createdSessionQuestions =
+      await this.sessionQuestionRepository.createMany(sessionQuestionsRows);
 
-    const bySourceId = new Map(
-      createdSessionQuestions.map((sq) => [sq.source_question_id, sq])
-    );
+    const bySourceId = new Map(createdSessionQuestions.map((sq) => [sq.source_question_id, sq]));
     const options = await this.questionOptionRepository.listByQuestionIds(
       sourceQuestions.map((q) => q.id)
     );
@@ -578,7 +589,9 @@ export class SessionStartService {
     // Try to avoid repeats within the same session (best-effort), but allow repeats
     // if the pool is small so gameplay can continue.
     const existingRows = await this.sessionQuestionRepository.listBySessionId(sessionId);
-    const existingSourceIds = new Set(existingRows.map((r) => r.source_question_id).filter(Boolean));
+    const existingSourceIds = new Set(
+      existingRows.map((r) => r.source_question_id).filter(Boolean)
+    );
 
     const candidates = await this.listQuestionsForModeByDifficulty(
       'blitz',
@@ -664,7 +677,12 @@ export class SessionStartService {
         };
       });
 
-    return { appended: cachedQuestions, correctBySqId, total_questions: nextTotal, time_limit_sec: perQuestionTimeLimitSec };
+    return {
+      appended: cachedQuestions,
+      correctBySqId,
+      total_questions: nextTotal,
+      time_limit_sec: perQuestionTimeLimitSec,
+    };
   }
 
   async primeSessionCache(session, userId) {
@@ -848,9 +866,7 @@ export class SessionStartService {
       await this.storyService.assertLevelUnlocked(userId, level);
     }
 
-    const questionIds = await this.storyLevelPoolRepository.listQuestionIdsByLevelId(
-      level.id
-    );
+    const questionIds = await this.storyLevelPoolRepository.listQuestionIdsByLevelId(level.id);
     if (questionIds.length === 0) {
       throw new AppError('No questions configured for this level', 400, 'NO_POOL');
     }
@@ -868,11 +884,7 @@ export class SessionStartService {
         user_id: userId,
         mode: 'story',
         difficulty:
-          level.difficulty_max <= 3
-            ? 'easy'
-            : level.difficulty_max <= 6
-              ? 'medium'
-              : 'hard',
+          level.difficulty_max <= 3 ? 'easy' : level.difficulty_max <= 6 ? 'medium' : 'hard',
         total_questions: questions.length,
         status: 'in_progress',
       });

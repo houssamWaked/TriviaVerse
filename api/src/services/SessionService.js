@@ -6,14 +6,15 @@ import { sessionCache } from '../utils/sessionCache.js';
 
 const LABELS = ['A', 'B', 'C', 'D', 'E', 'F'];
 const MILLIONAIRE_PRIZES = [
-  100, 200, 300, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 125000, 250000,
-  500000, 1000000,
+  100, 200, 300, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 125000, 250000, 500000, 1000000,
 ];
 const BLITZ_TIME_LIMIT_SEC = 15;
 const BLITZ_MAX_STRIKES = 3;
 
 function blitzDifficultyToLeaderboardMode(difficulty) {
-  const d = String(difficulty || '').trim().toLowerCase();
+  const d = String(difficulty || '')
+    .trim()
+    .toLowerCase();
   if (d === 'easy') return 'blitz_easy';
   if (d === 'medium') return 'blitz_medium';
   if (d === 'hard') return 'blitz_hard';
@@ -224,7 +225,8 @@ export class SessionService {
 
         const total = Math.max(
           1,
-          Number(payload.total_questions) || (Array.isArray(cached.questions) ? cached.questions.length : 15)
+          Number(payload.total_questions) ||
+            (Array.isArray(cached.questions) ? cached.questions.length : 15)
         );
         payload.prizes = MILLIONAIRE_PRIZES.slice(0, total);
       }
@@ -287,16 +289,14 @@ export class SessionService {
 
       const fifty = lifelines.find(
         (l) =>
-          l.lifeline_type === 'fifty_fifty' &&
-          l.payload_json?.session_question_id === current.id
+          l.lifeline_type === 'fifty_fifty' && l.payload_json?.session_question_id === current.id
       );
       if (fifty?.payload_json?.disabled_option_ids) {
         payload.disabled_option_ids = fifty.payload_json.disabled_option_ids;
       }
 
       const audience = lifelines.find(
-        (l) =>
-          l.lifeline_type === 'audience' && l.payload_json?.session_question_id === current.id
+        (l) => l.lifeline_type === 'audience' && l.payload_json?.session_question_id === current.id
       );
       if (audience?.payload_json?.audience_poll) {
         payload.audience_poll = audience.payload_json.audience_poll;
@@ -415,7 +415,7 @@ export class SessionService {
         question_number: sq.order_index,
         question_text: sq.question_text_snapshot,
         is_correct: isCorrect,
-        chosen_option_id: chosen?.id ?? (answer?.chosen_option_id ?? null),
+        chosen_option_id: chosen?.id ?? answer?.chosen_option_id ?? null,
         chosen_label: chosen ? labelFor(chosen) : null,
         chosen_text: chosen?.option_text_snapshot ?? null,
         correct_option_id: correct?.id ?? null,
@@ -458,7 +458,9 @@ export class SessionService {
 
       const correctId =
         cached.correct_option_id_by_session_question_id?.[current.session_question_id] || null;
-      const computedCorrect = correctId ? String(correctId) === String(body.chosen_option_id) : false;
+      const computedCorrect = correctId
+        ? String(correctId) === String(body.chosen_option_id)
+        : false;
 
       let is_correct = computedCorrect;
       let blitzTimedOut = false;
@@ -515,7 +517,9 @@ export class SessionService {
             try {
               const fresh = await this.gameSessionRepository.findById(sessionId);
               const modeForLeaderboard =
-                fresh?.mode === 'blitz' ? blitzDifficultyToLeaderboardMode(fresh?.difficulty) : fresh?.mode;
+                fresh?.mode === 'blitz'
+                  ? blitzDifficultyToLeaderboardMode(fresh?.difficulty)
+                  : fresh?.mode;
               if (fresh?.user_id && modeForLeaderboard) {
                 await this.leaderboardRepository.insertFromSession({
                   user_id: fresh.user_id,
@@ -565,7 +569,7 @@ export class SessionService {
         }
 
         const qIdx = Math.max(1, Number(current.question_number) || 1);
-        const prize = MILLIONAIRE_PRIZES[qIdx - 1] ?? (cached.score_total ?? 0);
+        const prize = MILLIONAIRE_PRIZES[qIdx - 1] ?? cached.score_total ?? 0;
         if (!isGuest) {
           const updatedSession = await this.gameSessionRepository.setScore(sessionId, prize);
           cached.score_total = updatedSession?.score_total ?? prize;
@@ -574,7 +578,9 @@ export class SessionService {
         }
         cached.current_index = idx + 1;
 
-        const next = Array.isArray(cached.questions) ? cached.questions[cached.current_index] : null;
+        const next = Array.isArray(cached.questions)
+          ? cached.questions[cached.current_index]
+          : null;
         const next_question_available = !!next;
 
         let next_question = null;
@@ -697,10 +703,13 @@ export class SessionService {
           } else if (this.sessionStartService?.appendBlitzQuestionsToSession) {
             try {
               const session = await this.gameSessionRepository.findById(sessionId);
-              const appended = await this.sessionStartService.appendBlitzQuestionsToSession(sessionId, {
-                difficulty: session?.difficulty ?? null,
-                count: 50,
-              });
+              const appended = await this.sessionStartService.appendBlitzQuestionsToSession(
+                sessionId,
+                {
+                  difficulty: session?.difficulty ?? null,
+                  count: 50,
+                }
+              );
               const extra = Array.isArray(appended?.appended) ? appended.appended : [];
               const totalQuestions = Number(appended?.total_questions) || undefined;
               const correct = appended?.correctBySqId || {};
@@ -713,10 +722,15 @@ export class SessionService {
               };
 
               if (totalQuestions && Array.isArray(cached.questions)) {
-                cached.questions = cached.questions.map((q) => ({ ...q, total_questions: totalQuestions }));
+                cached.questions = cached.questions.map((q) => ({
+                  ...q,
+                  total_questions: totalQuestions,
+                }));
               }
 
-              next = Array.isArray(cached.questions) ? cached.questions[cached.current_index] : null;
+              next = Array.isArray(cached.questions)
+                ? cached.questions[cached.current_index]
+                : null;
             } catch (err) {
               // If refill fails, fall through and report "no next question".
               if (err?.code === 'NO_POOL' || err?.code === 'NOT_ENOUGH_QUESTIONS') {
@@ -941,7 +955,7 @@ export class SessionService {
       }
 
       const qIdx = Math.max(1, Number(sessionQuestion.order_index) || 1);
-      const prize = MILLIONAIRE_PRIZES[qIdx - 1] ?? (session.score_total ?? 0);
+      const prize = MILLIONAIRE_PRIZES[qIdx - 1] ?? session.score_total ?? 0;
       const updatedSession = await this.gameSessionRepository.setScore(sessionId, prize);
 
       const answers = await this.sessionAnswerRepository.listBySessionQuestionIds(
@@ -974,7 +988,8 @@ export class SessionService {
           };
 
           const fifty = lifelines.find(
-            (l) => l.lifeline_type === 'fifty_fifty' && l.payload_json?.session_question_id === next.id
+            (l) =>
+              l.lifeline_type === 'fifty_fifty' && l.payload_json?.session_question_id === next.id
           );
           if (fifty?.payload_json?.disabled_option_ids) {
             next_question.disabled_option_ids = fifty.payload_json.disabled_option_ids;
@@ -1118,7 +1133,8 @@ export class SessionService {
       }
 
       const options = Array.isArray(current.options) ? current.options : [];
-      if (options.length === 0) throw new AppError('Invalid session_question_id', 400, 'INVALID_INPUT');
+      if (options.length === 0)
+        throw new AppError('Invalid session_question_id', 400, 'INVALID_INPUT');
 
       const correctId =
         cached.correct_option_id_by_session_question_id?.[current.session_question_id] || null;
@@ -1164,11 +1180,14 @@ export class SessionService {
       cached.lifelines = [...used, { lifeline_type: body.lifeline_type, payload_json: payload }];
 
       if (body.lifeline_type === 'skip') {
-        if (!cached.answered_session_question_id_set) cached.answered_session_question_id_set = new Set();
+        if (!cached.answered_session_question_id_set)
+          cached.answered_session_question_id_set = new Set();
         cached.answered_session_question_id_set.add(String(current.session_question_id));
         cached.current_index = idx + 1;
         sessionCache.set(sessionId, cached);
-        const next = Array.isArray(cached.questions) ? cached.questions[cached.current_index] : null;
+        const next = Array.isArray(cached.questions)
+          ? cached.questions[cached.current_index]
+          : null;
         return {
           lifeline_type: 'skip',
           skipped: true,
@@ -1205,7 +1224,8 @@ export class SessionService {
     const options = await this.sessionOptionRepository.listBySessionQuestionId(
       body.session_question_id
     );
-    if (options.length === 0) throw new AppError('Invalid session_question_id', 400, 'INVALID_INPUT');
+    if (options.length === 0)
+      throw new AppError('Invalid session_question_id', 400, 'INVALID_INPUT');
 
     let payload = {};
     if (body.lifeline_type === 'fifty_fifty') {
@@ -1230,7 +1250,9 @@ export class SessionService {
       payload = {
         session_question_id: body.session_question_id,
         suggestion_option_id: suggestion,
-        message: suggested ? `I think it's option ${LABELS[suggested.order_index - 1] || ''}.` : `I'm not sure...`,
+        message: suggested
+          ? `I think it's option ${LABELS[suggested.order_index - 1] || ''}.`
+          : `I'm not sure...`,
       };
     } else if (body.lifeline_type === 'skip') {
       payload = { session_question_id: body.session_question_id };
@@ -1279,7 +1301,11 @@ export class SessionService {
 
       // Keep cache in sync so /current advances when sessionCache is being used.
       const c = sessionCache.get(sessionId);
-      if (c?.mode === 'millionaire' && c.user_id === userId && Number.isFinite(Number(c.current_index))) {
+      if (
+        c?.mode === 'millionaire' &&
+        c.user_id === userId &&
+        Number.isFinite(Number(c.current_index))
+      ) {
         c.current_index = Math.max(0, Number(c.current_index) || 0) + 1;
         sessionCache.set(sessionId, c);
       }
@@ -1427,7 +1453,10 @@ export class SessionService {
                   hasNextLevel = true;
                   nextLevelNumber = Number(meta.level_number) + 1;
                   if (passed) {
-                    await this.userClassicProgressRepository.ensureUnlocked(session.user_id, next.id);
+                    await this.userClassicProgressRepository.ensureUnlocked(
+                      session.user_id,
+                      next.id
+                    );
                   }
                 }
               }

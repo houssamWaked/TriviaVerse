@@ -20,8 +20,10 @@ function authHeader(userId = '00000000-0000-0000-0000-000000000000') {
 function createTestApp() {
   const controller = {
     listLevels: async (req, res) => res.status(200).json([]),
-    progress: async (req, res) => res.status(200).json({ completed_levels: 0, total_levels: 0, levels: [] }),
-    start: async (req, res) => res.status(201).json({ session_id: 's1', level_number: req.body.level_number }),
+    progress: async (req, res) =>
+      res.status(200).json({ completed_levels: 0, total_levels: 0, levels: [] }),
+    start: async (req, res) =>
+      res.status(201).json({ session_id: 's1', level_number: req.body.level_number }),
   };
 
   const app = express();

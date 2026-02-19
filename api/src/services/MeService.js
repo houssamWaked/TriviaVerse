@@ -17,10 +17,7 @@ function isoMax(a, b) {
 function buildModeSummary(sessions = []) {
   const modes = ['story', 'classic', 'blitz', 'millionaire', 'custom'];
   const byMode = Object.fromEntries(
-    modes.map((m) => [
-      m,
-      { mode: m, played: 0, completed: 0, best_score: 0, last_played_at: null },
-    ])
+    modes.map((m) => [m, { mode: m, played: 0, completed: 0, best_score: 0, last_played_at: null }])
   );
 
   for (const s of sessions || []) {

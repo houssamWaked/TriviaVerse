@@ -190,39 +190,4 @@ export class UserRepository {
     if (res.error) throw toAppError(res.error);
     return res.data?.[0] ? new User(res.data[0]) : null;
   }
-
-  async unbanUser(userId, { adminEmail = null } = {}) {
-    if (this._banColumnsSupported === false) {
-      throw new AppError(
-        'Users table schema mismatch (missing ban columns). Apply `TriviaVerse/api/sql/005_quiz_reports_and_bans.sql`.',
-        500,
-        'DB_SCHEMA_MISMATCH'
-      );
-    }
-
-    const patch = {
-      is_banned: false,
-      banned_reason: null,
-      banned_at: null,
-      banned_by_admin_email: adminEmail ? String(adminEmail).trim().toLowerCase() : null,
-    };
-
-    const res = await supabase
-      .from('users')
-      .update(patch)
-      .eq('id', userId)
-      .select(this.selectColumns())
-      .limit(1);
-
-    if (res.error && this.isSchemaMissingColumn(res.error)) {
-      this._banColumnsSupported = false;
-      throw new AppError(
-        'Users table schema mismatch (missing ban columns). Apply `TriviaVerse/api/sql/005_quiz_reports_and_bans.sql`.',
-        500,
-        'DB_SCHEMA_MISMATCH'
-      );
-    }
-    if (res.error) throw toAppError(res.error);
-    return res.data?.[0] ? new User(res.data[0]) : null;
-  }
 }

@@ -112,7 +112,10 @@ test('XP: story awards xp_reward when level is passed', async () => {
   const session = { id: 's', user_id: 'u', mode: 'story' };
   const storyMeta = { session_id: 's', level_id: 'lvl', level_number: 1 };
   const storyLevel = { id: 'lvl', pass_score_min: 10, xp_reward: 50 };
-  const storyQuestions = [{ id: 'q1', points_snapshot: 50 }, { id: 'q2', points_snapshot: 50 }];
+  const storyQuestions = [
+    { id: 'q1', points_snapshot: 50 },
+    { id: 'q2', points_snapshot: 50 },
+  ];
   const storyAnswersPerfect = [
     { session_question_id: 'q1', is_correct: true },
     { session_question_id: 'q2', is_correct: true },

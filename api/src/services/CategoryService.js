@@ -29,54 +29,7 @@ export class CategoryService {
    * @returns {Promise<CategoryDTO[]>}
    */
   async listCategories() {
-    return (await this.categoryRepository.findAll()).map(
-      CategoryDTO.fromEntity
-    );
-  }
-
-  /**
-   * @param {string} id UUID
-   * @returns {Promise<CategoryDTO|null>}
-   */
-  async getCategory(id) {
-    const c = await this.categoryRepository.findById(id);
-    return c ? CategoryDTO.fromEntity(c) : null;
-  }
-
-  /**
-   * @param {{name: string, icon?: (string|null)}} data
-   * @returns {Promise<CategoryDTO>}
-   */
-  async createCategory(data) {
-    return CategoryDTO.fromEntity(await this.categoryRepository.create(data));
-  }
-
-  /**
-   * @param {string} id UUID
-   * @param {{name?: string, icon?: (string|null)}} data
-   * @returns {Promise<CategoryDTO|null>}
-   */
-  async updateCategory(id, data) {
-    const c = await this.categoryRepository.update(id, data);
-    return c ? CategoryDTO.fromEntity(c) : null;
-  }
-
-  /**
-   * @param {string} id UUID
-   * @returns {Promise<boolean>} true if a row was deleted
-   */
-  async deleteCategory(id) {
-    return await this.categoryRepository.delete(id);
-  }
-
-  /**
-   * @param {string} query
-   * @returns {Promise<CategoryDTO[]>}
-   */
-  async searchCategories(query) {
-    return (await this.categoryRepository.search(query)).map(
-      CategoryDTO.fromEntity
-    );
+    return (await this.categoryRepository.findAll()).map(CategoryDTO.fromEntity);
   }
 
   /**

@@ -22,13 +22,8 @@ import {
   questionIdParam,
   quizIdParam,
   reportQuizBody,
-  shareQuizValidator,
 } from '../validator/QuizValidator.js';
-import {
-  accessBody,
-  accessUserIdParam,
-  ratingBody,
-} from '../validator/QuizDiscoveryValidator.js';
+import { accessBody, accessUserIdParam, ratingBody } from '../validator/QuizDiscoveryValidator.js';
 
 export default function createQuizBuilderRouter(quizBuilderController) {
   const router = Router();
@@ -115,14 +110,6 @@ export default function createQuizBuilderRouter(quizBuilderController) {
     validateRequest,
     asyncHandler(quizBuilderController.publishQuiz)
   );
-  router.post(
-    '/:quiz_id/share',
-    requireAuth,
-    quizIdParam,
-    shareQuizValidator,
-    validateRequest,
-    asyncHandler(quizBuilderController.shareQuiz)
-  );
 
   router.post(
     '/:quiz_id/report',
@@ -164,13 +151,6 @@ export function createQuestionsRouter(quizBuilderController) {
     validateRequest,
     asyncHandler(quizBuilderController.patchQuizQuestion)
   );
-  router.delete(
-    '/:question_id',
-    requireAuth,
-    questionIdParam,
-    validateRequest,
-    asyncHandler(quizBuilderController.deleteQuizQuestion)
-  );
   router.post(
     '/:question_id/options',
     requireAuth,
@@ -193,13 +173,6 @@ export function createOptionsRouter(quizBuilderController) {
     patchOptionValidator,
     validateRequest,
     asyncHandler(quizBuilderController.patchQuestionOption)
-  );
-  router.delete(
-    '/:option_id',
-    requireAuth,
-    optionIdParam,
-    validateRequest,
-    asyncHandler(quizBuilderController.deleteQuestionOption)
   );
 
   return router;

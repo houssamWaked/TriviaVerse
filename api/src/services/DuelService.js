@@ -72,12 +72,15 @@ export class DuelService {
   async createChallenge(userId, { friend_user_id, quiz_id, mode, difficulty, category_id }) {
     const opponentUserId = asId(friend_user_id);
     const quizId = asId(quiz_id);
-    const duelMode = String(mode || 'custom').trim().toLowerCase();
+    const duelMode = String(mode || 'custom')
+      .trim()
+      .toLowerCase();
     if (!opponentUserId) throw new AppError('Invalid friend_user_id', 400, 'INVALID_INPUT');
     if (duelMode !== 'custom' && duelMode !== 'blitz') {
       throw new AppError('Invalid mode', 400, 'INVALID_INPUT');
     }
-    if (duelMode === 'custom' && !quizId) throw new AppError('Invalid quiz_id', 400, 'INVALID_INPUT');
+    if (duelMode === 'custom' && !quizId)
+      throw new AppError('Invalid quiz_id', 400, 'INVALID_INPUT');
     if (opponentUserId === userId) {
       throw new AppError('Cannot challenge yourself', 400, 'INVALID_INPUT');
     }
@@ -159,7 +162,9 @@ export class DuelService {
     if (duel.opponent_user_id !== userId) throw new AppError('Forbidden', 403, 'FORBIDDEN');
     if (duel.status !== 'pending') throw new AppError('Duel is not pending', 409, 'CONFLICT');
 
-    const duelMode = String(duel?.mode || 'custom').trim().toLowerCase();
+    const duelMode = String(duel?.mode || 'custom')
+      .trim()
+      .toLowerCase();
     let quiz = null;
 
     let opponent_session_id = null;
@@ -221,17 +226,6 @@ export class DuelService {
     });
     if (!updated) throw new AppError('Failed to cancel duel', 500, 'DB_ERROR');
     return await this._decorateForUser(userId, updated, { quiz: null, users: null });
-  }
-
-  async getDuel(userId, duelId) {
-    const duel = await this.duelRepository.findById(asId(duelId));
-    if (!duel) throw new AppError('Duel not found', 404, 'NOT_FOUND');
-    if (duel.challenger_user_id !== userId && duel.opponent_user_id !== userId) {
-      throw new AppError('Forbidden', 403, 'FORBIDDEN');
-    }
-
-    const resolved = await this._resolveIfReady(duel);
-    return await this._decorateForUser(userId, resolved, { quiz: null, users: null });
   }
 
   async listMyDuels(userId, limit = 50) {
@@ -311,7 +305,9 @@ export class DuelService {
     const startMs = duel.started_at ? new Date(duel.started_at).getTime() : NaN;
     const canStart = Number.isFinite(startMs) ? now >= startMs : true;
 
-    const questions = await this.sessionQuestionRepository.listBySessionId(duel.challenger_session_id);
+    const questions = await this.sessionQuestionRepository.listBySessionId(
+      duel.challenger_session_id
+    );
     const total = questions.length;
     const idx = Math.max(1, Math.min(total || 1, Number(duel.current_index) || 1));
     const current = questions[idx - 1] || null;
@@ -319,7 +315,8 @@ export class DuelService {
     let patched = duel;
     if (duel.status === 'active' && canStart && current && !duel.question_started_at) {
       const startIso = duel.started_at && Number.isFinite(startMs) ? duel.started_at : isoNow();
-      patched = (await this.duelRepository.update(duel.id, { question_started_at: startIso })) || duel;
+      patched =
+        (await this.duelRepository.update(duel.id, { question_started_at: startIso })) || duel;
     }
 
     patched = await this._maybeAdvance(patched, questions);
@@ -357,7 +354,7 @@ export class DuelService {
           label: String.fromCharCode(65 + i),
           text: o.option_text_snapshot,
         })),
-        correct_option_id: canRevealCorrectOption ? correctOpt?.id ?? null : null,
+        correct_option_id: canRevealCorrectOption ? (correctOpt?.id ?? null) : null,
         started_at: fresh.question_started_at,
         claim,
         answers: answers.map((a) => ({
@@ -385,7 +382,9 @@ export class DuelService {
       throw new AppError('Duel has not started yet', 409, 'NOT_STARTED');
     }
 
-    const questions = await this.sessionQuestionRepository.listBySessionId(duel.challenger_session_id);
+    const questions = await this.sessionQuestionRepository.listBySessionId(
+      duel.challenger_session_id
+    );
     if (questions.length === 0) throw new AppError('No questions', 404, 'NOT_FOUND');
     const idx = Math.max(1, Math.min(questions.length, Number(duel.current_index) || 1));
     const current = questions[idx - 1];
@@ -453,7 +452,8 @@ export class DuelService {
     const timeLimitMs = Math.max(0, (Number(current.time_limit_snapshot) || 30) * 1000);
     const startedMs = new Date(duel.question_started_at).getTime();
     const elapsed = Date.now() - startedMs;
-    const timedOut = Number.isFinite(elapsed) && Number.isFinite(startedMs) && elapsed >= timeLimitMs;
+    const timedOut =
+      Number.isFinite(elapsed) && Number.isFinite(startedMs) && elapsed >= timeLimitMs;
 
     const claim = await this.duelClaimRepository.findByDuelAndQuestionIndex(duel.id, idx);
     const answers = await this.duelAnswerRepository.listByDuelAndQuestionIndex(duel.id, idx);

@@ -23,7 +23,9 @@ function getRefreshCookieConfig() {
       sameSite,
       path: '/api/auth',
       ...(domain ? { domain } : {}),
-      ...(Number.isFinite(maxAgeDays) && maxAgeDays > 0 ? { maxAge: maxAgeDays * 24 * 60 * 60 * 1000 } : {}),
+      ...(Number.isFinite(maxAgeDays) && maxAgeDays > 0
+        ? { maxAge: maxAgeDays * 24 * 60 * 60 * 1000 }
+        : {}),
     },
   };
 }

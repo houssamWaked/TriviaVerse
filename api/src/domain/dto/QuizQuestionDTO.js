@@ -26,4 +26,3 @@ export default class QuizQuestionDTO {
     return new QuizQuestionDTO(row);
   }
 }
-

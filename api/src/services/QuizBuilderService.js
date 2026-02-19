@@ -177,16 +177,6 @@ export class QuizBuilderService {
     return QuizDTO.fromRow(updated);
   }
 
-  async shareQuiz(userId, quizId, visibility) {
-    const quiz = await this.quizRepository.findById(quizId);
-    if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
-    if (quiz.owner_user_id !== userId) throw new AppError('Forbidden', 403, 'FORBIDDEN');
-
-    const updated = await this.quizRepository.update(quizId, { visibility });
-    if (!updated) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
-    return QuizDTO.fromRow(updated);
-  }
-
   async listQuizQuestions(userId, quizId) {
     const quiz = await this.quizRepository.findById(quizId);
     if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
@@ -245,19 +235,6 @@ export class QuizBuilderService {
     return QuizQuestionDTO.fromRow({ ...updated, options: [] });
   }
 
-  async deleteQuizQuestion(userId, questionId) {
-    const q = await this.quizQuestionRepository.findById(questionId);
-    if (!q) throw new AppError('Question not found', 404, 'NOT_FOUND');
-    const quiz = await this.quizRepository.findById(q.quiz_id);
-    if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
-    if (quiz.owner_user_id !== userId) throw new AppError('Forbidden', 403, 'FORBIDDEN');
-
-    await this.questionOptionRepository.deleteByQuestionId(questionId);
-    const ok = await this.quizQuestionRepository.delete(questionId);
-    if (!ok) throw new AppError('Question not found', 404, 'NOT_FOUND');
-    return true;
-  }
-
   async addQuestionOption(userId, questionId, payload) {
     const q = await this.quizQuestionRepository.findById(questionId);
     if (!q) throw new AppError('Question not found', 404, 'NOT_FOUND');
@@ -291,20 +268,6 @@ export class QuizBuilderService {
     });
     if (!updated) throw new AppError('Option not found', 404, 'NOT_FOUND');
     return QuestionOptionDTO.fromRow(updated);
-  }
-
-  async deleteQuestionOption(userId, optionId) {
-    const opt = await this.questionOptionRepository.findById(optionId);
-    if (!opt) throw new AppError('Option not found', 404, 'NOT_FOUND');
-    const q = await this.quizQuestionRepository.findById(opt.question_id);
-    if (!q) throw new AppError('Question not found', 404, 'NOT_FOUND');
-    const quiz = await this.quizRepository.findById(q.quiz_id);
-    if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
-    if (quiz.owner_user_id !== userId) throw new AppError('Forbidden', 403, 'FORBIDDEN');
-
-    const ok = await this.questionOptionRepository.delete(optionId);
-    if (!ok) throw new AppError('Option not found', 404, 'NOT_FOUND');
-    return true;
   }
 
   async rateQuiz(userId, quizId, rating) {

@@ -14,4 +14,3 @@ export class LeaderboardController {
     res.status(200).json(data);
   };
 }
-

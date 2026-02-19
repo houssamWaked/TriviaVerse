@@ -17,9 +17,7 @@ export class StoryLevelRepository {
   async listAll() {
     const { data, error } = await supabase
       .from('story_levels')
-      .select(
-        'id, level_number, title, difficulty_min, difficulty_max, pass_score_min, xp_reward'
-      )
+      .select('id, level_number, title, difficulty_min, difficulty_max, pass_score_min, xp_reward')
       .order('level_number', { ascending: true });
     if (error) throw toAppError(error);
     return data || [];
@@ -28,9 +26,7 @@ export class StoryLevelRepository {
   async findByLevelNumber(levelNumber) {
     const { data, error } = await supabase
       .from('story_levels')
-      .select(
-        'id, level_number, title, difficulty_min, difficulty_max, pass_score_min, xp_reward'
-      )
+      .select('id, level_number, title, difficulty_min, difficulty_max, pass_score_min, xp_reward')
       .eq('level_number', levelNumber)
       .limit(1);
     if (error) throw toAppError(error);
@@ -40,9 +36,7 @@ export class StoryLevelRepository {
   async findById(id) {
     const { data, error } = await supabase
       .from('story_levels')
-      .select(
-        'id, level_number, title, difficulty_min, difficulty_max, pass_score_min, xp_reward'
-      )
+      .select('id, level_number, title, difficulty_min, difficulty_max, pass_score_min, xp_reward')
       .eq('id', id)
       .limit(1);
     if (error) throw toAppError(error);
@@ -63,9 +57,7 @@ export class StoryLevelRepository {
     const { data, error } = await supabase
       .from('story_levels')
       .insert(payload)
-      .select(
-        'id, level_number, title, difficulty_min, difficulty_max, pass_score_min, xp_reward'
-      )
+      .select('id, level_number, title, difficulty_min, difficulty_max, pass_score_min, xp_reward')
       .limit(1);
     if (error) throw toAppError(error);
     return data?.[0] || null;

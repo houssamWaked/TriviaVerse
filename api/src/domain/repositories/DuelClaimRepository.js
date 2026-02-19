@@ -42,4 +42,3 @@ export class DuelClaimRepository {
     return data?.[0] || null;
   }
 }
-

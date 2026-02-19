@@ -23,7 +23,6 @@ import { requireAuth } from './middlewares/requireAuth.js';
 import { createProtectApi } from './middlewares/protectApi.js';
 import AppError from './utils/AppError.js';
 
-import createCategoryRouter from './routes/CategoryRoute.js';
 import createAuthRouter from './routes/AuthRoute.js';
 import createPublicRouter from './routes/PublicRoute.js';
 import createLeaderboardRouter from './routes/LeaderboardRoute.js';
@@ -412,11 +411,6 @@ app.use('/api/public/millionaire', createMillionaireRouter(millionaireController
 app.use('/api/public/classic', createClassicRouter(classicController));
 app.use('/api/public/blitz', createBlitzRouter(blitzController));
 app.use('/api/public/sessions', createSessionsRouter(sessionsController));
-
-// Backwards-compatible public alias (canonical is `/api/public/leaderboard`).
-app.use('/api/leaderboard', createLeaderboardRouter(leaderboardController));
-
-app.use('/api/categories', createCategoryRouter(categoryController));
 
 app.use('/api/quizzes', createQuizBuilderRouter(quizBuilderController));
 app.use('/api/questions', createQuestionsRouter(quizBuilderController));

@@ -83,10 +83,7 @@ test('DELETE /api/quizzes/:id requires auth', async () => {
 
 test('POST /api/quizzes validates body', async () => {
   const app = createTestApp();
-  const res = await request(app)
-    .post('/api/quizzes')
-    .set(authHeader())
-    .send({ title: '' });
+  const res = await request(app).post('/api/quizzes').set(authHeader()).send({ title: '' });
   assert.equal(res.status, 400);
   assert.equal(res.body.code, 'VALIDATION_ERROR');
 });

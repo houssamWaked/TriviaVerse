@@ -15,9 +15,7 @@ export class SessionAnswerRepository {
   async findBySessionQuestionId(sessionQuestionId) {
     const { data, error } = await supabase
       .from('session_answers')
-      .select(
-        'id, session_question_id, chosen_option_id, is_correct, answered_in_sec, answered_at'
-      )
+      .select('id, session_question_id, chosen_option_id, is_correct, answered_in_sec, answered_at')
       .eq('session_question_id', sessionQuestionId)
       .limit(1);
     if (error) throw toAppError(error);
@@ -30,9 +28,7 @@ export class SessionAnswerRepository {
 
     const { data, error } = await supabase
       .from('session_answers')
-      .select(
-        'id, session_question_id, chosen_option_id, is_correct, answered_in_sec, answered_at'
-      )
+      .select('id, session_question_id, chosen_option_id, is_correct, answered_in_sec, answered_at')
       .in('session_question_id', ids);
     if (error) throw toAppError(error);
     return data || [];
@@ -42,9 +38,7 @@ export class SessionAnswerRepository {
     const { data, error } = await supabase
       .from('session_answers')
       .insert(payload)
-      .select(
-        'id, session_question_id, chosen_option_id, is_correct, answered_in_sec, answered_at'
-      )
+      .select('id, session_question_id, chosen_option_id, is_correct, answered_in_sec, answered_at')
       .limit(1);
     if (error) throw toAppError(error);
     return data?.[0] || null;

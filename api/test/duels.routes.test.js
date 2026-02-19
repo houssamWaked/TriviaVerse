@@ -20,10 +20,11 @@ function createTestApp() {
   const controller = {
     listMine: async (req, res) => res.status(200).json({ entries: [] }),
     create: async (req, res) => res.status(201).json({ id: 'ok' }),
-    get: async (req, res) => res.status(200).json({ id: req.params.duel_id }),
     accept: async (req, res) => res.status(200).json({ ok: true }),
     decline: async (req, res) => res.status(200).json({ ok: true }),
     cancel: async (req, res) => res.status(200).json({ ok: true }),
+    liveState: async (req, res) => res.status(200).json({ id: req.params.duel_id }),
+    liveAnswer: async (req, res) => res.status(200).json({ ok: true }),
   };
 
   const app = express();
@@ -50,9 +51,9 @@ test('POST /api/duels validates body', async () => {
   assert.equal(res.body.code, 'VALIDATION_ERROR');
 });
 
-test('GET /api/duels/:duel_id validates duel_id', async () => {
+test('GET /api/duels/:duel_id/state validates duel_id', async () => {
   const app = createTestApp();
-  const res = await request(app).get('/api/duels/not-a-uuid').set(authHeader());
+  const res = await request(app).get('/api/duels/not-a-uuid/state').set(authHeader());
   assert.equal(res.status, 400);
   assert.equal(res.body.code, 'VALIDATION_ERROR');
 });

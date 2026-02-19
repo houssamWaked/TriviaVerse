@@ -13,9 +13,7 @@ export class SessionOptionRepository {
   async listBySessionQuestionId(sessionQuestionId) {
     const { data, error } = await supabase
       .from('session_options')
-      .select(
-        'id, session_question_id, option_text_snapshot, is_correct_snapshot, order_index'
-      )
+      .select('id, session_question_id, option_text_snapshot, is_correct_snapshot, order_index')
       .eq('session_question_id', sessionQuestionId)
       .order('order_index', { ascending: true });
     if (error) throw toAppError(error);
@@ -40,9 +38,7 @@ export class SessionOptionRepository {
     const { data, error } = await supabase
       .from('session_options')
       .insert(rows)
-      .select(
-        'id, session_question_id, option_text_snapshot, is_correct_snapshot, order_index'
-      );
+      .select('id, session_question_id, option_text_snapshot, is_correct_snapshot, order_index');
     if (error) throw toAppError(error);
     return data || [];
   }

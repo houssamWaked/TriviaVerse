@@ -24,7 +24,10 @@ export class QuizReportRepository {
     const payload = {
       quiz_id,
       reporter_user_id,
-      reason: String(reason || 'other').trim().slice(0, 60) || 'other',
+      reason:
+        String(reason || 'other')
+          .trim()
+          .slice(0, 60) || 'other',
       message: message != null ? String(message).trim().slice(0, 2000) : null,
       status: 'open',
       updated_at: now,
@@ -49,7 +52,9 @@ export class QuizReportRepository {
 
     const { data, error } = await supabase
       .from('quiz_reports')
-      .select('id, quiz_id, reporter_user_id, reason, message, status, created_at, updated_at, resolved_at, resolved_by_admin_email')
+      .select(
+        'id, quiz_id, reporter_user_id, reason, message, status, created_at, updated_at, resolved_at, resolved_by_admin_email'
+      )
       .eq('status', s)
       .order('created_at', { ascending: false })
       .range(off, off + lim - 1);
@@ -71,7 +76,9 @@ export class QuizReportRepository {
       .from('quiz_reports')
       .update(patch)
       .eq('id', reportId)
-      .select('id, quiz_id, reporter_user_id, reason, message, status, created_at, updated_at, resolved_at, resolved_by_admin_email')
+      .select(
+        'id, quiz_id, reporter_user_id, reason, message, status, created_at, updated_at, resolved_at, resolved_by_admin_email'
+      )
       .limit(1);
 
     if (error) throw toAppError(error);
@@ -84,4 +91,3 @@ export class QuizReportRepository {
     return { success: true };
   }
 }
-

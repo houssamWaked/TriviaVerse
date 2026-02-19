@@ -45,11 +45,7 @@ export class StoryService {
           level_number: lvl.level_number,
           title: lvl.title,
           difficulty:
-            lvl.difficulty_max <= 3
-              ? 'easy'
-              : lvl.difficulty_max <= 6
-                ? 'medium'
-                : 'hard',
+            lvl.difficulty_max <= 3 ? 'easy' : lvl.difficulty_max <= 6 ? 'medium' : 'hard',
           best_score: p?.best_score ?? 0,
           stars_earned: p?.stars_earned ?? 0,
           is_unlocked: p?.is_unlocked ?? false,

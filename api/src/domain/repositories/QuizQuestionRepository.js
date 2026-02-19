@@ -4,7 +4,8 @@
 import { supabase } from '../../config/supabase.js';
 import AppError from '../../utils/AppError.js';
 
-const SELECT_FIELDS_BASE = 'id, quiz_id, question_text, explanation, time_limit_sec, points, order_index';
+const SELECT_FIELDS_BASE =
+  'id, quiz_id, question_text, explanation, time_limit_sec, points, order_index';
 const SELECT_FIELDS_DIFFICULTY = `${SELECT_FIELDS_BASE}, difficulty_rating`;
 const SELECT_FIELDS_ASSIGNED = `${SELECT_FIELDS_BASE}, is_assigned`;
 const SELECT_FIELDS_FULL = `${SELECT_FIELDS_BASE}, difficulty_rating, is_assigned`;
@@ -181,54 +182,13 @@ export class QuizQuestionRepository {
     return res.data || [];
   }
 
-  async searchGlobalByText({ q, limit = 20, assigned = 'all' } = {}) {
-    const query = String(q || '').trim();
-    if (!query) return [];
-    const lim = Math.min(50, Math.max(1, Number(limit) || 20));
-    const a = String(assigned || 'all').trim().toLowerCase();
-
-    let res = await selectWithFallback((fields) => {
-      let req = supabase
-        .from('quiz_questions')
-        .select(fields)
-        .is('quiz_id', null)
-        .ilike('question_text', `%${query}%`);
-
-      if (a === 'assigned') req = req.eq('is_assigned', true);
-      if (a === 'unassigned') req = req.eq('is_assigned', false);
-
-      return req
-        // Stable ordering so pagination/ranges don't "miss" items when question_text duplicates exist.
-        .order('question_text', { ascending: true })
-        .order('id', { ascending: true })
-        .limit(lim);
-    });
-
-    // Back-compat: if is_assigned column isn't deployed, re-run without the filter.
-    if (res?.error && String(res.error.code || '').trim() === '42703') {
-      const msg = String(res.error.message || '').toLowerCase();
-      if (msg.includes('is_assigned')) {
-        res = await selectWithFallback((fields) =>
-          supabase
-            .from('quiz_questions')
-            .select(fields)
-            .is('quiz_id', null)
-            .ilike('question_text', `%${query}%`)
-            .order('question_text', { ascending: true })
-            .order('id', { ascending: true })
-            .limit(lim)
-        );
-      }
-    }
-    if (res.error) throw toAppError(res.error);
-    return res.data || [];
-  }
-
   async listGlobal({ q = '', limit = 20, offset = 0, assigned = 'all' } = {}) {
     const query = String(q || '').trim();
     const lim = Math.min(50, Math.max(1, Number(limit) || 20));
     const off = Math.max(0, Number(offset) || 0);
-    const a = String(assigned || 'all').trim().toLowerCase();
+    const a = String(assigned || 'all')
+      .trim()
+      .toLowerCase();
 
     let res = await selectWithFallback((fields) => {
       let req = supabase.from('quiz_questions').select(fields).is('quiz_id', null);

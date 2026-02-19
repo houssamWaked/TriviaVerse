@@ -201,16 +201,6 @@ export class AdminService {
     return { success: true };
   }
 
-  async unbanUser(userId, { adminEmail = null } = {}) {
-    if (!this.userRepository) throw new AppError('Not configured', 501, 'NOT_CONFIGURED');
-    const uid = String(userId || '').trim();
-    if (!uid) throw new AppError('User not found', 404, 'NOT_FOUND');
-
-    const updated = await this.userRepository.unbanUser(uid, { adminEmail });
-    if (!updated) throw new AppError('User not found', 404, 'NOT_FOUND');
-    return { success: true };
-  }
-
   async assertNotInStoryPool(questionIds = []) {
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (ids.length === 0) return;
@@ -227,24 +217,28 @@ export class AdminService {
   }
 
   async assertExclusiveForModePool(mode, questionIds = []) {
-    const m = String(mode || '').trim().toLowerCase();
+    const m = String(mode || '')
+      .trim()
+      .toLowerCase();
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (!m || ids.length === 0) return;
 
     const [storyAssignments, modeAssignments, classicAssignments, classicLevelAssignments] =
       await Promise.all([
-      this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
-      this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
-      this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
-      this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
-    ]);
+        this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
+      ]);
 
     const storyConflicts = Array.isArray(storyAssignments) ? storyAssignments : [];
     const modeConflicts = Array.isArray(modeAssignments)
       ? modeAssignments.filter((a) => a?.mode && String(a.mode).toLowerCase() !== m)
       : [];
     const classicConflicts = Array.isArray(classicAssignments) ? classicAssignments : [];
-    const classicLevelConflicts = Array.isArray(classicLevelAssignments) ? classicLevelAssignments : [];
+    const classicLevelConflicts = Array.isArray(classicLevelAssignments)
+      ? classicLevelAssignments
+      : [];
 
     if (
       storyConflicts.length > 0 ||
@@ -267,17 +261,19 @@ export class AdminService {
   }
 
   async filterEligibleForModePool(mode, questionIds = []) {
-    const m = String(mode || '').trim().toLowerCase();
+    const m = String(mode || '')
+      .trim()
+      .toLowerCase();
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (!m || ids.length === 0) return [];
 
     const [storyAssignments, modeAssignments, classicAssignments, classicLevelAssignments] =
       await Promise.all([
-      this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
-      this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
-      this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
-      this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
-    ]);
+        this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
+      ]);
 
     const blocked = new Set();
 
@@ -316,18 +312,20 @@ export class AdminService {
 
     const [storyAssignments, modeAssignments, classicAssignments, classicLevelAssignments] =
       await Promise.all([
-      this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
-      this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
-      this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
-      this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
-    ]);
+        this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
+      ]);
 
     const storyConflicts = Array.isArray(storyAssignments) ? storyAssignments : [];
     const modeConflicts = Array.isArray(modeAssignments) ? modeAssignments : [];
     const classicConflicts = Array.isArray(classicAssignments)
       ? classicAssignments.filter((a) => a?.category_id && a.category_id !== cid)
       : [];
-    const classicLevelConflicts = Array.isArray(classicLevelAssignments) ? classicLevelAssignments : [];
+    const classicLevelConflicts = Array.isArray(classicLevelAssignments)
+      ? classicLevelAssignments
+      : [];
 
     if (
       storyConflicts.length > 0 ||
@@ -356,11 +354,11 @@ export class AdminService {
 
     const [storyAssignments, modeAssignments, classicAssignments, classicLevelAssignments] =
       await Promise.all([
-      this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
-      this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
-      this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
-      this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
-    ]);
+        this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
+      ]);
 
     const blocked = new Set();
 
@@ -399,11 +397,11 @@ export class AdminService {
 
     const [storyAssignments, modeAssignments, classicAssignments, classicLevelAssignments] =
       await Promise.all([
-      this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
-      this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
-      this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
-      this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
-    ]);
+        this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
+      ]);
 
     const storyConflicts = Array.isArray(storyAssignments)
       ? storyAssignments.filter((a) => a?.level_id && a.level_id !== lid)
@@ -411,7 +409,9 @@ export class AdminService {
 
     const modeConflicts = Array.isArray(modeAssignments) ? modeAssignments : [];
     const classicConflicts = Array.isArray(classicAssignments) ? classicAssignments : [];
-    const classicLevelConflicts = Array.isArray(classicLevelAssignments) ? classicLevelAssignments : [];
+    const classicLevelConflicts = Array.isArray(classicLevelAssignments)
+      ? classicLevelAssignments
+      : [];
 
     if (
       storyConflicts.length > 0 ||
@@ -440,11 +440,11 @@ export class AdminService {
 
     const [storyAssignments, modeAssignments, classicAssignments, classicLevelAssignments] =
       await Promise.all([
-      this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
-      this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
-      this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
-      this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
-    ]);
+        this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.modeQuestionPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.classicCategoryPoolRepository.listAssignmentsByQuestionIds(ids),
+        this.classicCategoryLevelPoolRepository?.listAssignmentsByQuestionIds?.(ids),
+      ]);
 
     const blocked = new Set();
 
@@ -481,9 +481,7 @@ export class AdminService {
     if (ids.length === 0) return [];
 
     const assignments = await this.storyLevelPoolRepository.listAssignmentsByQuestionIds(ids);
-    const blocked = new Set(
-      (assignments || []).map((a) => a?.quiz_question_id).filter(Boolean)
-    );
+    const blocked = new Set((assignments || []).map((a) => a?.quiz_question_id).filter(Boolean));
     return ids.filter((id) => !blocked.has(id));
   }
 
@@ -585,7 +583,7 @@ export class AdminService {
           id: q.id,
           question_text: q.question_text,
           difficulty_rating: q.difficulty_rating ?? null,
-      })),
+        })),
     };
   }
 
@@ -598,22 +596,26 @@ export class AdminService {
     return { level_id: level.id, count: unique.length, ids: unique };
   }
 
-  async listStoryAssignedQuestionIds() {
-    const ids = await this.storyLevelPoolRepository.listAllQuestionIds();
-    const unique = Array.from(new Set((ids || []).filter(Boolean)));
-    return { count: unique.length, ids: unique };
-  }
-
   async listAllAssignedQuestionIds() {
-    const story = await this.safeListIds(() => this.storyLevelPoolRepository?.listAllQuestionIds?.());
-    const modes = await this.safeListIds(() => this.modeQuestionPoolRepository?.listAllQuestionIds?.());
-    const classic = await this.safeListIds(() => this.classicCategoryPoolRepository?.listAllQuestionIds?.());
+    const story = await this.safeListIds(() =>
+      this.storyLevelPoolRepository?.listAllQuestionIds?.()
+    );
+    const modes = await this.safeListIds(() =>
+      this.modeQuestionPoolRepository?.listAllQuestionIds?.()
+    );
+    const classic = await this.safeListIds(() =>
+      this.classicCategoryPoolRepository?.listAllQuestionIds?.()
+    );
     const classicLevels = await this.safeListIds(() =>
       this.classicCategoryLevelPoolRepository?.listAllQuestionIds?.()
     );
 
     const ids = Array.from(
-      new Set([...(story || []), ...(modes || []), ...(classic || []), ...(classicLevels || [])].filter(Boolean))
+      new Set(
+        [...(story || []), ...(modes || []), ...(classic || []), ...(classicLevels || [])].filter(
+          Boolean
+        )
+      )
     );
     return {
       count: ids.length,
@@ -737,7 +739,13 @@ export class AdminService {
     await this.questionOptionRepository.createMany(rows);
 
     const modes = Array.isArray(payload.modes)
-      ? payload.modes.map((m) => String(m || '').trim().toLowerCase()).filter(Boolean)
+      ? payload.modes
+          .map((m) =>
+            String(m || '')
+              .trim()
+              .toLowerCase()
+          )
+          .filter(Boolean)
       : [];
 
     if (modes.length > 1) {
@@ -769,7 +777,9 @@ export class AdminService {
   }
 
   async addQuestionsToModePool(mode, questionIds = []) {
-    const m = String(mode || '').trim().toLowerCase();
+    const m = String(mode || '')
+      .trim()
+      .toLowerCase();
     if (!m) throw new AppError('Mode is required', 400, 'VALIDATION_ERROR');
 
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
@@ -781,7 +791,9 @@ export class AdminService {
   }
 
   async removeModePoolQuestions(mode, questionIds = []) {
-    const m = String(mode || '').trim().toLowerCase();
+    const m = String(mode || '')
+      .trim()
+      .toLowerCase();
     if (!m) throw new AppError('Mode is required', 400, 'VALIDATION_ERROR');
 
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
@@ -792,7 +804,9 @@ export class AdminService {
   }
 
   async replaceModePool(mode, questionIds = []) {
-    const m = String(mode || '').trim().toLowerCase();
+    const m = String(mode || '')
+      .trim()
+      .toLowerCase();
     if (!m) throw new AppError('Mode is required', 400, 'VALIDATION_ERROR');
 
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
@@ -800,28 +814,6 @@ export class AdminService {
     await this.modeQuestionPoolRepository.deleteAllByMode(m);
     if (ids.length > 0) await this.modeQuestionPoolRepository.upsertMany(m, ids);
     return { success: true, count: ids.length };
-  }
-
-  async searchGlobalQuestions({ q, limit = 20, assigned = 'all' }) {
-    const query = String(q || '').trim();
-    if (!query) return { q: '', results: [] };
-    const lim = Math.min(50, Math.max(1, Number(limit) || 20));
-
-    const results = await this.quizQuestionRepository.searchGlobalByText({
-      q: query,
-      limit: lim,
-      assigned,
-    });
-    return {
-      q: query,
-      assigned: String(assigned || 'all').trim(),
-      results: results.map((r) => ({
-        id: r.id,
-        question_text: r.question_text,
-        difficulty_rating: r.difficulty_rating ?? null,
-        is_assigned: r.is_assigned ?? null,
-      })),
-    };
   }
 
   async getGlobalQuestion(questionId) {
@@ -947,11 +939,18 @@ export class AdminService {
     const ids = await this.modeQuestionPoolRepository.listQuestionIdsByMode(mode);
     const copy = ids.slice();
     shuffleInPlace(copy);
-    return { mode: String(mode || '').trim().toLowerCase(), count: copy.length };
+    return {
+      mode: String(mode || '')
+        .trim()
+        .toLowerCase(),
+      count: copy.length,
+    };
   }
 
   async listModePoolQuestionIds(mode) {
-    const m = String(mode || '').trim().toLowerCase();
+    const m = String(mode || '')
+      .trim()
+      .toLowerCase();
     if (!m) throw new AppError('Mode is required', 400, 'VALIDATION_ERROR');
 
     const ids = await this.modeQuestionPoolRepository.listQuestionIdsByMode(m);
@@ -960,7 +959,9 @@ export class AdminService {
   }
 
   async seedModePool(mode, { random_count = 10 } = {}) {
-    const m = String(mode || '').trim().toLowerCase();
+    const m = String(mode || '')
+      .trim()
+      .toLowerCase();
     if (!m) throw new AppError('Mode is required', 400, 'VALIDATION_ERROR');
 
     const count = Math.min(100, Math.max(1, Number(random_count) || 10));
@@ -978,7 +979,9 @@ export class AdminService {
   }
 
   async listModePoolQuestions(mode, { limit = 50, offset = 0 } = {}) {
-    const m = String(mode || '').trim().toLowerCase();
+    const m = String(mode || '')
+      .trim()
+      .toLowerCase();
     if (!m) throw new AppError('Mode is required', 400, 'VALIDATION_ERROR');
 
     const ids = await this.modeQuestionPoolRepository.listQuestionIdsByModePaged(m, {
@@ -1117,7 +1120,8 @@ export class AdminService {
     const questions = await this.quizQuestionRepository.listRandomGlobal(count);
     const raw = questions.map((q) => q.id).filter(Boolean);
     const eligible = await this.filterEligibleForClassicCategory(cat.id, raw);
-    if (eligible.length === 0) throw new AppError('No eligible global questions available', 400, 'NO_POOL');
+    if (eligible.length === 0)
+      throw new AppError('No eligible global questions available', 400, 'NO_POOL');
 
     await this.classicCategoryPoolRepository.upsertMany(cat.id, eligible);
     return { success: true, added_count: eligible.length };
@@ -1326,10 +1330,13 @@ export class AdminService {
     const level = await this.classicCategoryLevelRepository.findById(levelId);
     if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
 
-    const ids = await this.classicCategoryLevelPoolRepository.listQuestionIdsByLevelIdPaged(level.id, {
-      limit,
-      offset,
-    });
+    const ids = await this.classicCategoryLevelPoolRepository.listQuestionIdsByLevelIdPaged(
+      level.id,
+      {
+        limit,
+        offset,
+      }
+    );
     const questions = await this.quizQuestionRepository.listByIds(ids);
     const questionMap = new Map(questions.map((q) => [q.id, q]));
 

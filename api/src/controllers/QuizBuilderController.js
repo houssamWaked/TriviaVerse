@@ -24,11 +24,7 @@ export class QuizBuilderController {
   };
 
   patchQuiz = async (req, res) => {
-    const data = await this.quizBuilderService.patchQuiz(
-      req.user.id,
-      req.params.quiz_id,
-      req.body
-    );
+    const data = await this.quizBuilderService.patchQuiz(req.user.id, req.params.quiz_id, req.body);
     res.status(200).json(data);
   };
 
@@ -37,20 +33,8 @@ export class QuizBuilderController {
     res.status(200).json(data);
   };
 
-  shareQuiz = async (req, res) => {
-    const data = await this.quizBuilderService.shareQuiz(
-      req.user.id,
-      req.params.quiz_id,
-      req.body.visibility
-    );
-    res.status(200).json(data);
-  };
-
   listQuizQuestions = async (req, res) => {
-    const data = await this.quizBuilderService.listQuizQuestions(
-      req.user.id,
-      req.params.quiz_id
-    );
+    const data = await this.quizBuilderService.listQuizQuestions(req.user.id, req.params.quiz_id);
     res.status(200).json(data);
   };
 
@@ -72,11 +56,6 @@ export class QuizBuilderController {
     res.status(200).json(data);
   };
 
-  deleteQuizQuestion = async (req, res) => {
-    await this.quizBuilderService.deleteQuizQuestion(req.user.id, req.params.question_id);
-    res.status(204).send();
-  };
-
   addQuestionOption = async (req, res) => {
     const data = await this.quizBuilderService.addQuestionOption(
       req.user.id,
@@ -95,11 +74,6 @@ export class QuizBuilderController {
     res.status(200).json(data);
   };
 
-  deleteQuestionOption = async (req, res) => {
-    await this.quizBuilderService.deleteQuestionOption(req.user.id, req.params.option_id);
-    res.status(204).send();
-  };
-
   rateQuiz = async (req, res) => {
     const data = await this.quizBuilderService.rateQuiz(
       req.user.id,
@@ -115,7 +89,11 @@ export class QuizBuilderController {
   };
 
   addQuizAccess = async (req, res) => {
-    const data = await this.quizBuilderService.addQuizAccess(req.user.id, req.params.quiz_id, req.body);
+    const data = await this.quizBuilderService.addQuizAccess(
+      req.user.id,
+      req.params.quiz_id,
+      req.body
+    );
     res.status(201).json(data);
   };
 

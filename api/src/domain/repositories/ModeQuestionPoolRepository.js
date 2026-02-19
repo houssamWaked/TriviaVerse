@@ -62,7 +62,9 @@ export class ModeQuestionPoolRepository {
   }
 
   async listQuestionIdsByMode(mode) {
-    const m = String(mode || '').trim().toLowerCase();
+    const m = String(mode || '')
+      .trim()
+      .toLowerCase();
     if (!m) return [];
 
     const { data, error } = await supabase
@@ -76,7 +78,9 @@ export class ModeQuestionPoolRepository {
   }
 
   async listQuestionIdsByModePaged(mode, { limit = 50, offset = 0 } = {}) {
-    const m = String(mode || '').trim().toLowerCase();
+    const m = String(mode || '')
+      .trim()
+      .toLowerCase();
     if (!m) return [];
 
     const lim = Math.min(100, Math.max(1, Number(limit) || 50));
@@ -95,7 +99,9 @@ export class ModeQuestionPoolRepository {
   }
 
   async upsertMany(mode, questionIds = []) {
-    const m = String(mode || '').trim().toLowerCase();
+    const m = String(mode || '')
+      .trim()
+      .toLowerCase();
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (!m || ids.length === 0) return true;
 
@@ -110,7 +116,9 @@ export class ModeQuestionPoolRepository {
   }
 
   async deleteMany(mode, questionIds = []) {
-    const m = String(mode || '').trim().toLowerCase();
+    const m = String(mode || '')
+      .trim()
+      .toLowerCase();
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (!m || ids.length === 0) return true;
 
@@ -124,7 +132,9 @@ export class ModeQuestionPoolRepository {
   }
 
   async deleteAllByMode(mode) {
-    const m = String(mode || '').trim().toLowerCase();
+    const m = String(mode || '')
+      .trim()
+      .toLowerCase();
     if (!m) return true;
 
     const { error } = await supabase.from('mode_question_pool').delete().eq('mode', m);
@@ -136,7 +146,10 @@ export class ModeQuestionPoolRepository {
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (ids.length === 0) return true;
 
-    const { error } = await supabase.from('mode_question_pool').delete().in('quiz_question_id', ids);
+    const { error } = await supabase
+      .from('mode_question_pool')
+      .delete()
+      .in('quiz_question_id', ids);
     if (error) throw toAppError(error);
     return true;
   }

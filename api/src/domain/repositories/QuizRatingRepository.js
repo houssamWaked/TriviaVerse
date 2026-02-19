@@ -28,10 +28,7 @@ export class QuizRatingRepository {
     const now = new Date().toISOString();
     const { data, error } = await supabase
       .from('quiz_ratings')
-      .upsert(
-        { quiz_id, user_id, rating, updated_at: now },
-        { onConflict: 'quiz_id,user_id' }
-      )
+      .upsert({ quiz_id, user_id, rating, updated_at: now }, { onConflict: 'quiz_id,user_id' })
       .select('quiz_id, user_id, rating')
       .limit(1);
 
