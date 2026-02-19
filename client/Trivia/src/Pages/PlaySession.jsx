@@ -52,7 +52,7 @@ export default function PlaySession({
   const storyTransitionMs = 1000;
   const blitzTransitionMs = 1000;
   const classicTransitionMs = 1000;
-  const millionaireCorrectTransitionMs = 650;
+  const millionaireCorrectTransitionMs = 850;
   const getNextTransitionMs = (q) => {
     if (isStory) return storyTransitionMs;
     const m = String(q?.mode || '').toLowerCase();
@@ -76,7 +76,6 @@ export default function PlaySession({
   const [question, setQuestion] = useState(null);
   const [answerResult, setAnswerResult] = useState(null);
   const [pendingChoiceId, setPendingChoiceId] = useState(null);
-  const [millionaireCorrectPulse, setMillionaireCorrectPulse] = useState(null);
   const [finished, setFinished] = useState(false);
   const [scoreTotal, setScoreTotal] = useState(0);
   const [speedBonus, setSpeedBonus] = useState(0);
@@ -99,7 +98,6 @@ export default function PlaySession({
     setSessionMode(mode);
     setAnswerResult(null);
     setPendingChoiceId(null);
-    setMillionaireCorrectPulse(null);
     setSpeedBonus(0);
     setDisabledOptionIds(
       Array.isArray(q?.disabled_option_ids) ? q.disabled_option_ids : []
@@ -587,18 +585,6 @@ export default function PlaySession({
           ? millionaireCorrectTransitionMs
           : nextTransitionMs;
 
-      if (isMillionaire && result.is_correct) {
-        setMillionaireCorrectPulse({ optionId: chosenOptionId, active: true });
-        window.setTimeout(() => {
-          if (submitSeqRef.current !== submitSeq) return;
-          setMillionaireCorrectPulse((prev) => {
-            if (!prev) return prev;
-            if (prev.optionId !== chosenOptionId) return prev;
-            return { ...prev, active: false };
-          });
-        }, 220);
-      }
-
       if (!result.next_question_available) {
         if (transitionMs) await sleep(transitionMs);
         if (submitSeqRef.current !== submitSeq) return;
@@ -1044,7 +1030,12 @@ export default function PlaySession({
                 {STRINGS.PLAY_SESSION.millionaire.exit}
               </button>
 
-              <div style={PlaySessionStyle.millionairePrizePill}>
+              <div
+                className={
+                  answerResult?.is_correct ? 'tv-mil-prize tv-mil-prize--bump' : 'tv-mil-prize'
+                }
+                style={PlaySessionStyle.millionairePrizePill}
+              >
                 {ICONS.common.crownGold} {formatMoney(scoreTotal)}
               </div>
             </div>
@@ -1076,22 +1067,21 @@ export default function PlaySession({
                         disabledOptionIds.includes(o.id);
                       const suggested = phoneSuggestionOptionId === o.id;
                       const selected = pendingChoiceId === o.id;
-                      const celebrate =
-                        millionaireCorrectPulse?.optionId === o.id &&
-                        millionaireCorrectPulse?.active;
+                      const celebrate = !!answerResult?.is_correct && pendingChoiceId === o.id;
                       return (
                         <button
                           key={o.id}
                           type="button"
-                          className="tv-card tv-card--hover"
+                          className={
+                            celebrate
+                              ? 'tv-card tv-card--hover tv-mil-option tv-mil-option--correct'
+                              : 'tv-card tv-card--hover tv-mil-option'
+                          }
                           style={{
                             ...PlaySessionStyle.millionaireOptionBtnState(
                               suggested || selected,
                               disabled
                             ),
-                            transition:
-                              'transform 160ms ease, box-shadow 160ms ease, background 160ms ease',
-                            transform: celebrate ? 'scale(1.03)' : 'scale(1)',
                             ...(celebrate
                               ? {
                                   boxShadow:
@@ -1105,6 +1095,11 @@ export default function PlaySession({
                           disabled={disabled}
                           onClick={() => submit(o.id)}
                         >
+                          {celebrate && (
+                            <span className="tv-mil-check" aria-hidden="true">
+                              ✓
+                            </span>
+                          )}
                           <span style={PlaySessionStyle.millionaireOptionLabel}>
                             {o.label}
                           </span>
