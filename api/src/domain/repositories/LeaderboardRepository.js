@@ -10,6 +10,13 @@ function toAppError(error) {
   if (code === '42P01') {
     return new AppError('Leaderboard entries table is not configured', 501, 'NOT_CONFIGURED');
   }
+  if (code === '23514') {
+    return new AppError(
+      'Leaderboard entries table schema mismatch: `leaderboard_entries_mode_check` rejected this mode value. Apply `TriviaVerse/api/sql/leaderboard_entries_mode_fix.sql` (or update the check constraint to include the new modes).',
+      500,
+      'DB_SCHEMA_MISMATCH'
+    );
+  }
   if (code === '42P10') {
     return new AppError(
       'Leaderboard entries table schema mismatch: missing unique constraint on (user_id, period, mode). Apply `TriviaVerse/api/sql/leaderboard_entries_fix.sql`.',
@@ -69,6 +76,10 @@ export class LeaderboardRepository {
       if (!error) return data?.[0] || null;
 
       const code = String(error.code || '').trim();
+      if (code === '23514' && String(mode || '').startsWith('blitz_')) {
+        // Back-compat: some DBs only allow mode='blitz' (no per-difficulty modes).
+        return this.insertFromSession({ user_id, mode: 'blitz', score_value: score });
+      }
       if (code !== '42P10') throw toAppError(error);
     }
 

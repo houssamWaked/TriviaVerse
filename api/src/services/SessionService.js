@@ -1501,18 +1501,34 @@ export class SessionService {
       }
 
       if (modeForLeaderboard) {
-        await this.leaderboardRepository.insertFromSession({
-          user_id: session.user_id,
-          mode: modeForLeaderboard,
-          score_value: updated.score_total ?? 0,
-        });
+        try {
+          await this.leaderboardRepository.insertFromSession({
+            user_id: session.user_id,
+            mode: modeForLeaderboard,
+            score_value: updated.score_total ?? 0,
+          });
+        } catch (err) {
+          if (err?.code === 'NOT_CONFIGURED' || err?.code === 'DB_SCHEMA_MISMATCH') {
+            warnings.push({ code: err.code, message: err.message });
+          } else {
+            throw err;
+          }
+        }
       }
 
-      await this.leaderboardRepository.insertFromSession({
-        user_id: session.user_id,
-        mode: 'global',
-        score_value: updated.score_total ?? 0,
-      });
+      try {
+        await this.leaderboardRepository.insertFromSession({
+          user_id: session.user_id,
+          mode: 'global',
+          score_value: updated.score_total ?? 0,
+        });
+      } catch (err) {
+        if (err?.code === 'NOT_CONFIGURED' || err?.code === 'DB_SCHEMA_MISMATCH') {
+          warnings.push({ code: err.code, message: err.message });
+        } else {
+          throw err;
+        }
+      }
     }
 
     let xpDelta = 0;
