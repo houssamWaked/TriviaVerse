@@ -2,6 +2,7 @@
  * Game mode session start validators.
  */
 import { body } from 'express-validator';
+import { param } from 'express-validator';
 
 export const storyStartValidator = [
   body('level_number').isInt({ min: 1, max: 10000 }).withMessage('level_number must be >= 1'),
@@ -47,4 +48,16 @@ export const blitzStartValidator = [
     .isUUID()
     .withMessage('category_id must be a valid UUID'),
   body('difficulty').isIn(['easy', 'medium', 'hard']).withMessage('difficulty is invalid'),
+];
+
+export const blitzMatchFindValidator = [
+  body('category_id')
+    .optional({ nullable: true })
+    .isUUID()
+    .withMessage('category_id must be a valid UUID'),
+  body('difficulty').isIn(['easy', 'medium', 'hard']).withMessage('difficulty is invalid'),
+];
+
+export const requestIdParamValidator = [
+  param('request_id').isUUID().withMessage('request_id must be a valid UUID'),
 ];

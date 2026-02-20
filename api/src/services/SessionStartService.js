@@ -41,6 +41,13 @@ function shuffleInPlace(arr) {
   return a;
 }
 
+function pickShuffled(ids, count) {
+  const unique = Array.from(new Set((ids || []).filter(Boolean)));
+  if (unique.length === 0) return [];
+  const shuffled = shuffleInPlace(unique.slice());
+  return shuffled.slice(0, Math.min(Math.max(0, Number(count) || 0), shuffled.length));
+}
+
 export class SessionStartService {
   constructor({
     gameSessionRepository,
@@ -437,8 +444,15 @@ export class SessionStartService {
     if (ids.length === 0) {
       throw new AppError('No questions configured for this level', 400, 'NO_POOL');
     }
+    if (ids.length < 10) {
+      throw new AppError(
+        `Not enough questions configured for this level (have ${ids.length}, need 10).`,
+        400,
+        'NOT_ENOUGH_QUESTIONS'
+      );
+    }
 
-    const wantedIds = ids.slice(0, 10);
+    const wantedIds = pickShuffled(ids, 10);
     const rows = await this.quizQuestionRepository.listByIds(wantedIds);
     const byId = new Map(rows.map((q) => [q.id, q]));
     const questions = wantedIds.map((id) => byId.get(id)).filter(Boolean);
@@ -452,6 +466,55 @@ export class SessionStartService {
     }
 
     return questions;
+  }
+
+  async listBlitzQuestions({ category_id = null, limit, difficulty }) {
+    const count = Math.max(1, Number(limit) || 1);
+    const cid = category_id ? String(category_id).trim() : '';
+    const range = difficultyToRatingRange(difficulty);
+
+    if (cid) {
+      if (!this.classicCategoryPoolRepository) {
+        throw new AppError('Categories are not configured on the server', 501, 'NOT_CONFIGURED');
+      }
+
+      const ids = await this.classicCategoryPoolRepository.listQuestionIdsByCategoryId(cid);
+      if (ids.length === 0)
+        throw new AppError('No questions configured for this category', 400, 'NO_POOL');
+
+      const shuffled = shuffleInPlace(ids.slice());
+      const picked = [];
+      const pickedIds = new Set();
+
+      const batchSize = 200;
+      for (let off = 0; off < shuffled.length && picked.length < count; off += batchSize) {
+        const batchIds = shuffled.slice(off, off + batchSize);
+        // eslint-disable-next-line no-await-in-loop
+        const rows = await this.quizQuestionRepository.listByIds(batchIds);
+        const map = new Map(rows.map((q) => [q.id, q]));
+        for (const id of batchIds) {
+          const q = map.get(id);
+          if (!q) continue;
+          if (range && !inRatingRange(q, range)) continue;
+          if (pickedIds.has(q.id)) continue;
+          pickedIds.add(q.id);
+          picked.push(q);
+          if (picked.length >= count) break;
+        }
+      }
+
+      if (picked.length < count) {
+        throw new AppError(
+          `Not enough ${difficulty} questions in this category (have ${picked.length}, need ${count}).`,
+          400,
+          'NOT_ENOUGH_QUESTIONS'
+        );
+      }
+
+      return picked.slice(0, count);
+    }
+
+    return this.listQuestionsForModeByDifficulty('blitz', count, difficulty);
   }
 
   async assertCanViewQuiz(userId, quiz) {
@@ -593,11 +656,11 @@ export class SessionStartService {
       existingRows.map((r) => r.source_question_id).filter(Boolean)
     );
 
-    const candidates = await this.listQuestionsForModeByDifficulty(
-      'blitz',
-      appendCount * 2,
-      difficulty ?? session.difficulty ?? null
-    );
+    const candidates = await this.listBlitzQuestions({
+      category_id: session.category_id ?? null,
+      limit: appendCount * 2,
+      difficulty: difficulty ?? session.difficulty ?? null,
+    });
     const pickedNoRepeat = (candidates || []).filter((q) => q?.id && !existingSourceIds.has(q.id));
     const picked = (pickedNoRepeat.length > 0 ? pickedNoRepeat : candidates || []).slice(
       0,
@@ -870,8 +933,15 @@ export class SessionStartService {
     if (questionIds.length === 0) {
       throw new AppError('No questions configured for this level', 400, 'NO_POOL');
     }
+    if (questionIds.length < 10) {
+      throw new AppError(
+        `Not enough questions configured for this level (have ${questionIds.length}, need 10).`,
+        400,
+        'NOT_ENOUGH_QUESTIONS'
+      );
+    }
 
-    const wantedIds = questionIds.slice(0, 10);
+    const wantedIds = pickShuffled(questionIds, 10);
     const rows = await this.quizQuestionRepository.listByIds(wantedIds);
     const byId = new Map(rows.map((q) => [q.id, q]));
     const questions = wantedIds.map((id) => byId.get(id)).filter(Boolean);
@@ -1088,8 +1158,8 @@ export class SessionStartService {
   }
 
   async startBlitzSession(userId, { category_id, difficulty }) {
-    const target = 200;
-    const questions = await this.listQuestionsForModeByDifficulty('blitz', target, difficulty);
+    const target = 40;
+    const questions = await this.listBlitzQuestions({ category_id, limit: target, difficulty });
     if (questions.length < 30) {
       throw new AppError(
         `Not enough ${difficulty} blitz questions available (have ${questions.length}, need at least 30).`,
@@ -1138,7 +1208,7 @@ export class SessionStartService {
       session_id: sessionId,
       mode: 'blitz',
       time_limit_sec: perQuestionTimeLimitSec,
-      strikes: 3,
+      strikes: 1,
       status,
     };
   }
@@ -1150,7 +1220,7 @@ export class SessionStartService {
     if (!userId) throw new AppError('Login required', 401, 'UNAUTHORIZED');
 
     const count = Math.min(50, Math.max(5, Number(total_questions) || 20));
-    const questions = await this.listQuestionsForModeByDifficulty('blitz', count, difficulty);
+    const questions = await this.listBlitzQuestions({ category_id, limit: count, difficulty });
     if (questions.length < count) {
       throw new AppError(
         `Not enough ${difficulty || ''} blitz questions available (have ${questions.length}, need ${count}).`,
@@ -1184,7 +1254,7 @@ export class SessionStartService {
       session_id: session.id,
       mode: 'blitz',
       time_limit_sec: perQuestionTimeLimitSec,
-      strikes: 3,
+      strikes: 1,
       total_questions: adjustedQuestions.length,
       status: session.status,
     };

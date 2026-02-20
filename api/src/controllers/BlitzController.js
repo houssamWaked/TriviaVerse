@@ -9,8 +9,8 @@ export class BlitzController {
   config = async (req, res) => {
     res.status(200).json({
       time_limit_sec: 15,
-      strikes: 3,
-      rules: '15 seconds per question. Wrong or time-out = strike. 3 strikes = lose.',
+      strikes: 1,
+      rules: '15 seconds per question. Wrong or time-out ends the run. Longest streak wins.',
     });
   };
 

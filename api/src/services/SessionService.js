@@ -9,7 +9,7 @@ const MILLIONAIRE_PRIZES = [
   100, 200, 300, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 125000, 250000, 500000, 1000000,
 ];
 const BLITZ_TIME_LIMIT_SEC = 15;
-const BLITZ_MAX_STRIKES = 3;
+const BLITZ_MAX_STRIKES = 1;
 
 function blitzDifficultyToLeaderboardMode(difficulty) {
   const d = String(difficulty || '')

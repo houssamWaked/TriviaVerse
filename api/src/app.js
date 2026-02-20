@@ -42,6 +42,7 @@ import createFriendsRouter from './routes/FriendsRoute.js';
 import createAdminRouter from './routes/AdminRoute.js';
 import createMeRouter from './routes/MeRoute.js';
 import createDuelsRouter from './routes/DuelsRoute.js';
+import createMatchmakingRouter from './routes/MatchmakingRoute.js';
 
 import { CategoryController } from './controllers/CategoryController.js';
 import { AuthController } from './controllers/AuthController.js';
@@ -58,6 +59,7 @@ import { FriendController } from './controllers/FriendController.js';
 import { AdminController } from './controllers/AdminController.js';
 import { MeController } from './controllers/MeController.js';
 import { DuelController } from './controllers/DuelController.js';
+import { MatchmakingController } from './controllers/MatchmakingController.js';
 
 import { CategoryService } from './services/CategoryService.js';
 import { AuthService } from './services/AuthService.js';
@@ -74,6 +76,7 @@ import { AdminService } from './services/AdminService.js';
 import { MeService } from './services/MeService.js';
 import { DuelService } from './services/DuelService.js';
 import { QuizReportService } from './services/QuizReportService.js';
+import { BlitzMatchmakingService } from './services/BlitzMatchmakingService.js';
 
 import { CategoryRepository } from './domain/repositories/CategoryRepository.js';
 import { UserRepository } from './domain/repositories/UserRepository.js';
@@ -106,6 +109,7 @@ import { DuelRepository } from './domain/repositories/DuelRepository.js';
 import { DuelAnswerRepository } from './domain/repositories/DuelAnswerRepository.js';
 import { DuelClaimRepository } from './domain/repositories/DuelClaimRepository.js';
 import { QuizReportRepository } from './domain/repositories/QuizReportRepository.js';
+import { BlitzMatchmakingQueueRepository } from './domain/repositories/BlitzMatchmakingQueueRepository.js';
 
 const app = express();
 
@@ -189,6 +193,7 @@ const duelRepository = new DuelRepository();
 const duelAnswerRepository = new DuelAnswerRepository();
 const duelClaimRepository = new DuelClaimRepository();
 const quizReportRepository = new QuizReportRepository();
+const blitzMatchmakingQueueRepository = new BlitzMatchmakingQueueRepository();
 
 // services
 const categoryService = new CategoryService(
@@ -354,6 +359,13 @@ const duelController = new DuelController(
     sessionStartService,
   })
 );
+const matchmakingController = new MatchmakingController(
+  new BlitzMatchmakingService({
+    queueRepository: blitzMatchmakingQueueRepository,
+    duelRepository,
+    sessionStartService,
+  })
+);
 const quizDiscoveryController = new QuizDiscoveryController(
   new QuizDiscoveryService({
     quizRepository,
@@ -421,6 +433,7 @@ app.use('/api/classic', createClassicProtectedRouter(classicController));
 app.use('/api/friends', createFriendsRouter(friendController));
 app.use('/api/admin', createAdminRouter(adminController));
 app.use('/api/me', createMeRouter(meController));
+app.use('/api/matchmaking', createMatchmakingRouter(matchmakingController));
 app.use('/api/duels', createDuelsRouter(duelController));
 
 // 404 then error handler (order matters)
