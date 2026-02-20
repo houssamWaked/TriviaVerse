@@ -9,7 +9,15 @@ export class LeaderboardService {
   }
 
   async getLeaderboard({ period = 'all_time', mode = 'global' }) {
-    const rows = await this.leaderboardRepository.list({ period, mode });
+    let resolvedPeriod = period;
+    let rows = await this.leaderboardRepository.list({ period, mode });
+
+    // If weekly is requested but not yet populated on this deployment, fall back to all-time
+    // so users still see scores while weekly starts collecting.
+    if (period === 'weekly' && rows.length === 0) {
+      resolvedPeriod = 'all_time';
+      rows = await this.leaderboardRepository.list({ period: resolvedPeriod, mode });
+    }
     const userIds = Array.from(new Set(rows.map((r) => r.user_id)));
 
     const [users, stats] = await Promise.all([
@@ -23,6 +31,7 @@ export class LeaderboardService {
     return {
       period,
       mode,
+      period_resolved: resolvedPeriod,
       entries: rows.map((r) => {
         const user = userMap.get(r.user_id);
         const stat = statsMap.get(r.user_id);

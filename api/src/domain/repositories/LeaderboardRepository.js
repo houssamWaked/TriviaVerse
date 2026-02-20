@@ -54,44 +54,63 @@ export class LeaderboardRepository {
   }
 
   async insertFromSession({ user_id, mode, score_value }) {
-    const period = 'all_time';
     const score = Math.max(0, Number(score_value) || 0);
 
-    const existing = await this.findByUserPeriodMode({ user_id, period, mode });
-    if (existing && (Number(existing.score_value) || 0) >= score) return existing;
+    const upsertForPeriod = async (period, modeOverride = null) => {
+      const effectiveMode = modeOverride || mode;
 
-    // Preferred schema: unique(user_id, period, mode)
-    // Legacy schema (bug): unique(user_id, period) which prevents storing both per-mode and global rows.
-    // Fallback behavior for legacy schema: only store `global` rows so gameplay doesn't break.
-    {
+      const existing = await this.findByUserPeriodMode({
+        user_id,
+        period,
+        mode: effectiveMode,
+      });
+      if (existing && (Number(existing.score_value) || 0) >= score) return existing;
+
+      // Preferred schema: unique(user_id, period, mode)
+      // Legacy schema (bug): unique(user_id, period) which prevents storing both per-mode and global rows.
+      // Fallback behavior for legacy schema: only store `global` rows so gameplay doesn't break.
+      {
+        const { data, error } = await supabase
+          .from('leaderboard_entries')
+          .upsert(
+            { user_id, period, mode: effectiveMode, score_value: score },
+            { onConflict: 'user_id,period,mode' }
+          )
+          .select('user_id, period, mode, score_value')
+          .limit(1);
+
+        if (!error) return data?.[0] || null;
+
+        const code = String(error.code || '').trim();
+        if (code === '23514' && String(effectiveMode || '').startsWith('blitz_')) {
+          // Back-compat: some DBs only allow mode='blitz' (no per-difficulty modes).
+          return upsertForPeriod(period, 'blitz');
+        }
+        if (code !== '42P10') throw toAppError(error);
+      }
+
+      // Schema mismatch fallback: skip non-global rows (can't be stored alongside global).
+      if (effectiveMode !== 'global') return null;
+
       const { data, error } = await supabase
         .from('leaderboard_entries')
         .upsert(
-          { user_id, period, mode, score_value: score },
-          { onConflict: 'user_id,period,mode' }
+          { user_id, period, mode: effectiveMode, score_value: score },
+          { onConflict: 'user_id,period' }
         )
         .select('user_id, period, mode, score_value')
         .limit(1);
+      if (error) throw toAppError(error);
+      return data?.[0] || null;
+    };
 
-      if (!error) return data?.[0] || null;
-
-      const code = String(error.code || '').trim();
-      if (code === '23514' && String(mode || '').startsWith('blitz_')) {
-        // Back-compat: some DBs only allow mode='blitz' (no per-difficulty modes).
-        return this.insertFromSession({ user_id, mode: 'blitz', score_value: score });
-      }
-      if (code !== '42P10') throw toAppError(error);
+    // Always write all-time. Also write weekly so `/leaderboard?period=weekly` has data.
+    const allTime = await upsertForPeriod('all_time');
+    try {
+      await upsertForPeriod('weekly');
+    } catch (_e) {
+      // Best-effort: weekly leaderboard should never break gameplay/all-time recording.
     }
-
-    // Schema mismatch fallback: skip non-global rows (can't be stored alongside global).
-    if (mode !== 'global') return null;
-
-    const { data, error } = await supabase
-      .from('leaderboard_entries')
-      .upsert({ user_id, period, mode, score_value: score }, { onConflict: 'user_id,period' })
-      .select('user_id, period, mode, score_value')
-      .limit(1);
-    if (error) throw toAppError(error);
-    return data?.[0] || null;
+    return allTime;
   }
 }
