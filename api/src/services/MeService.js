@@ -28,7 +28,13 @@ function buildModeSummary(sessions = []) {
     const endedAt = s?.ended_at || s?.started_at || null;
     byMode[mode].last_played_at = isoMax(byMode[mode].last_played_at, endedAt);
 
-    if (s?.status === 'completed') {
+    const status = s?.status;
+    const finished =
+      status === 'completed' ||
+      (mode === 'blitz' && status === 'abandoned') ||
+      (mode === 'millionaire' && status === 'abandoned');
+
+    if (finished) {
       byMode[mode].completed += 1;
       byMode[mode].best_score = Math.max(byMode[mode].best_score, Number(s?.score_total) || 0);
     }
