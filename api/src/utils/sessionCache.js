@@ -52,6 +52,20 @@ export class SessionCache {
     if (!sessionId) return false;
     return this.map.delete(String(sessionId));
   }
+
+  delByUserId(userId) {
+    const uid = String(userId || '').trim();
+    if (!uid) return 0;
+    this._prune();
+    let removed = 0;
+    for (const [k, v] of this.map.entries()) {
+      if (String(v?.value?.user_id || '') === uid) {
+        this.map.delete(k);
+        removed += 1;
+      }
+    }
+    return removed;
+  }
 }
 
 export const sessionCache = new SessionCache();

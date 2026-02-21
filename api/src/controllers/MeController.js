@@ -10,4 +10,9 @@ export class MeController {
     const data = await this.meService.getProfile(req.user.id);
     res.status(200).json(data);
   };
+
+  resetProgress = async (req, res) => {
+    const data = await this.meService.resetProgress(req.user.id);
+    res.status(200).json(data);
+  };
 }

@@ -3,6 +3,8 @@
  */
 import AppError from '../utils/AppError.js';
 import UserDTO from '../domain/dto/UserDTO.js';
+import { supabase } from '../config/supabase.js';
+import { sessionCache } from '../utils/sessionCache.js';
 
 function isoMax(a, b) {
   if (!a) return b || null;
@@ -121,6 +123,214 @@ export class MeService {
       mode_summary,
       story_progress,
       custom_quiz_best,
+    };
+  }
+
+  async resetProgress(userId) {
+    const uid = String(userId || '').trim();
+    if (!uid) throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
+
+    const userEntity = await this.userRepository.findById(uid);
+    if (!userEntity) throw new AppError('User not found', 404, 'NOT_FOUND');
+
+    const warnings = [];
+    const missingTables = new Set();
+    const ignoreTableMissing = (err) => {
+      const code = String(err?.code || err?.details?.code || '').trim();
+      return code === '42P01';
+    };
+
+    const safe = async (op, { table = null } = {}) => {
+      try {
+        return await op();
+      } catch (err) {
+        if (ignoreTableMissing(err)) {
+          if (table && !missingTables.has(table)) {
+            missingTables.add(table);
+            warnings.push({
+              code: 'NOT_CONFIGURED',
+              message: `Table not configured: ${table}`,
+            });
+          }
+          return null;
+        }
+        throw err;
+      }
+    };
+
+    // Best-effort: drop any in-memory cached sessions for this user.
+    sessionCache.delByUserId(uid);
+
+    // Cancel any active matchmaking request (async duels).
+    await safe(
+      async () => {
+        const { error } = await supabase
+          .from('blitz_matchmaking_queue')
+          .delete()
+          .eq('user_id', uid);
+        if (error) throw error;
+        return true;
+      },
+      { table: 'blitz_matchmaking_queue' }
+    );
+
+    // Clear persistent progress tables.
+    await safe(
+      async () => {
+        const { error } = await supabase.from('leaderboard_entries').delete().eq('user_id', uid);
+        if (error) throw error;
+        return true;
+      },
+      { table: 'leaderboard_entries' }
+    );
+
+    await safe(
+      async () => {
+        const { error } = await supabase.from('quiz_scores').delete().eq('user_id', uid);
+        if (error) throw error;
+        return true;
+      },
+      { table: 'quiz_scores' }
+    );
+
+    await safe(
+      async () => {
+        const { error } = await supabase.from('quiz_ratings').delete().eq('user_id', uid);
+        if (error) throw error;
+        return true;
+      },
+      { table: 'quiz_ratings' }
+    );
+
+    await safe(
+      async () => {
+        const { error } = await supabase.from('user_story_progress').delete().eq('user_id', uid);
+        if (error) throw error;
+        return true;
+      },
+      { table: 'user_story_progress' }
+    );
+
+    await safe(
+      async () => {
+        const { error } = await supabase.from('user_classic_progress').delete().eq('user_id', uid);
+        if (error) throw error;
+        return true;
+      },
+      { table: 'user_classic_progress' }
+    );
+
+    // Clear session history (and dependent rows) so totals/best scores reset.
+    const sessions = await this.gameSessionRepository.listByUserId(uid, 1000);
+    const sessionIds = Array.from(new Set((sessions || []).map((s) => s?.id).filter(Boolean)));
+
+    const chunk = (arr, size = 200) => {
+      const out = [];
+      for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+      return out;
+    };
+
+    // session_lifelines keyed by session_id
+    for (const ids of chunk(sessionIds, 200)) {
+      await safe(
+        async () => {
+          const { error } = await supabase.from('session_lifelines').delete().in('session_id', ids);
+          if (error) throw error;
+          return true;
+        },
+        { table: 'session_lifelines' }
+      );
+    }
+
+    // session_questions -> (session_options, session_answers) keyed by session_question_id
+    const sessionQuestionIds = [];
+    for (const ids of chunk(sessionIds, 200)) {
+      await safe(
+        async () => {
+          const { data, error } = await supabase
+            .from('session_questions')
+            .select('id')
+            .in('session_id', ids);
+          if (error) throw error;
+          for (const r of data || []) if (r?.id) sessionQuestionIds.push(r.id);
+          return true;
+        },
+        { table: 'session_questions' }
+      );
+    }
+
+    for (const sqIds of chunk(sessionQuestionIds, 200)) {
+      await safe(
+        async () => {
+          const { error } = await supabase
+            .from('session_answers')
+            .delete()
+            .in('session_question_id', sqIds);
+          if (error) throw error;
+          return true;
+        },
+        { table: 'session_answers' }
+      );
+      await safe(
+        async () => {
+          const { error } = await supabase
+            .from('session_options')
+            .delete()
+            .in('session_question_id', sqIds);
+          if (error) throw error;
+          return true;
+        },
+        { table: 'session_options' }
+      );
+    }
+
+    for (const ids of chunk(sessionIds, 200)) {
+      await safe(
+        async () => {
+          const { error } = await supabase.from('session_questions').delete().in('session_id', ids);
+          if (error) throw error;
+          return true;
+        },
+        { table: 'session_questions' }
+      );
+
+      // Optional meta tables (should cascade in most schemas).
+      await safe(
+        async () => {
+          const { error } = await supabase.from('story_sessions').delete().in('session_id', ids);
+          if (error) throw error;
+          return true;
+        },
+        { table: 'story_sessions' }
+      );
+      await safe(
+        async () => {
+          const { error } = await supabase.from('classic_sessions').delete().in('session_id', ids);
+          if (error) throw error;
+          return true;
+        },
+        { table: 'classic_sessions' }
+      );
+    }
+
+    for (const ids of chunk(sessionIds, 200)) {
+      await safe(
+        async () => {
+          const { error } = await supabase.from('game_sessions').delete().in('id', ids);
+          if (error) throw error;
+          return true;
+        },
+        { table: 'game_sessions' }
+      );
+    }
+
+    // Reset numeric stats (XP/level/streak).
+    await this.userStatsRepository.resetProgress(uid);
+
+    return {
+      success: true,
+      user_id: uid,
+      warnings,
     };
   }
 }

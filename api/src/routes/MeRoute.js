@@ -11,6 +11,7 @@ export default function createMeRouter(meController) {
   const router = Router();
 
   router.get('/profile', requireAuth, asyncHandler(meController.profile));
+  router.post('/reset-progress', requireAuth, asyncHandler(meController.resetProgress));
 
   return router;
 }

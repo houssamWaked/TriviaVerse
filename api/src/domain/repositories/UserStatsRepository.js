@@ -57,4 +57,28 @@ export class UserStatsRepository {
     if (error) throw toAppError(error);
     return data?.[0] || null;
   }
+
+  async resetProgress(userId) {
+    const uid = String(userId || '').trim();
+    if (!uid) return null;
+    const now = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('user_stats')
+      .upsert(
+        {
+          user_id: uid,
+          xp_total: 0,
+          level: 1,
+          streak_days: 0,
+          last_active_at: now,
+        },
+        { onConflict: 'user_id' }
+      )
+      .select('user_id, xp_total, level, streak_days, last_active_at')
+      .limit(1);
+
+    if (error) throw toAppError(error);
+    return data?.[0] || null;
+  }
 }
