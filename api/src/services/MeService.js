@@ -224,6 +224,47 @@ export class MeService {
     const sessions = await this.gameSessionRepository.listByUserId(uid, 1000);
     const sessionIds = Array.from(new Set((sessions || []).map((s) => s?.id).filter(Boolean)));
 
+    // Duels store answers that reference session_options rows via FK.
+    // Deleting duel-linked sessions would violate FK constraints and can affect other players,
+    // so we preserve any sessions referenced by duels involving this user.
+    const duelSessionIds = new Set();
+    await safe(
+      async () => {
+        const pageSize = 1000;
+        for (let offset = 0; offset < 50_000; offset += pageSize) {
+          const { data, error } = await supabase
+            .from('duels')
+            .select('challenger_session_id,opponent_session_id')
+            .or(`challenger_user_id.eq.${uid},opponent_user_id.eq.${uid}`)
+            .order('created_at', { ascending: false })
+            .range(offset, offset + pageSize - 1);
+          if (error) throw error;
+
+          for (const d of data || []) {
+            if (d?.challenger_session_id) duelSessionIds.add(d.challenger_session_id);
+            if (d?.opponent_session_id) duelSessionIds.add(d.opponent_session_id);
+          }
+
+          if (!data || data.length < pageSize) break;
+        }
+        return true;
+      },
+      { table: 'duels' }
+    );
+
+    const deletableSessionIds =
+      duelSessionIds.size > 0
+        ? sessionIds.filter((id) => !duelSessionIds.has(id))
+        : sessionIds;
+
+    if (deletableSessionIds.length !== sessionIds.length) {
+      warnings.push({
+        code: 'DUEL_SESSIONS_PRESERVED',
+        message:
+          'Some duel-related sessions were preserved during reset to avoid affecting other players.',
+      });
+    }
+
     const chunk = (arr, size = 200) => {
       const out = [];
       for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
@@ -231,7 +272,7 @@ export class MeService {
     };
 
     // session_lifelines keyed by session_id
-    for (const ids of chunk(sessionIds, 200)) {
+    for (const ids of chunk(deletableSessionIds, 200)) {
       await safe(
         async () => {
           const { error } = await supabase.from('session_lifelines').delete().in('session_id', ids);
@@ -244,7 +285,7 @@ export class MeService {
 
     // session_questions -> (session_options, session_answers) keyed by session_question_id
     const sessionQuestionIds = [];
-    for (const ids of chunk(sessionIds, 200)) {
+    for (const ids of chunk(deletableSessionIds, 200)) {
       await safe(
         async () => {
           const { data, error } = await supabase
@@ -284,7 +325,7 @@ export class MeService {
       );
     }
 
-    for (const ids of chunk(sessionIds, 200)) {
+    for (const ids of chunk(deletableSessionIds, 200)) {
       await safe(
         async () => {
           const { error } = await supabase.from('session_questions').delete().in('session_id', ids);
@@ -313,7 +354,7 @@ export class MeService {
       );
     }
 
-    for (const ids of chunk(sessionIds, 200)) {
+    for (const ids of chunk(deletableSessionIds, 200)) {
       await safe(
         async () => {
           const { error } = await supabase.from('game_sessions').delete().in('id', ids);
