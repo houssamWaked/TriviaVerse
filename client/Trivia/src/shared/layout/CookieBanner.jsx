@@ -1,5 +1,5 @@
 import React from 'react';
-import colors from '@/constants/colors';
+import { Alert, AlertTitle, Box, Button, Slide, Stack } from '@mui/material';
 import { shouldShowConsentBanner, setConsent } from '@/utils/consent';
 
 export default function CookieBanner() {
@@ -14,65 +14,58 @@ export default function CookieBanner() {
   if (!open) return null;
 
   return (
-    <div className="tv-consent" role="region" aria-label="Cookie preferences">
-      <div className="tv-card tv-consent__card">
-        <div className="tv-consent__left">
-          <div className="tv-consent__title">Cookies & storage</div>
-          <div className="tv-consent__text">
-            We use essential storage to keep the app working (including caching some data so we don’t hit the API on every refresh). If you accept performance storage,
-            we’ll also keep additional cache data to make the app feel faster.
-          </div>
-        </div>
-
-        <div className="tv-consent__actions">
-          <button
-            type="button"
-            className="tv-btn-reset tv-consent__btn tv-consent__btn--secondary"
-            style={styles.secondaryBtn}
-            onClick={() => {
-              setConsent({ performance: false });
-              setOpen(false);
-            }}
-          >
-            Essential only
-          </button>
-          <button
-            type="button"
-            className="tv-btn-reset tv-consent__btn tv-consent__btn--primary"
-            style={styles.primaryBtn}
-            onClick={() => {
-              setConsent({ performance: true });
-              setOpen(false);
-            }}
-          >
-            Accept performance
-          </button>
-        </div>
-      </div>
-    </div>
+    <Slide in direction="up">
+      <Box
+        sx={{
+          position: 'fixed',
+          left: 16,
+          right: 16,
+          bottom: 16,
+          zIndex: 2000,
+          display: 'flex',
+          justifyContent: 'center',
+        }}
+      >
+        <Alert
+          severity="info"
+          variant="filled"
+          sx={{
+            maxWidth: 920,
+            width: '100%',
+            alignItems: 'center',
+            borderRadius: 3,
+            bgcolor: 'rgba(15,23,42,0.94)',
+          }}
+          action={
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+              <Button
+                variant="outlined"
+                color="inherit"
+                onClick={() => {
+                  setConsent({ performance: false });
+                  setOpen(false);
+                }}
+              >
+                Essential only
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => {
+                  setConsent({ performance: true });
+                  setOpen(false);
+                }}
+              >
+                Accept performance
+              </Button>
+            </Stack>
+          }
+        >
+          <AlertTitle>Cookies & storage</AlertTitle>
+          We use essential storage to keep the app working, including cache data. If you accept
+          performance storage, we keep additional cache data so the app feels faster.
+        </Alert>
+      </Box>
+    </Slide>
   );
 }
-
-const styles = {
-  primaryBtn: {
-    padding: '10px 14px',
-    borderRadius: 999,
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: 14,
-    fontWeight: 900,
-    color: colors.neutral.white,
-    background: colors.gradients.main,
-    boxShadow: '0 14px 34px rgba(139,44,255,0.20)',
-  },
-  secondaryBtn: {
-    padding: '10px 14px',
-    borderRadius: 999,
-    border: '1px solid rgba(17,24,39,0.12)',
-    cursor: 'pointer',
-    fontSize: 14,
-    fontWeight: 900,
-    color: colors.neutral[900],
-    background: 'rgba(255,255,255,0.75)',
-  },
-};

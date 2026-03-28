@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert, Box, Button, Snackbar, Stack, Typography } from '@mui/material';
 import './App.css';
 import Home from './Pages/Home';
 import CreateQuiz from './Pages/CreateQuiz';
@@ -19,7 +20,6 @@ import Navbar from './shared/layout/Navbar';
 import Footer from './shared/layout/Footer';
 import CookieBanner from './shared/layout/CookieBanner';
 import AuthModal from './Components/Auth/AuthModal';
-import AppStyle from './Styles/AppStyle';
 import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
@@ -422,7 +422,7 @@ function App() {
   }, [user?.email]);
 
   return (
-    <div style={AppStyle.shell}>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', color: 'text.primary' }}>
       <Navbar
         user={user}
         duelNotifCount={pendingDuelCount}
@@ -465,40 +465,44 @@ function App() {
       />
 
       {!!duelToast && user && (
-        <div style={AppStyle.duelToastWrap}>
-          <div className="tv-card" style={AppStyle.duelToastCard}>
-            <div style={AppStyle.duelToastTitle}>
+        <Snackbar
+          open
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          onClose={() => setDuelToast(null)}
+        >
+          <Alert
+            severity="info"
+            variant="filled"
+            sx={{ width: '100%', minWidth: { sm: 380 }, alignItems: 'flex-start' }}
+            action={
+              <Stack direction="row" spacing={1}>
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={() => {
+                    setDuelToast(null);
+                    navigate('profile');
+                  }}
+                >
+                  Open
+                </Button>
+                <Button color="inherit" size="small" onClick={() => setDuelToast(null)}>
+                  Dismiss
+                </Button>
+              </Stack>
+            }
+          >
+            <Typography sx={{ fontWeight: 800 }}>
               {ICONS.common.bolt} {STRINGS.DUELS.title}
-            </div>
-            <div style={AppStyle.duelToastText}>
+            </Typography>
+            <Typography variant="body2">
               {duelToast.count > 1
                 ? `${duelToast.count} new duel requests`
                 : `New duel request from ${duelToast.challengerName}`}
               {duelToast.quizTitle ? ` • ${duelToast.quizTitle}` : ''}
-            </div>
-            <div style={AppStyle.duelToastActions}>
-              <button
-                type="button"
-                className="tv-card tv-card--hover"
-                style={AppStyle.duelToastBtnPrimary}
-                onClick={() => {
-                  setDuelToast(null);
-                  navigate('profile');
-                }}
-              >
-                Open
-              </button>
-              <button
-                type="button"
-                className="tv-card tv-card--hover"
-                style={AppStyle.duelToastBtn}
-                onClick={() => setDuelToast(null)}
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-        </div>
+            </Typography>
+          </Alert>
+        </Snackbar>
       )}
 
       {route.name === 'create-quiz' ? (
@@ -674,7 +678,7 @@ function App() {
         errorCode={authErrorCode}
         errorDetails={authErrorDetails}
       />
-    </div>
+    </Box>
   );
 }
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Box } from '@mui/material';
 import colors from '@/constants/colors';
 import { STRINGS } from '@/constants/strings';
 import { api } from '@/api';
@@ -6,15 +7,6 @@ import CreateQuizBanner from '@/Components/HomeComponents/CreateQuizBanner';
 import FeaturesStrip from '@/Components/HomeComponents/FeaturesStrip';
 import HomeHero from '@/Components/HomeComponents/HomeHero';
 import Modes from '@/Components/HomeComponents/Modes';
-
-const styles = {
-  main: {
-    width: '100%',
-    background: colors.gradients.main,
-    display: 'flex',
-    flexDirection: 'column',
-  },
-};
 
 function formatCount(n) {
   const num = Number(n);
@@ -67,7 +59,19 @@ function Home({
   };
 
   return (
-    <main style={styles.main}>
+    <Box
+      component="main"
+      sx={{
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        color: 'common.white',
+        background: `
+          radial-gradient(circle at top left, rgba(37,99,235,0.22), rgba(37,99,235,0) 34%),
+          linear-gradient(180deg, ${colors.neutral[900]} 0%, ${colors.neutral[800]} 100%)
+        `,
+      }}
+    >
       <HomeHero
         metrics={metrics}
         onCreateQuiz={handleCreateQuiz}
@@ -76,17 +80,17 @@ function Home({
           el?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
         }}
       />
-      <div id="modes">
+      <Box id="modes" sx={{ position: 'relative', scrollMarginTop: 96 }}>
         <Modes
           onStory={onNavigateStory}
           onMillionaire={onNavigateMillionaire}
           onClassic={onNavigateClassic}
           onBlitz={onNavigateBlitz}
         />
-      </div>
+      </Box>
       <CreateQuizBanner onCreate={handleCreateQuiz} />
       <FeaturesStrip />
-    </main>
+    </Box>
   );
 }
 

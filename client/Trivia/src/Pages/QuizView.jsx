@@ -5,6 +5,7 @@ import { api } from '@/api';
 import QuizViewStyle from '@/Styles/ComponentStyles/QuizViewStyle';
 import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
 
+
 function ratingLabel(avg, count) {
   const a = Number(avg);
   const c = Number(count);
