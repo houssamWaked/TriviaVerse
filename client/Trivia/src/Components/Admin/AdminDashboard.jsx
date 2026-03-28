@@ -65,6 +65,7 @@ export default function AdminDashboard({
     loadDashboard,
     loadReports,
     createLevel,
+    deleteLevel,
     loadGlobalBank,
     createQuestion,
     openEditGlobalQuestion,
