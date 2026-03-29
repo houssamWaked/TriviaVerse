@@ -2,37 +2,21 @@
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
 import { api } from '@/api';
-import PlaySessionStyle, {
-  getStoryOptionTheme,
-} from '@/Styles/ComponentStyles/PlaySessionStyle';
+import PlaySessionStyle from '@/Styles/ComponentStyles/PlaySessionStyle';
 import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
 import { saveGuestStoryResult } from '@/utils/guestStoryProgress';
 import { saveGuestClassicResult } from '@/utils/guestClassicProgress';
-
-function clampPct(n) {
-  const x = Number(n);
-  if (!Number.isFinite(x)) return 0;
-  return Math.max(0, Math.min(100, x));
-}
-
-function clampStars(n) {
-  return Math.max(0, Math.min(3, Math.floor(Number(n) || 0)));
-}
-
-function computeStoryOutcomeFromCounts({ correctCount = 0, totalCount = 0 } = {}) {
-  const total = Math.max(0, Number(totalCount) || 0);
-  const correct = Math.max(0, Number(correctCount) || 0);
-  const ratio = total > 0 ? correct / total : 0;
-
-  const passed = ratio >= 0.7;
-  const stars = ratio >= 1 ? 3 : ratio >= 0.9 ? 2 : ratio >= 0.8 ? 1 : 0;
-  return { passed, stars, accuracy_pct: clampPct(Math.round(ratio * 100)) };
-}
-
-function formatMoney(n) {
-  const value = Math.max(0, Number(n) || 0);
-  return `€${value.toLocaleString()}`;
-}
+import PlaySessionTopBar from '@/Components/PlaySession/PlaySessionTopBar';
+import PlaySessionResults from '@/Components/PlaySession/PlaySessionResults';
+import PlaySessionMillionaireView from '@/Components/PlaySession/PlaySessionMillionaireView';
+import PlaySessionDefaultQuestionView from '@/Components/PlaySession/PlaySessionDefaultQuestionView';
+import PlaySessionStoryView from '@/Components/PlaySession/PlaySessionStoryView';
+import {
+  clampPct,
+  clampStars,
+  computeStoryOutcomeFromCounts,
+  formatMoney,
+} from '@/Components/PlaySession/playSessionHelpers';
 
 export default function PlaySession({
   sessionId,
@@ -754,66 +738,20 @@ export default function PlaySession({
           isStory ? PlaySessionStyle.containerStory : PlaySessionStyle.container
         }
       >
-        {!finished && !isStory ? (
-          <div style={PlaySessionStyle.topRow}>
-            <button
-              type="button"
-              className="tv-card tv-card--hover"
-              style={PlaySessionStyle.secondaryBtnWhite}
-              onClick={onBack}
-              disabled={busy}
-            >
-              {STRINGS.COMMON.symbols.leftArrow} {backLabel}
-            </button>
-
-            <div style={PlaySessionStyle.pills}>
-              <span style={PlaySessionStyle.pill}>
-                {ICONS.common.target} {title}
-              </span>
-              {timeInfo && (
-                <span style={PlaySessionStyle.pill}>{timeInfo}</span>
-              )}
-              <span style={PlaySessionStyle.pill}>
-                {question?.mode === 'millionaire'
-                  ? `${ICONS.common.money} ${STRINGS.PLAY_SESSION.header.prizeLabel}`
-                  : `${ICONS.common.trophy} ${STRINGS.PLAY_SESSION.header.scoreLabel}`}
-                : {scoreTotal}
-              </span>
-            </div>
-          </div>
-        ) : !finished && question ? (
-          <div style={PlaySessionStyle.storyTop}>
-            <div style={PlaySessionStyle.storyTopRow}>
-              <div style={PlaySessionStyle.storyCount}>
-                {STRINGS.PLAY_SESSION.header.questionOf(
-                  question.question_number,
-                  question.total_questions
-                )}
-              </div>
-
-              <div
-                style={PlaySessionStyle.storyDots}
-                aria-label={STRINGS.PLAY_SESSION.aria.progressDots}
-              >
-                {Array.from({ length: storyDots }).map((_, i) => (
-                  <span
-                    key={i}
-                    style={PlaySessionStyle.storyDotItem(
-                      i === storyDotActiveIndex
-                    )}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div
-              style={PlaySessionStyle.storyTrack}
-              aria-label={STRINGS.PLAY_SESSION.aria.progressBar}
-            >
-              <div style={PlaySessionStyle.storyFillWidth(storyProgressPct)} />
-            </div>
-          </div>
-        ) : null}
+        <PlaySessionTopBar
+          finished={finished}
+          isStory={isStory}
+          question={question}
+          busy={busy}
+          onBack={onBack}
+          backLabel={backLabel}
+          title={title}
+          timeInfo={timeInfo}
+          scoreTotal={scoreTotal}
+          storyDots={storyDots}
+          storyDotActiveIndex={storyDotActiveIndex}
+          storyProgressPct={storyProgressPct}
+        />
 
         {!!error && (
           <div className="tv-card" style={PlaySessionStyle.errorCard}>
@@ -822,193 +760,28 @@ export default function PlaySession({
         )}
 
         {finished && !question ? (
-          <div className="tv-results">
-            <div className="tv-results__hero">
-              <div className="tv-results__heroIcons" aria-hidden="true">
-                <span className="tv-results__heroIcon">
-                  {ICONS.common.rocket}
-                </span>
-                <span className="tv-results__heroIcon">{ICONS.common.book}</span>
-              </div>
-
-              <h1 className="tv-results__title">KEEP GOING!</h1>
-              <div className="tv-results__subtitle">Every try makes you better!</div>
-
-              <div className="tv-card tv-results__shareCard">
-                <div className="tv-results__shareTitle">
-                  {ICONS.common.phone} Share your score with friends!
-                </div>
-                <div className="tv-results__sharePreview">
-                  {ICONS.common.gamepad} I just scored{' '}
-                  <span className="tv-results__shareScore">{scoreDisplay}</span>{' '}
-                  in <span className="tv-results__shareMode">{modeLabel}</span>
-                  {isStory && Number.isFinite(Number(storyLevelNumber))
-                    ? ` (Level ${Number(storyLevelNumber)})`
-                    : ''}
-                  !
-                  <div className="tv-results__shareHint">
-                    Can you beat me on TriviaVerse? {ICONS.common.rocket}
-                  </div>
-                </div>
-              </div>
-
-              <div className="tv-results__keepPlaying">
-                {ICONS.common.rocket} Keep playing to improve! {ICONS.common.rocket}
-              </div>
-            </div>
-
-            <div className="tv-card tv-results__card">
-              <div className="tv-results__modeLine">{modeLabel}</div>
-              {isStory && Number.isFinite(Number(storyLevelNumber)) ? (
-                <div className="tv-results__levelLine">
-                  Level {Number(storyLevelNumber)} {ICONS.common.star}
-                </div>
-              ) : null}
-              {isStory && storyResult ? (
-                <div className="tv-results__levelLine">
-                  {storyResult.passed ? '✅ Passed' : '❌ Not passed'} • {'★'.repeat(storyResult.stars)}
-                  {'☆'.repeat(Math.max(0, 3 - storyResult.stars))}
-                </div>
-              ) : null}
-              {classicResult?.levelNum ? (
-                <div className="tv-results__levelLine">
-                  Level {Number(classicResult.levelNum)} {ICONS.common.star}
-                </div>
-              ) : null}
-              {classicResult ? (
-                <div className="tv-results__levelLine">
-                  {classicResult.passed ? '✅ Passed' : '❌ Not passed'} • {'★'.repeat(classicResult.stars)}
-                  {'☆'.repeat(Math.max(0, 3 - classicResult.stars))}
-                </div>
-              ) : null}
-
-              <div className="tv-results__scorePanel">
-                <div className="tv-results__scoreLabel">YOUR SCORE</div>
-                <div className="tv-results__scoreValue">{scoreDisplay}</div>
-                <div className="tv-results__scoreMeta">
-                  {ICONS.common.target} {accuracyPct}% Accuracy!
-                </div>
-              </div>
-
-              <div className="tv-results__statsGrid">
-                <div className="tv-results__stat tv-results__stat--blue">
-                  <div className="tv-results__statIcon">{ICONS.common.target}</div>
-                  <div className="tv-results__statValue">
-                    {correctCount}/{answeredCount}
-                  </div>
-                  <div className="tv-results__statLabel">
-                    Correct! {ICONS.common.tick}
-                  </div>
-                </div>
-                <div className="tv-results__stat tv-results__stat--purple">
-                  <div className="tv-results__statIcon">{ICONS.common.trophy}</div>
-                  <div className="tv-results__statValue">{accuracyPct}%</div>
-                  <div className="tv-results__statLabel">
-                    Accuracy! {ICONS.common.target}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="tv-card tv-results__reviewCard">
-              <div className="tv-results__reviewTitle">
-                {ICONS.common.book} Answer review
-              </div>
-
-              {reviewBusy ? (
-                <div className="tv-results__reviewEmpty">Loading…</div>
-              ) : reviewError ? (
-                <div className="tv-results__reviewEmpty">{reviewError}</div>
-              ) : (
-                (() => {
-                  const items = Array.isArray(review?.questions) ? review.questions : [];
-                  const wrong = items.filter((q) => q && q.is_correct === false);
-                  if (wrong.length === 0) {
-                    return <div className="tv-results__reviewEmpty">No wrong answers — nice!</div>;
-                  }
-                  return (
-                    <div className="tv-results__reviewList">
-                      {wrong.map((q) => (
-                        <div key={q.session_question_id || q.question_number} className="tv-results__reviewItem">
-                          <div className="tv-results__reviewQ">
-                            Q{q.question_number}: {q.question_text}
-                          </div>
-                          <div className="tv-results__reviewMeta">
-                            Your answer: {q.chosen_label ? `${q.chosen_label}. ` : ''}
-                            {q.chosen_text || '—'} • Correct: {q.correct_label ? `${q.correct_label}. ` : ''}
-                            {q.correct_text || '—'}
-                          </div>
-                          {!!q.explanation && (
-                            <div className="tv-results__reviewExplanation">{q.explanation}</div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()
-              )}
-            </div>
-
-            <div className="tv-results__actions">
-              <button
-                type="button"
-                className="tv-card tv-card--hover tv-results__btn"
-                onClick={() =>
-                  onNavigateHome
-                    ? onNavigateHome()
-                    : (window.location.hash = '#/')
-                }
-                disabled={busy}
-              >
-                🏠 Home
-              </button>
-              {isStory && storyResult?.passed ? (
-                <button
-                  type="button"
-                  className="tv-card tv-card--hover tv-results__btn"
-                  onClick={playNextLevel}
-                  disabled={busy}
-                >
-                  ➡️ Next level
-                </button>
-              ) : null}
-              {classicResult?.passed && classicResult?.hasNextLevel ? (
-                <button
-                  type="button"
-                  className="tv-card tv-card--hover tv-results__btn"
-                  onClick={playNextClassicLevel}
-                  disabled={busy}
-                >
-                  ➡️ Next level
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="tv-card tv-card--hover tv-results__btn"
-                onClick={playAgain}
-                disabled={busy}
-              >
-                {ICONS.common.refresh} Again!
-              </button>
-              <button
-                type="button"
-                className="tv-card tv-card--hover tv-results__btn tv-results__btn--share"
-                onClick={doShare}
-                disabled={busy}
-              >
-                {ICONS.common.rocket} Share!
-              </button>
-            </div>
-
-            {!!shareMessage && (
-              <div className="tv-results__shareMessage">{shareMessage}</div>
-            )}
-
-            {/* Hidden but useful for quick manual copy from DevTools if needed */}
-            <span className="tv-results__shareText" aria-hidden="true">
-              {shareText}
-            </span>
-          </div>
+          <PlaySessionResults
+            busy={busy}
+            isStory={isStory}
+            storyLevelNumber={storyLevelNumber}
+            storyResult={storyResult}
+            classicResult={classicResult}
+            scoreDisplay={scoreDisplay}
+            accuracyPct={accuracyPct}
+            correctCount={correctCount}
+            answeredCount={answeredCount}
+            reviewBusy={reviewBusy}
+            reviewError={reviewError}
+            review={review}
+            onNavigateHome={onNavigateHome ? onNavigateHome : () => { window.location.hash = '#/'; }}
+            playNextLevel={playNextLevel}
+            playNextClassicLevel={playNextClassicLevel}
+            playAgain={playAgain}
+            doShare={doShare}
+            shareMessage={shareMessage}
+            shareText={shareText}
+            modeLabel={modeLabel}
+          />
         ) : !question ? (
           <div style={PlaySessionStyle.loading}>
             {busy
@@ -1016,495 +789,51 @@ export default function PlaySession({
               : STRINGS.PLAY_SESSION.states.noQuestion}
           </div>
         ) : !isStory && question.mode === 'millionaire' ? (
-          /* ===== Millionaire mode: unchanged ===== */
-          <div style={PlaySessionStyle.millionaireShell}>
-            <div style={PlaySessionStyle.millionaireTopBar}>
-              <button
-                type="button"
-                className="tv-card tv-card--hover"
-                style={PlaySessionStyle.millionaireExitBtn}
-                onClick={walkAway}
-                disabled={busy}
-              >
-                {STRINGS.COMMON.symbols.leftArrow}{' '}
-                {STRINGS.PLAY_SESSION.millionaire.exit}
-              </button>
-
-              <div
-                className={
-                  answerResult?.is_correct ? 'tv-mil-prize tv-mil-prize--bump' : 'tv-mil-prize'
-                }
-                style={PlaySessionStyle.millionairePrizePill}
-              >
-                {ICONS.common.crownGold} {formatMoney(scoreTotal)}
-              </div>
-            </div>
-
-            <div style={PlaySessionStyle.millionaireGrid}>
-              <div style={PlaySessionStyle.millionaireLeftCol}>
-                <div style={PlaySessionStyle.millionaireCard}>
-                  <div style={PlaySessionStyle.millionaireCount}>
-                    {STRINGS.PLAY_SESSION.header.questionOf(
-                      question.question_number,
-                      question.total_questions
-                    )}
-                  </div>
-                  <div style={PlaySessionStyle.millionaireQuestion}>
-                    {question.question_text}
-                  </div>
-
-                  {!!phoneMessage && (
-                    <div style={PlaySessionStyle.millionaireHint}>
-                      {ICONS.common.phone} {phoneMessage}
-                    </div>
-                  )}
-
-                  <div style={PlaySessionStyle.millionaireOptions}>
-                    {(question.options || []).slice(0, 4).map((o) => {
-                      const disabled =
-                        busy ||
-                        !!answerResult ||
-                        disabledOptionIds.includes(o.id);
-                      const suggested = phoneSuggestionOptionId === o.id;
-                      const selected = pendingChoiceId === o.id;
-                      const celebrate = !!answerResult?.is_correct && pendingChoiceId === o.id;
-                      return (
-                        <button
-                          key={o.id}
-                          type="button"
-                          className={
-                            celebrate
-                              ? 'tv-card tv-card--hover tv-mil-option tv-mil-option--correct'
-                              : 'tv-card tv-card--hover tv-mil-option'
-                          }
-                          style={{
-                            ...PlaySessionStyle.millionaireOptionBtnState(
-                              suggested || selected,
-                              disabled
-                            ),
-                            ...(celebrate
-                              ? {
-                                  boxShadow:
-                                    '0 22px 60px rgba(34,197,94,0.22), 0 18px 44px rgba(0,0,0,0.16)',
-                                  background: 'rgba(34,197,94,0.18)',
-                                  border: '1px solid rgba(34,197,94,0.48)',
-                                  opacity: 1,
-                                }
-                              : {}),
-                          }}
-                          disabled={disabled}
-                          onClick={() => submit(o.id)}
-                        >
-                          {celebrate && (
-                            <span className="tv-mil-check" aria-hidden="true">
-                              ✓
-                            </span>
-                          )}
-                          <span style={PlaySessionStyle.millionaireOptionLabel}>
-                            {o.label}
-                          </span>
-                          <span style={PlaySessionStyle.millionaireOptionText}>
-                            {o.text}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {!!answerResult && (
-                    <div
-                      style={PlaySessionStyle.resultState(
-                        answerResult.is_correct
-                      )}
-                    >
-                      {answerResult.is_correct
-                        ? STRINGS.PLAY_SESSION.results.correct
-                        : STRINGS.PLAY_SESSION.results.wrong}
-                    </div>
-                  )}
-                </div>
-
-                <div style={PlaySessionStyle.millionaireLifelinesCard}>
-                  <div style={PlaySessionStyle.millionaireLifelinesTitle}>
-                    {STRINGS.PLAY_SESSION.millionaire.lifelines}
-                  </div>
-                  <div style={PlaySessionStyle.millionaireLifelinesRow}>
-                    <button
-                      type="button"
-                      className="tv-card tv-card--hover"
-                      style={PlaySessionStyle.millionaireLifelineBtn}
-                      disabled={
-                        busy ||
-                        !!answerResult ||
-                        lifelinesUsed.includes('fifty_fifty')
-                      }
-                      onClick={() => triggerLifeline('fifty_fifty')}
-                    >
-                      <div style={PlaySessionStyle.millionaireLifelineIcon}>
-                        ½
-                      </div>
-                      <div style={PlaySessionStyle.millionaireLifelineText}>
-                        {STRINGS.PLAY_SESSION.millionaire.lifelineFifty}
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      className="tv-card tv-card--hover"
-                      style={PlaySessionStyle.millionaireLifelineBtn}
-                      disabled={
-                        busy ||
-                        !!answerResult ||
-                        lifelinesUsed.includes('phone')
-                      }
-                      onClick={() => triggerLifeline('phone')}
-                    >
-                      <div style={PlaySessionStyle.millionaireLifelineIcon}>
-                        {ICONS.common.phone}
-                      </div>
-                      <div style={PlaySessionStyle.millionaireLifelineText}>
-                        {STRINGS.PLAY_SESSION.millionaire.lifelinePhone}
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      className="tv-card tv-card--hover"
-                      style={PlaySessionStyle.millionaireLifelineBtn}
-                      disabled={
-                        busy ||
-                        !!answerResult ||
-                        lifelinesUsed.includes('audience')
-                      }
-                      onClick={() => triggerLifeline('audience')}
-                    >
-                      <div style={PlaySessionStyle.millionaireLifelineIcon}>
-                        {ICONS.common.people}
-                      </div>
-                      <div style={PlaySessionStyle.millionaireLifelineText}>
-                        {STRINGS.PLAY_SESSION.millionaire.lifelineAudience}
-                      </div>
-                    </button>
-                  </div>
-
-                  {audiencePoll ? (
-                    <div style={PlaySessionStyle.millionaireHint}>
-                      {ICONS.common.people}{' '}
-                      {STRINGS.PLAY_SESSION.millionaire.audienceLabel}:{' '}
-                      {(question.options || [])
-                        .map((o) => ({
-                          label: o.label,
-                          pct: Number(audiencePoll?.[o.id]) || 0,
-                        }))
-                        .sort((a, b) => b.pct - a.pct)
-                        .map((x) => `${x.label}:${x.pct}%`)
-                        .join('  ')}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-
-              <div style={PlaySessionStyle.millionaireLadderCard}>
-                <div style={PlaySessionStyle.millionaireLadderTitle}>
-                  {STRINGS.PLAY_SESSION.millionaire.prizeLadder}
-                </div>
-                <div style={PlaySessionStyle.millionaireLadderList}>
-                  {prizeLadder.map((row) => {
-                    const active =
-                      Number(question.question_number) === row.index;
-                    return (
-                      <div
-                        key={row.index}
-                        style={PlaySessionStyle.millionaireLadderRowState(
-                          active
-                        )}
-                      >
-                        <span style={PlaySessionStyle.millionaireLadderNum}>
-                          {row.index}
-                        </span>
-                        <span style={PlaySessionStyle.millionaireLadderValue}>
-                          {formatMoney(row.value)}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
+          <PlaySessionMillionaireView
+            question={question}
+            busy={busy}
+            answerResult={answerResult}
+            disabledOptionIds={disabledOptionIds}
+            phoneSuggestionOptionId={phoneSuggestionOptionId}
+            phoneMessage={phoneMessage}
+            audiencePoll={audiencePoll}
+            lifelinesUsed={lifelinesUsed}
+            prizeLadder={prizeLadder}
+            scoreTotal={scoreTotal}
+            onSubmit={submit}
+            onTriggerLifeline={triggerLifeline}
+            onWalkAway={walkAway}
+            formatMoney={formatMoney}
+            pendingChoiceId={pendingChoiceId}
+          />
         ) : !isStory ? (
-          /* ===== Default mode (non-story): unchanged ===== */
-          <div className="tv-card" style={PlaySessionStyle.card}>
-            <div style={PlaySessionStyle.qText}>{question.question_text}</div>
-
-            {question.mode === 'millionaire' ? (
-              <div style={PlaySessionStyle.pillsCentered}>
-                <button
-                  type="button"
-                  className="tv-card tv-card--hover"
-                  style={PlaySessionStyle.optionBtn}
-                  disabled={
-                    busy ||
-                    !!answerResult ||
-                    lifelinesUsed.includes('fifty_fifty')
-                  }
-                  onClick={() => triggerLifeline('fifty_fifty')}
-                >
-                  {STRINGS.PLAY_SESSION.millionaire.lifelineFiftyShort}
-                </button>
-                <button
-                  type="button"
-                  className="tv-card tv-card--hover"
-                  style={PlaySessionStyle.optionBtn}
-                  disabled={
-                    busy || !!answerResult || lifelinesUsed.includes('phone')
-                  }
-                  onClick={() => triggerLifeline('phone')}
-                >
-                  {STRINGS.PLAY_SESSION.millionaire.lifelinePhone}
-                </button>
-                <button
-                  type="button"
-                  className="tv-card tv-card--hover"
-                  style={PlaySessionStyle.optionBtn}
-                  disabled={
-                    busy || !!answerResult || lifelinesUsed.includes('audience')
-                  }
-                  onClick={() => triggerLifeline('audience')}
-                >
-                  {STRINGS.PLAY_SESSION.millionaire.lifelineAudience}
-                </button>
-              </div>
-            ) : null}
-
-            {question.mode === 'millionaire' && audiencePoll ? (
-              <div style={PlaySessionStyle.audiencePollCard}>
-                {STRINGS.PLAY_SESSION.millionaire.audiencePollLabel}:{' '}
-                {(question.options || [])
-                  .map((o) => ({
-                    label: o.label,
-                    pct: Number(audiencePoll?.[o.id]) || 0,
-                  }))
-                  .sort((a, b) => b.pct - a.pct)
-                  .map((x) => `${x.label}:${x.pct}%`)
-                  .join('  ')}
-              </div>
-            ) : null}
-
-            {question.mode === 'millionaire' && phoneMessage ? (
-              <div style={PlaySessionStyle.phoneHintCard}>
-                {ICONS.common.phone} {phoneMessage}
-              </div>
-            ) : null}
-
-            <div style={PlaySessionStyle.options}>
-              {(question.options || []).map((o) => {
-                const disabled = busy || !!answerResult;
-                const suggested = phoneSuggestionOptionId === o.id;
-                const selected = pendingChoiceId === o.id;
-                const reveal = !!answerResult && !answerResult?.skipped;
-                const correctOptionId = reveal ? answerResult?.correct_option_id : null;
-                const chosenOptionId =
-                  reveal ? answerResult?.chosen_option_id ?? pendingChoiceId : pendingChoiceId;
-
-                const isCorrect =
-                  reveal &&
-                  correctOptionId != null &&
-                  String(o.id) === String(correctOptionId);
-                const isChosen =
-                  reveal &&
-                  chosenOptionId != null &&
-                  String(o.id) === String(chosenOptionId);
-                const isWrongChosen = reveal && isChosen && !isCorrect;
-
-                const state = reveal
-                  ? isCorrect
-                    ? 'correct'
-                    : isWrongChosen
-                      ? 'wrong'
-                      : 'dim'
-                  : suggested || selected
-                    ? 'idle'
-                    : 'idle';
-
-                const resultIcon = reveal
-                  ? isCorrect
-                    ? ICONS.common.tick
-                    : isWrongChosen
-                      ? ICONS.common.close
-                      : null
-                  : null;
-
-                return (
-                  <button
-                    key={o.id}
-                    type="button"
-                    className={`tv-card ${answerResult ? '' : 'tv-card--hover'}`}
-                    style={PlaySessionStyle.optionBtnState({
-                      active: suggested || selected,
-                      state,
-                      disabled: disabled || disabledOptionIds.includes(o.id),
-                    })}
-                    disabled={disabled || disabledOptionIds.includes(o.id)}
-                    onClick={() => submit(o.id)}
-                  >
-                    <span style={PlaySessionStyle.optionLabel}>{o.label}</span>
-                    <span style={PlaySessionStyle.optionText}>{o.text}</span>
-                    {!!resultIcon && (
-                      <span style={PlaySessionStyle.optionResultIcon}>{resultIcon}</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {!!answerResult && (
-              <div
-                style={PlaySessionStyle.resultState(answerResult.is_correct)}
-              >
-                {answerResult.skipped
-                  ? STRINGS.PLAY_SESSION.results.skipped
-                  : answerResult.is_correct
-                    ? STRINGS.PLAY_SESSION.results.correctShort
-                    : STRINGS.PLAY_SESSION.results.wrongShort}
-                {!!speedBonus && answerResult.is_correct && (
-                  <span style={PlaySessionStyle.bonus}>
-                    {' '}
-                    {STRINGS.PLAY_SESSION.results.bonusSpeed(speedBonus)}
-                  </span>
-                )}
-              </div>
-            )}
-
-            <div style={PlaySessionStyle.actions}>
-              {answerResult ? (
-                <button
-                  type="button"
-                  className="tv-card tv-card--hover"
-                  style={PlaySessionStyle.primaryBtnMain}
-                  disabled={busy}
-                  onClick={
-                    answerResult.next_question_available ? loadCurrent : finish
-                  }
-                >
-                  {answerResult.next_question_available
-                    ? STRINGS.PLAY_SESSION.results.next
-                    : STRINGS.PLAY_SESSION.results.finish}
-                </button>
-              ) : null}
-
-              <button
-                type="button"
-                className="tv-card tv-card--hover"
-                style={PlaySessionStyle.secondaryBtnWhite}
-                disabled={busy}
-                onClick={loadCurrent}
-                title={STRINGS.PLAY_SESSION.actions.reloadTitle}
-              >
-                {STRINGS.COMMON.buttons.refresh} {ICONS.common.refresh}
-              </button>
-            </div>
-          </div>
+          <PlaySessionDefaultQuestionView
+            question={question}
+            busy={busy}
+            answerResult={answerResult}
+            lifelinesUsed={lifelinesUsed}
+            audiencePoll={audiencePoll}
+            phoneMessage={phoneMessage}
+            phoneSuggestionOptionId={phoneSuggestionOptionId}
+            pendingChoiceId={pendingChoiceId}
+            disabledOptionIds={disabledOptionIds}
+            speedBonus={speedBonus}
+            onSubmit={submit}
+            onTriggerLifeline={triggerLifeline}
+            onLoadCurrent={loadCurrent}
+            onFinish={finish}
+          />
         ) : (
-          /* ===== Story mode: UPDATED to match left screenshot ===== */
-          <>
-            <div className="tv-card" style={PlaySessionStyle.storyCard}>
-              <div
-                style={PlaySessionStyle.storyEmoji}
-                aria-label={STRINGS.PLAY_SESSION.aria.mood}
-              >
-                {storyEmoji}
-              </div>
-
-              <div style={PlaySessionStyle.storyQuestion}>
-                {question.question_text}
-              </div>
-
-              <div style={PlaySessionStyle.storyOptions}>
-                {(question.options || []).slice(0, 4).map((o, idx) => {
-                  const disabled = busy || !!answerResult;
-                  const theme = getStoryOptionTheme(idx);
-                  const selected = pendingChoiceId === o.id;
-                  const reveal = !!answerResult && !answerResult?.skipped;
-                  const correctOptionId = reveal ? answerResult?.correct_option_id : null;
-                  const chosenOptionId =
-                    reveal ? answerResult?.chosen_option_id ?? pendingChoiceId : pendingChoiceId;
-
-                  const isCorrect =
-                    reveal &&
-                    correctOptionId != null &&
-                    String(o.id) === String(correctOptionId);
-                  const isChosen =
-                    reveal &&
-                    chosenOptionId != null &&
-                    String(o.id) === String(chosenOptionId);
-                  const isWrongChosen = reveal && isChosen && !isCorrect;
-
-                  const bg = isCorrect
-                    ? 'linear-gradient(90deg, #22c55e 0%, #16a34a 100%)'
-                    : isWrongChosen
-                      ? 'linear-gradient(90deg, #fb7185 0%, #ff2d55 100%)'
-                      : theme.bg;
-
-                  const dim = reveal && !isCorrect && !isWrongChosen;
-                  const resultIcon = reveal
-                    ? isCorrect
-                      ? ICONS.common.tick
-                      : isWrongChosen
-                        ? ICONS.common.close
-                        : null
-                    : null;
-
-                  return (
-                    <button
-                      key={o.id}
-                      type="button"
-                      className={`tv-card ${answerResult ? '' : 'tv-card--hover'}`}
-                      style={{
-                        ...PlaySessionStyle.storyOptionBtnState(selected),
-                        ...(dim
-                          ? { opacity: 0.72, filter: 'saturate(0.75) brightness(1.06)' }
-                          : {}),
-                      }}
-                      disabled={disabled}
-                      onClick={() => submit(o.id)}
-                    >
-                      <div style={PlaySessionStyle.storyOptionInnerBg(bg)}>
-                        <div style={PlaySessionStyle.storyShape}>
-                          {theme.shape}
-                        </div>
-                        <div style={PlaySessionStyle.storyOptionText}>
-                          {o.text}
-                        </div>
-                        {!!resultIcon && (
-                          <div style={PlaySessionStyle.storyResultIcon}>{resultIcon}</div>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {!!answerResult && (
-                <div
-                  style={PlaySessionStyle.storyToastState(
-                    answerResult.is_correct
-                  )}
-                >
-                  {answerResult.is_correct
-                    ? STRINGS.PLAY_SESSION.results.correctShort
-                    : STRINGS.PLAY_SESSION.results.wrongShort}
-                </div>
-              )}
-            </div>
-
-            <div style={PlaySessionStyle.storyBottom}>
-              <div style={PlaySessionStyle.storyBottomPill}>
-                {correctCount} Correct! 🎉
-              </div>
-              <div style={PlaySessionStyle.storyBottomPill}>
-                {ICONS.common.bolt} {accuracyPct}% 🔥
-              </div>
-            </div>
-          </>
+          <PlaySessionStoryView
+            question={question}
+            busy={busy}
+            answerResult={answerResult}
+            pendingChoiceId={pendingChoiceId}
+            correctCount={correctCount}
+            accuracyPct={accuracyPct}
+            storyEmoji={storyEmoji}
+            onSubmit={submit}
+          />
         )}
       </div>
     </div>
