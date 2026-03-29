@@ -10,6 +10,27 @@ const MILLIONAIRE_PRIZES = [
 ];
 const BLITZ_TIME_LIMIT_SEC = 15;
 const BLITZ_MAX_STRIKES = 1;
+const PHONE_LIFELINE_API = 'phone';
+const PHONE_LIFELINE_DB = 'phone_a_friend';
+
+function normalizeLifelineType(lifelineType) {
+  const value = String(lifelineType || '')
+    .trim()
+    .toLowerCase();
+  if (value === PHONE_LIFELINE_API || value === PHONE_LIFELINE_DB) {
+    return PHONE_LIFELINE_DB;
+  }
+  return value;
+}
+
+function presentLifelineType(lifelineType) {
+  const value = normalizeLifelineType(lifelineType);
+  return value === PHONE_LIFELINE_DB ? PHONE_LIFELINE_API : value;
+}
+
+function isPhoneLifeline(lifelineType) {
+  return normalizeLifelineType(lifelineType) === PHONE_LIFELINE_DB;
+}
 
 function blitzDifficultyToLeaderboardMode(difficulty) {
   const d = String(difficulty || '')
@@ -191,7 +212,7 @@ export class SessionService {
             ? cached.lifelines
             : []
           : await this.sessionLifelineRepository.listBySessionId(sessionId);
-        payload.lifelines_used = lifelines.map((l) => l.lifeline_type);
+        payload.lifelines_used = lifelines.map((l) => presentLifelineType(l.lifeline_type));
 
         const fifty = lifelines.find(
           (l) =>
@@ -213,7 +234,7 @@ export class SessionService {
 
         const phone = lifelines.find(
           (l) =>
-            l.lifeline_type === 'phone' &&
+            isPhoneLifeline(l.lifeline_type) &&
             l.payload_json?.session_question_id === current.session_question_id
         );
         if (phone?.payload_json?.suggestion_option_id) {
@@ -285,7 +306,7 @@ export class SessionService {
 
     if (session.mode === 'millionaire') {
       const lifelines = await this.sessionLifelineRepository.listBySessionId(sessionId);
-      payload.lifelines_used = lifelines.map((l) => l.lifeline_type);
+      payload.lifelines_used = lifelines.map((l) => presentLifelineType(l.lifeline_type));
 
       const fifty = lifelines.find(
         (l) =>
@@ -303,7 +324,7 @@ export class SessionService {
       }
 
       const phone = lifelines.find(
-        (l) => l.lifeline_type === 'phone' && l.payload_json?.session_question_id === current.id
+        (l) => isPhoneLifeline(l.lifeline_type) && l.payload_json?.session_question_id === current.id
       );
       if (phone?.payload_json?.suggestion_option_id) {
         payload.phone_suggestion_option_id = phone.payload_json.suggestion_option_id;
