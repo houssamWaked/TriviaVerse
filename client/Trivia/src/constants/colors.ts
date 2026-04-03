@@ -1,0 +1,71 @@
+// Dark Blue theme for TriviaVerse
+
+const colors = {
+  primary: {
+    50: '#e8f1ff',
+    100: '#c7ddff',
+    200: '#9fc2ff',
+    300: '#77a7ff',
+    400: '#4f8cff',
+    500: '#2563eb',
+    600: '#1d4ed8',
+    700: '#1e40af',
+    800: '#1e3a8a',
+    900: '#172554',
+  },
+  secondary: {
+    50: '#e6fffa',
+    100: '#b2f5ea',
+    200: '#81e6d9',
+    300: '#4fd1c5',
+    400: '#38b2ac',
+    500: '#319795',
+    600: '#2c7a7b',
+    700: '#285e61',
+    800: '#234e52',
+    900: '#1d4044',
+  },
+  accent: {
+    yellow: '#facc15',
+    orange: '#fb923c',
+    green: '#22c55e',
+    red: '#ef4444',
+    blue: '#3b82f6',
+  },
+  modes: {
+    story: '#3b82f6',
+    millionaire: '#facc15',
+    classic: '#2563eb',
+    blitz: '#ef4444',
+    custom: '#22c55e',
+  },
+  gradients: {
+    main: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)',
+    story: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)',
+    millionaire: 'linear-gradient(135deg, #facc15 0%, #fb923c 100%)',
+    classic: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
+    blitz: 'linear-gradient(135deg, #ef4444 0%, #f97316 100%)',
+  },
+  neutral: {
+    white: '#ffffff',
+    black: '#000000',
+    50: '#f8fafc',
+    100: '#f1f5f9',
+    200: '#e2e8f0',
+    300: '#cbd5e1',
+    400: '#94a3b8',
+    500: '#64748b',
+    600: '#475569',
+    700: '#334155',
+    800: '#1e293b',
+    900: '#0f172a',
+  },
+  status: {
+    success: '#22c55e',
+    warning: '#facc15',
+    error: '#ef4444',
+    info: '#3b82f6',
+  },
+} as const;
+
+export default colors;

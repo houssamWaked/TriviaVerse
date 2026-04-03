@@ -1,0 +1,66 @@
+/**
+ * Shared session gameplay routes.
+ *
+ * Mounted at `/api/public/sessions`.
+ */
+import { Router } from 'express';
+import asyncHandler from '../utils/asyncHandler.js';
+import { validateRequest } from '../middlewares/validateRequest.js';
+import { optionalAuth } from '../middlewares/optionalAuth.js';
+import {
+  answerValidator,
+  finishValidator,
+  lifelineValidator,
+  sessionIdParam,
+} from '../validator/SessionValidator.js';
+
+type SessionsControllerLike = {
+  current: Parameters<typeof asyncHandler>[0];
+  review: Parameters<typeof asyncHandler>[0];
+  answer: Parameters<typeof asyncHandler>[0];
+  useLifeline: Parameters<typeof asyncHandler>[0];
+  finish: Parameters<typeof asyncHandler>[0];
+};
+
+export default function createSessionsRouter(sessionsController: SessionsControllerLike) {
+  const router = Router();
+  router.get(
+    '/:session_id/current',
+    optionalAuth,
+    sessionIdParam,
+    validateRequest,
+    asyncHandler(sessionsController.current)
+  );
+  router.get(
+    '/:session_id/review',
+    optionalAuth,
+    sessionIdParam,
+    validateRequest,
+    asyncHandler(sessionsController.review)
+  );
+  router.post(
+    '/:session_id/answer',
+    optionalAuth,
+    sessionIdParam,
+    answerValidator,
+    validateRequest,
+    asyncHandler(sessionsController.answer)
+  );
+  router.post(
+    '/:session_id/lifelines/use',
+    optionalAuth,
+    sessionIdParam,
+    lifelineValidator,
+    validateRequest,
+    asyncHandler(sessionsController.useLifeline)
+  );
+  router.post(
+    '/:session_id/finish',
+    optionalAuth,
+    sessionIdParam,
+    finishValidator,
+    validateRequest,
+    asyncHandler(sessionsController.finish)
+  );
+  return router;
+}
