@@ -83,6 +83,7 @@ export default function DuelPlay({
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const busyRef = useRef(false);
   const lastQuestionIndexRef = useRef<number | null>(null);
+  const countdownReloadedRef = useRef(false);
 
   const load = async () => {
     if (!duelId) return;
@@ -183,6 +184,28 @@ export default function DuelPlay({
       window.clearInterval(intervalId);
     };
   }, [isCompleted, msUntilStart, question?.started_at]);
+
+  useEffect(() => {
+    if (question) {
+      countdownReloadedRef.current = false;
+      return;
+    }
+
+    if (isCompleted) {
+      countdownReloadedRef.current = false;
+      return;
+    }
+
+    if (msUntilStart > 0) {
+      countdownReloadedRef.current = false;
+      return;
+    }
+
+    if (countdownReloadedRef.current) return;
+    countdownReloadedRef.current = true;
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCompleted, msUntilStart, question, duelId]);
 
   useEffect(() => {
     if (!user || !duelId) return undefined;

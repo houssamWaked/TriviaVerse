@@ -265,7 +265,11 @@ export class FriendService {
     if (!requestRow) throw new AppError('Request not found', 404, 'NOT_FOUND');
     if (requestRow.to_user_id !== userId) throw new AppError('Forbidden', 403, 'FORBIDDEN');
     await this.friendRepository.deleteRequest(requestRow.id);
-    return { success: true };
+    return {
+      success: true,
+      other_user_id: requestRow.from_user_id,
+      request_id: requestRow.id,
+    };
   }
 
   async cancelRequest(userId: string, requestId: string) {
@@ -273,7 +277,11 @@ export class FriendService {
     if (!requestRow) throw new AppError('Request not found', 404, 'NOT_FOUND');
     if (requestRow.from_user_id !== userId) throw new AppError('Forbidden', 403, 'FORBIDDEN');
     await this.friendRepository.deleteRequest(requestRow.id);
-    return { success: true };
+    return {
+      success: true,
+      other_user_id: requestRow.to_user_id,
+      request_id: requestRow.id,
+    };
   }
 
   async listFriends(userId: string) {

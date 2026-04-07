@@ -5,6 +5,11 @@ import { verifyAccessToken } from './utils/jwt.js';
 
 type DuelChangedType = 'created' | 'accepted' | 'declined' | 'canceled';
 type SessionChangedType = 'answered' | 'lifeline_used' | 'finished';
+type FriendsChangedReason =
+  | 'request_sent'
+  | 'request_accepted'
+  | 'request_declined'
+  | 'request_canceled';
 
 export type DuelChangedPayload = {
   type: DuelChangedType;
@@ -22,10 +27,17 @@ export type SessionChangedPayload = {
   finish?: any;
 };
 
+export type FriendsChangedPayload = {
+  reason: FriendsChangedReason;
+  byUserId: string;
+  otherUserId?: string | null;
+};
+
 type ServerToClientEvents = {
   'duel:changed': (payload: DuelChangedPayload) => void;
   'duel:state': (payload: DuelStatePayload) => void;
   'session:changed': (payload: SessionChangedPayload) => void;
+  'friends:changed': (payload: FriendsChangedPayload) => void;
 };
 
 type ClientToServerEvents = Record<string, never>;
@@ -181,4 +193,15 @@ export function emitSessionChanged(
     sessionId: String(sessionId),
     ...(finish !== undefined ? { finish } : {}),
   });
+}
+
+export function emitFriendsChanged(
+  userIds: Array<string | null | undefined>,
+  payload: FriendsChangedPayload
+) {
+  if (!io) return;
+
+  for (const userId of Array.from(new Set(userIds.filter(Boolean)))) {
+    emitToUser(String(userId), 'friends:changed', payload);
+  }
 }

@@ -61,11 +61,7 @@ export const socialApi = {
     return data;
   },
   getDuelState: async (duelId: string) =>
-    cachedGet(endpoints.duelState(duelId), {
-      ttlMs: 3_000,
-      scope: 'user',
-      prefer: 'localStorage',
-    }),
+    (await http.get(endpoints.duelState(duelId))).data,
   duelAnswer: async (duelId: string, body: unknown) => {
     const data = (await http.post(endpoints.duelAnswer(duelId), body)).data;
     invalidateUserCacheByPathPrefix('/api/duels');

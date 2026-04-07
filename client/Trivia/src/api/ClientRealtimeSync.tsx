@@ -32,11 +32,16 @@ export default function ClientRealtimeSync({
       emitRealtimeEvent('session:changed', payload);
     };
 
+    const handleFriendsChanged = (payload: any) => {
+      emitRealtimeEvent('friends:changed', payload);
+    };
+
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
     socket.on('duel:changed', handleDuelChanged);
     socket.on('duel:state', handleDuelState);
     socket.on('session:changed', handleSessionChanged);
+    socket.on('friends:changed', handleFriendsChanged);
 
     if (enabled) {
       syncSocketAuth(socket);
@@ -52,6 +57,7 @@ export default function ClientRealtimeSync({
       socket.off('duel:changed', handleDuelChanged);
       socket.off('duel:state', handleDuelState);
       socket.off('session:changed', handleSessionChanged);
+      socket.off('friends:changed', handleFriendsChanged);
       socket.disconnect();
       emitRealtimeEvent('socket:disconnected', null);
     };

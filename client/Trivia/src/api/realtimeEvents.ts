@@ -14,12 +14,19 @@ export type SessionChangedPayload = {
   finish?: any;
 };
 
+export type FriendsChangedPayload = {
+  reason: 'request_sent' | 'request_accepted' | 'request_declined' | 'request_canceled';
+  byUserId: string;
+  otherUserId?: string | null;
+};
+
 type RealtimeEventMap = {
   'socket:connected': null;
   'socket:disconnected': null;
   'duel:changed': DuelChangedPayload;
   'duel:state': DuelStatePayload;
   'session:changed': SessionChangedPayload;
+  'friends:changed': FriendsChangedPayload;
 };
 
 type RealtimeEventName = keyof RealtimeEventMap;
@@ -33,6 +40,7 @@ const listeners: {
   'duel:changed': new Set(),
   'duel:state': new Set(),
   'session:changed': new Set(),
+  'friends:changed': new Set(),
 };
 
 export function emitRealtimeEvent<T extends RealtimeEventName>(

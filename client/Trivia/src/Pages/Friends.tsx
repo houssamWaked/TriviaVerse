@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
 import { api } from '@/api';
+import { subscribeRealtimeEvent } from '@/api/realtimeEvents';
 import FriendsStyle from '@/Styles/ComponentStyles/FriendsStyle';
 import { getApiErrorMessage } from '@/utils/apiError';
 
@@ -51,9 +52,11 @@ export default function Friends({
   const [incoming, setIncoming] = useState<FriendRequest[]>([]);
   const [outgoing, setOutgoing] = useState<FriendRequest[]>([]);
 
-  const load = async () => {
-    setBusy(true);
-    setError('');
+  const load = async (showBusy = true) => {
+    if (showBusy) {
+      setBusy(true);
+      setError('');
+    }
     try {
       const [friendsRes, reqRes] = await Promise.all([
         api.listFriends(),
@@ -65,13 +68,31 @@ export default function Friends({
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {
-      setBusy(false);
+      if (showBusy) {
+        setBusy(false);
+      }
     }
   };
 
   useEffect(() => {
     if (!user) return;
-    load();
+
+    const handleFriendsChanged = () => {
+      void load(false);
+    };
+
+    const handleConnected = () => {
+      void load(false);
+    };
+
+    void load();
+    const offFriendsChanged = subscribeRealtimeEvent('friends:changed', handleFriendsChanged);
+    const offConnected = subscribeRealtimeEvent('socket:connected', handleConnected);
+
+    return () => {
+      offFriendsChanged();
+      offConnected();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!user]);
 
@@ -183,7 +204,9 @@ export default function Friends({
               type="button"
               className="tv-card tv-card--hover"
               style={FriendsStyle.btnWhite}
-              onClick={load}
+              onClick={() => {
+                void load();
+              }}
               disabled={busy}
             >
               {STRINGS.COMMON.buttons.refresh} {ICONS.common.refresh}
