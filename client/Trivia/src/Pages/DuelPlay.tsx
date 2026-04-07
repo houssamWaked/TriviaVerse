@@ -105,6 +105,12 @@ export default function DuelPlay({
   useEffect(() => {
     if (!user) return;
 
+    const handleDuelChanged = (payload: { duel?: { id?: string | null } | null }) => {
+      if (String(payload?.duel?.id || '') !== String(duelId || '')) return;
+      if (busyRef.current) return;
+      void load();
+    };
+
     const handleDuelState = (payload: { duelId?: string; state?: DuelState | null }) => {
       if (String(payload?.duelId || '') !== String(duelId || '')) return;
       if (busyRef.current) return;
@@ -120,10 +126,12 @@ export default function DuelPlay({
     };
 
     void load();
+    const offChanged = subscribeRealtimeEvent('duel:changed', handleDuelChanged);
     const offState = subscribeRealtimeEvent('duel:state', handleDuelState);
     const offConnected = subscribeRealtimeEvent('socket:connected', handleConnected);
 
     return () => {
+      offChanged();
       offState();
       offConnected();
     };
@@ -246,6 +254,22 @@ export default function DuelPlay({
     state?.started_at,
     user,
   ]);
+
+  useEffect(() => {
+    if (!user || !duelId) return undefined;
+    if (isCompleted) return undefined;
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      if (busyRef.current) return;
+      void load();
+    }, 1200);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [duelId, isCompleted, !!user]);
 
   useEffect(() => {
     const idx = question?.question_index ?? null;
