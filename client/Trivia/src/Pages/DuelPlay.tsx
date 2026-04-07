@@ -79,6 +79,7 @@ export default function DuelPlay({
   const [error, setError] = useState('');
   const [state, setState] = useState<DuelState | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [stateReceivedAtMs, setStateReceivedAtMs] = useState(() => Date.now());
 
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const busyRef = useRef(false);
@@ -90,7 +91,9 @@ export default function DuelPlay({
     try {
       const res = (await api.getDuelState(duelId)) as DuelState;
       setState(res);
-      setNowMs(Date.now());
+      const receivedAt = Date.now();
+      setNowMs(receivedAt);
+      setStateReceivedAtMs(receivedAt);
       setError('');
     } catch (err) {
       if (isUnauthorized(err)) return onRequireAuth?.();
@@ -116,7 +119,9 @@ export default function DuelPlay({
       if (busyRef.current) return;
       if (payload?.state) {
         setState(payload.state);
-        setNowMs(Date.now());
+        const receivedAt = Date.now();
+        setNowMs(receivedAt);
+        setStateReceivedAtMs(receivedAt);
         setError('');
       }
     };
@@ -139,13 +144,10 @@ export default function DuelPlay({
   }, [!!user, duelId]);
 
   const question = state?.question || null;
+  const serverMsUntilStart = Math.max(0, Number(state?.ms_until_start) || 0);
   const msUntilStart = useMemo(() => {
-    const startedAtMs = state?.started_at ? new Date(state.started_at).getTime() : NaN;
-    if (Number.isFinite(startedAtMs)) {
-      return Math.max(0, startedAtMs - nowMs);
-    }
-    return Math.max(0, Number(state?.ms_until_start) || 0);
-  }, [nowMs, state?.ms_until_start, state?.started_at]);
+    return Math.max(0, serverMsUntilStart - Math.max(0, nowMs - stateReceivedAtMs));
+  }, [nowMs, serverMsUntilStart, stateReceivedAtMs]);
   const isCompleted = state?.status === 'completed';
   const duelMode = String(state?.mode || 'custom').trim().toLowerCase();
 
@@ -220,13 +222,12 @@ export default function DuelPlay({
     if (busy) return undefined;
     if (isCompleted) return undefined;
 
-    const duelStartMs = state?.started_at ? new Date(state.started_at).getTime() : NaN;
     const questionStartMs = question?.started_at ? new Date(question.started_at).getTime() : NaN;
     const questionLimitMs = Math.max(0, (Number(question?.time_limit_sec) || 0) * 1000);
 
     let wakeAtMs = NaN;
-    if (Number.isFinite(duelStartMs) && duelStartMs > Date.now()) {
-      wakeAtMs = duelStartMs + 150;
+    if (serverMsUntilStart > 0) {
+      wakeAtMs = stateReceivedAtMs + serverMsUntilStart + 150;
     } else if (
       Number.isFinite(questionStartMs) &&
       questionLimitMs > 0 &&
@@ -251,7 +252,8 @@ export default function DuelPlay({
     question?.question_index,
     question?.started_at,
     question?.time_limit_sec,
-    state?.started_at,
+    serverMsUntilStart,
+    stateReceivedAtMs,
     user,
   ]);
 
