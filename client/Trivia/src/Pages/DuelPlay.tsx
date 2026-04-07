@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
 import { api } from '@/api';
+import { subscribeRealtimeEvent } from '@/api/realtimeEvents';
 import DuelPlayStyle from '@/Styles/ComponentStyles/DuelPlayStyle';
 import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
 
@@ -25,6 +26,7 @@ type DuelState = {
   status?: string | null;
   mode?: string | null;
   ms_until_start?: number | null;
+  started_at?: string | null;
   challenger_user_id?: string | null;
   opponent_user_id?: string | null;
   challenger_points?: number | null;
@@ -37,6 +39,8 @@ type DuelState = {
     question_index?: number | null;
     total_questions?: number | null;
     question_text?: string | null;
+    time_limit_sec?: number | null;
+    started_at?: string | null;
     correct_option_id?: string | null;
     options?: DuelQuestionOption[];
     answers?: DuelAnswer[];
@@ -74,9 +78,10 @@ export default function DuelPlay({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [state, setState] = useState<DuelState | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
-  const pollRef = useRef<number | null>(null);
+  const busyRef = useRef(false);
   const lastQuestionIndexRef = useRef<number | null>(null);
 
   const load = async () => {
@@ -84,11 +89,8 @@ export default function DuelPlay({
     try {
       const res = (await api.getDuelState(duelId)) as DuelState;
       setState(res);
+      setNowMs(Date.now());
       setError('');
-      if (res?.status === 'completed' && pollRef.current) {
-        window.clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
     } catch (err) {
       if (isUnauthorized(err)) return onRequireAuth?.();
       setError(getApiErrorMessage(err));
@@ -96,18 +98,45 @@ export default function DuelPlay({
   };
 
   useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
+
+  useEffect(() => {
     if (!user) return;
-    load();
-    pollRef.current = window.setInterval(load, 700);
+
+    const handleDuelState = (payload: { duelId?: string; state?: DuelState | null }) => {
+      if (String(payload?.duelId || '') !== String(duelId || '')) return;
+      if (busyRef.current) return;
+      if (payload?.state) {
+        setState(payload.state);
+        setNowMs(Date.now());
+        setError('');
+      }
+    };
+
+    const handleConnected = () => {
+      void load();
+    };
+
+    void load();
+    const offState = subscribeRealtimeEvent('duel:state', handleDuelState);
+    const offConnected = subscribeRealtimeEvent('socket:connected', handleConnected);
+
     return () => {
-      if (pollRef.current) window.clearInterval(pollRef.current);
-      pollRef.current = null;
+      offState();
+      offConnected();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!user, duelId]);
 
   const question = state?.question || null;
-  const msUntilStart = Number(state?.ms_until_start) || 0;
+  const msUntilStart = useMemo(() => {
+    const startedAtMs = state?.started_at ? new Date(state.started_at).getTime() : NaN;
+    if (Number.isFinite(startedAtMs)) {
+      return Math.max(0, startedAtMs - nowMs);
+    }
+    return Math.max(0, Number(state?.ms_until_start) || 0);
+  }, [nowMs, state?.ms_until_start, state?.started_at]);
   const isCompleted = state?.status === 'completed';
   const duelMode = String(state?.mode || 'custom').trim().toLowerCase();
 
@@ -141,6 +170,59 @@ export default function DuelPlay({
     const list = Array.isArray(question?.answers) ? question.answers : [];
     return list.find((a) => a.user_id === myUserId) || null;
   }, [question?.answers, myUserId]);
+
+  useEffect(() => {
+    if (isCompleted) return undefined;
+    if (msUntilStart <= 0 && !question?.started_at) return undefined;
+
+    const intervalId = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 250);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [isCompleted, msUntilStart, question?.started_at]);
+
+  useEffect(() => {
+    if (!user || !duelId) return undefined;
+    if (busy) return undefined;
+    if (isCompleted) return undefined;
+
+    const duelStartMs = state?.started_at ? new Date(state.started_at).getTime() : NaN;
+    const questionStartMs = question?.started_at ? new Date(question.started_at).getTime() : NaN;
+    const questionLimitMs = Math.max(0, (Number(question?.time_limit_sec) || 0) * 1000);
+
+    let wakeAtMs = NaN;
+    if (Number.isFinite(duelStartMs) && duelStartMs > Date.now()) {
+      wakeAtMs = duelStartMs + 150;
+    } else if (
+      Number.isFinite(questionStartMs) &&
+      questionLimitMs > 0 &&
+      questionStartMs + questionLimitMs > Date.now()
+    ) {
+      wakeAtMs = questionStartMs + questionLimitMs + 150;
+    }
+
+    if (!Number.isFinite(wakeAtMs)) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      void load();
+    }, Math.max(150, wakeAtMs - Date.now()));
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    busy,
+    duelId,
+    isCompleted,
+    question?.question_index,
+    question?.started_at,
+    question?.time_limit_sec,
+    state?.started_at,
+    user,
+  ]);
 
   useEffect(() => {
     const idx = question?.question_index ?? null;

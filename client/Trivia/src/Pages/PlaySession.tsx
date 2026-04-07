@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
 import { api } from '@/api';
+import { subscribeRealtimeEvent } from '@/api/realtimeEvents';
 import PlaySessionStyle from '@/Styles/ComponentStyles/PlaySessionStyle';
 import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
 import { saveGuestStoryResult } from '@/utils/guestStoryProgress';
@@ -96,6 +97,8 @@ export default function PlaySession({
 
   const questionStartRef = useRef(Date.now());
   const submitSeqRef = useRef(0);
+  const busyRef = useRef(false);
+  const finishedRef = useRef(false);
 
   const applyQuestion = (q: SessionQuestion) => {
     const mode = q?.mode || '';
@@ -120,6 +123,14 @@ export default function PlaySession({
     questionStartRef.current = Date.now();
   };
 
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
+
+  useEffect(() => {
+    finishedRef.current = finished;
+  }, [finished]);
+
   const loadCurrent = async () => {
     setBusy(true);
     setError('');
@@ -132,6 +143,84 @@ export default function PlaySession({
     } finally {
       setBusy(false);
     }
+  };
+
+  const syncCurrentSilently = async () => {
+    if (!sessionId) return;
+    try {
+      const q = await api.getCurrentQuestion(sessionId);
+      applyQuestion(q);
+      setError('');
+    } catch (err: any) {
+      if (isUnauthorized(err)) return onRequireAuth?.('play');
+      const code = String(err?.response?.data?.code || '').trim();
+      if (code === 'NOT_ACTIVE' || code === 'NO_CURRENT_QUESTION') return;
+    }
+  };
+
+  const applyFinishedResult = (res: any, status = 'completed') => {
+    const resolvedScoreTotal = Math.max(0, Number(res?.session?.score_total ?? scoreTotal) || 0);
+    const resolvedMode = String(res?.session?.mode || sessionMode || '').trim().toLowerCase();
+
+    setScoreTotal(resolvedScoreTotal);
+    if (resolvedMode) {
+      setSessionMode(resolvedMode);
+    }
+
+    if (isStory) {
+      const computed = computeStoryOutcomeFromCounts({
+        correctCount,
+        totalCount: answeredCount,
+      });
+      const server = res?.story && typeof res.story === 'object' ? res.story : null;
+      const passed = status === 'completed' ? Boolean(server?.passed ?? computed.passed) : false;
+      const stars =
+        status === 'completed'
+          ? Math.max(0, Math.min(3, Number(server?.stars ?? computed.stars) || 0))
+          : 0;
+
+      setStoryOutcome({ passed, stars });
+
+      if (!user) {
+        saveGuestStoryResult(storyLevelNumber, {
+          scoreTotal: resolvedScoreTotal,
+          passed,
+          stars,
+        });
+      }
+    }
+
+    if (resolvedMode === 'classic') {
+      const cid = String(classicCategoryId || '').trim();
+      const levelNum = Number(classicLevelNumber);
+      const computed = computeStoryOutcomeFromCounts({
+        correctCount,
+        totalCount: answeredCount,
+      });
+      const server = res?.classic && typeof res.classic === 'object' ? res.classic : null;
+      const passed = status === 'completed' ? Boolean(server?.passed ?? computed.passed) : false;
+      const stars = status === 'completed' ? clampStars(server?.stars ?? computed.stars) : 0;
+
+      if (status === 'completed') {
+        setClassicOutcome({
+          passed,
+          stars,
+          has_next_level: server?.has_next_level ?? null,
+          next_level_number: server?.next_level_number ?? null,
+        });
+
+        if (!user && cid && Number.isFinite(levelNum) && levelNum > 0) {
+          saveGuestClassicResult(cid, levelNum, {
+            scoreTotal: resolvedScoreTotal,
+            passed,
+            stars,
+          });
+        }
+      }
+    }
+
+    setFinished(true);
+    setQuestion(null);
   };
 
   useEffect(() => {
@@ -157,6 +246,48 @@ export default function PlaySession({
     loadCurrent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    if (!sessionId) return undefined;
+
+    const handleSessionChanged = (payload: { sessionId?: string; type?: string; finish?: any }) => {
+      if (String(payload?.sessionId || '') !== String(sessionId)) return;
+      if (busyRef.current) return;
+
+      if (payload?.type === 'finished') {
+        applyFinishedResult(payload?.finish, payload?.finish?.status || 'completed');
+        return;
+      }
+
+      if (finishedRef.current) return;
+      void syncCurrentSilently();
+    };
+
+    const handleConnected = () => {
+      if (busyRef.current || finishedRef.current) return;
+      void syncCurrentSilently();
+    };
+
+    const offSessionChanged = subscribeRealtimeEvent('session:changed', handleSessionChanged);
+    const offConnected = subscribeRealtimeEvent('socket:connected', handleConnected);
+
+    return () => {
+      offSessionChanged();
+      offConnected();
+    };
+  }, [
+    answeredCount,
+    classicCategoryId,
+    classicLevelNumber,
+    correctCount,
+    isStory,
+    scoreTotal,
+    sessionId,
+    sessionMode,
+    storyLevelNumber,
+    user?.id,
+  ]);
 
   useEffect(() => {
     let alive = true;
@@ -638,57 +769,7 @@ export default function PlaySession({
     setError('');
     try {
       const res = (await api.finishSession(sessionId, { status })) as any;
-
-      if (isStory) {
-        const computed = computeStoryOutcomeFromCounts({
-          correctCount,
-          totalCount: answeredCount,
-        });
-        const server = res?.story && typeof res.story === 'object' ? res.story : null;
-        const passed =
-          status === 'completed' ? Boolean(server?.passed ?? computed.passed) : false;
-        const stars =
-          status === 'completed'
-            ? Math.max(0, Math.min(3, Number(server?.stars ?? computed.stars) || 0))
-            : 0;
-
-        setStoryOutcome({ passed, stars });
-
-        if (!user) {
-          saveGuestStoryResult(storyLevelNumber, { scoreTotal, passed, stars });
-        }
-      }
-
-      if (String(sessionMode || '').toLowerCase() === 'classic') {
-        const cid = String(classicCategoryId || '').trim();
-        const levelNum = Number(classicLevelNumber);
-        const computed = computeStoryOutcomeFromCounts({
-          correctCount,
-          totalCount: answeredCount,
-        });
-        const server = res?.classic && typeof res.classic === 'object' ? res.classic : null;
-        const passed =
-          status === 'completed' ? Boolean(server?.passed ?? computed.passed) : false;
-        const stars =
-          status === 'completed'
-            ? clampStars(server?.stars ?? computed.stars)
-            : 0;
-
-        if (status === 'completed') {
-          setClassicOutcome({
-            passed,
-            stars,
-            has_next_level: server?.has_next_level ?? null,
-            next_level_number: server?.next_level_number ?? null,
-          });
-
-          if (!user && cid && Number.isFinite(levelNum) && levelNum > 0) {
-            saveGuestClassicResult(cid, levelNum, { scoreTotal, passed, stars });
-          }
-        }
-      }
-      setFinished(true);
-      setQuestion(null);
+      applyFinishedResult(res, status);
     } catch (err) {
       if (isUnauthorized(err)) return onRequireAuth?.('play');
       setError(getApiErrorMessage(err));

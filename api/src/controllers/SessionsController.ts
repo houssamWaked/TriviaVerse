@@ -2,6 +2,7 @@
  * Shared session gameplay controller.
  */
 import type { Request, Response } from 'express';
+import { emitSessionChanged } from '../socket.js';
 
 type SessionServiceLike = {
   getCurrent(sessionId: string, userId: string | null): Promise<unknown>;
@@ -42,29 +43,38 @@ export class SessionsController {
   };
 
   answer = async (req: Request, res: Response) => {
+    const sessionId = getParam(req.params.session_id);
+    const userId = req.user?.id || null;
     const data = await this.sessionService.submitAnswer(
-      getParam(req.params.session_id),
-      req.user?.id || null,
+      sessionId,
+      userId,
       req.body
     );
+    emitSessionChanged('answered', sessionId, userId);
     res.status(200).json(data);
   };
 
   useLifeline = async (req: Request, res: Response) => {
+    const sessionId = getParam(req.params.session_id);
+    const userId = req.user?.id || null;
     const data = await this.sessionService.useLifeline(
-      getParam(req.params.session_id),
-      req.user?.id || null,
+      sessionId,
+      userId,
       req.body
     );
+    emitSessionChanged('lifeline_used', sessionId, userId);
     res.status(200).json(data);
   };
 
   finish = async (req: Request, res: Response) => {
+    const sessionId = getParam(req.params.session_id);
+    const userId = req.user?.id || null;
     const data = await this.sessionService.finish(
-      getParam(req.params.session_id),
-      req.user?.id || null,
+      sessionId,
+      userId,
       req.body.status
     );
+    emitSessionChanged('finished', sessionId, userId, data);
     res.status(200).json(data);
   };
 }

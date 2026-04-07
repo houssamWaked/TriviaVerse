@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
 import { api } from '@/api';
+import { subscribeRealtimeEvent } from '@/api/realtimeEvents';
 import ProfileStyle from '@/Styles/ComponentStyles/ProfileStyle';
 import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
 
@@ -50,6 +51,8 @@ type DuelEntry = {
   id: string;
   status?: string | null;
   me_role?: string | null;
+  challenger_user_id?: string | null;
+  opponent_user_id?: string | null;
   winner_user_id?: string | null;
   opponent_user?: { username?: string | null } | null;
   challenger_user?: { username?: string | null } | null;
@@ -59,6 +62,8 @@ type DuelEntry = {
   challenger_points?: number | null;
   opponent_points?: number | null;
   created_at?: string | null;
+  started_at?: string | null;
+  current_index?: number | null;
   ms_until_start?: number | null;
 };
 
@@ -103,8 +108,14 @@ function modeIcon(mode: string | null | undefined) {
   return ICONS.common.user;
 }
 
-function getOpponentName(d: DuelEntry) {
-  const meRole = d?.me_role;
+function getMeRole(d: DuelEntry, myUserId: string | undefined) {
+  if (myUserId && d?.challenger_user_id === myUserId) return 'challenger';
+  if (myUserId && d?.opponent_user_id === myUserId) return 'opponent';
+  return d?.me_role || null;
+}
+
+function getOpponentName(d: DuelEntry, myUserId: string | undefined) {
+  const meRole = getMeRole(d, myUserId);
   if (meRole === 'challenger') return d?.opponent_user?.username || STRINGS.COMMON.playerFallback;
   return d?.challenger_user?.username || STRINGS.COMMON.playerFallback;
 }
@@ -129,6 +140,50 @@ function duelResultText(d: DuelEntry, myUserId: string | undefined) {
   if (!d?.winner_user_id) return STRINGS.PROFILE.duels.result.tie;
   if (d.winner_user_id === myUserId) return STRINGS.PROFILE.duels.result.youWon;
   return STRINGS.PROFILE.duels.result.youLost;
+}
+
+function sortDuelsNewestFirst(entries: DuelEntry[]) {
+  return [...entries].sort((left, right) => {
+    const leftTs = left?.created_at ? new Date(left.created_at).getTime() : 0;
+    const rightTs = right?.created_at ? new Date(right.created_at).getTime() : 0;
+    return rightTs - leftTs;
+  });
+}
+
+function upsertDuelEntry(entries: DuelEntry[], nextEntry: DuelEntry) {
+  const duelId = String(nextEntry?.id || '').trim();
+  if (!duelId) return entries;
+
+  const index = entries.findIndex((entry) => String(entry?.id || '') === duelId);
+  if (index < 0) {
+    return sortDuelsNewestFirst([nextEntry, ...entries]);
+  }
+
+  const next = [...entries];
+  next[index] = {
+    ...next[index],
+    ...nextEntry,
+  };
+  return sortDuelsNewestFirst(next);
+}
+
+function mergeDuelState(entries: DuelEntry[], state: any, duelId: string | null | undefined) {
+  const resolvedDuelId = String(state?.id || duelId || '').trim();
+  if (!resolvedDuelId) return entries;
+
+  return upsertDuelEntry(entries, {
+    id: resolvedDuelId,
+    status: state?.status ?? undefined,
+    mode: state?.mode ?? undefined,
+    challenger_user_id: state?.challenger_user_id ?? undefined,
+    opponent_user_id: state?.opponent_user_id ?? undefined,
+    winner_user_id: state?.winner_user_id ?? undefined,
+    challenger_points: state?.challenger_points ?? undefined,
+    opponent_points: state?.opponent_points ?? undefined,
+    started_at: state?.started_at ?? undefined,
+    current_index: state?.current_index ?? undefined,
+    ms_until_start: state?.ms_until_start ?? undefined,
+  });
 }
 
 export default function Profile({
@@ -185,20 +240,7 @@ export default function Profile({
         entries?: DuelEntry[];
       };
       const list = Array.isArray(res?.entries) ? res.entries : [];
-      setDuels(list);
-
-      const toAutoOpen = list.find(
-        (d) =>
-          d?.status === 'active' &&
-          d?.me_role === 'challenger' &&
-          !autoOpenedRef.current.has(d.id) &&
-          Number(d?.ms_until_start) > 0 &&
-          Number(d?.ms_until_start) <= 3200
-      );
-      if (toAutoOpen?.id && onOpenDuel) {
-        autoOpenedRef.current.add(toAutoOpen.id);
-        onOpenDuel(toAutoOpen.id);
-      }
+      setDuels(sortDuelsNewestFirst(list));
     } catch (err) {
       if (isUnauthorized(err)) return onRequireAuth?.();
       setError(getApiErrorMessage(err));
@@ -214,15 +256,54 @@ export default function Profile({
     if (!user) return;
 
     if (isFriendView) {
-      loadProfile();
+      void loadProfile();
       return;
     }
 
-    loadAll();
-    const t = window.setInterval(loadDuels, 1500);
-    return () => window.clearInterval(t);
+    const handleDuelChanged = (payload: { duel?: DuelEntry | null }) => {
+      const nextEntry = payload?.duel;
+      if (!nextEntry?.id) return;
+      setDuels((previous) => upsertDuelEntry(previous, nextEntry));
+    };
+
+    const handleDuelState = (payload: { duelId?: string; state?: any }) => {
+      setDuels((previous) => mergeDuelState(previous, payload?.state, payload?.duelId));
+    };
+
+    const handleConnected = () => {
+      void loadDuels();
+    };
+
+    void loadAll();
+    const offChanged = subscribeRealtimeEvent('duel:changed', handleDuelChanged);
+    const offState = subscribeRealtimeEvent('duel:state', handleDuelState);
+    const offConnected = subscribeRealtimeEvent('socket:connected', handleConnected);
+
+    return () => {
+      offChanged();
+      offState();
+      offConnected();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!user, friendUserId]);
+
+  useEffect(() => {
+    if (isFriendView) return;
+    if (!onOpenDuel) return;
+
+    const toAutoOpen = duels.find(
+      (d) =>
+        d?.status === 'active' &&
+        getMeRole(d, user?.id) === 'challenger' &&
+        !autoOpenedRef.current.has(d.id) &&
+        Number(d?.ms_until_start) > 0 &&
+        Number(d?.ms_until_start) <= 3200
+    );
+
+    if (!toAutoOpen?.id) return;
+    autoOpenedRef.current.add(toAutoOpen.id);
+    onOpenDuel(toAutoOpen.id);
+  }, [duels, isFriendView, onOpenDuel, user?.id]);
 
   const name = useMemo(
     () => data?.user?.username || user?.username || STRINGS.COMMON.playerFallback,
@@ -486,10 +567,11 @@ export default function Profile({
 
             <div style={ProfileStyle.list}>
               {(duels || []).slice(0, 30).map((d) => {
-                const oppName = getOpponentName(d);
-                const canAccept = d?.status === 'pending' && d?.me_role === 'opponent';
-                const canDecline = d?.status === 'pending' && d?.me_role === 'opponent';
-                const canCancel = d?.status === 'pending' && d?.me_role === 'challenger';
+                const meRole = getMeRole(d, user?.id);
+                const oppName = getOpponentName(d, user?.id);
+                const canAccept = d?.status === 'pending' && meRole === 'opponent';
+                const canDecline = d?.status === 'pending' && meRole === 'opponent';
+                const canCancel = d?.status === 'pending' && meRole === 'challenger';
                 const canOpen = d?.status === 'active' || d?.status === 'completed';
                 const resultText = duelResultText(d, user?.id);
 

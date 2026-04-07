@@ -1,6 +1,8 @@
 import React from 'react';
 import { Alert, Box, Button, Snackbar, Stack, Typography } from '@mui/material';
 import './App.css';
+import ClientRealtimeSync from './api/ClientRealtimeSync';
+import { subscribeRealtimeEvent } from './api/realtimeEvents';
 import HomePage from './Pages/Home';
 import CreateQuizPage from './Pages/CreateQuiz';
 import DiscoverQuizzesPage from './Pages/DiscoverQuizzes';
@@ -133,7 +135,9 @@ type AuthResult = {
 type DuelEntry = {
   id?: string | number;
   status?: string;
+  challenger_user_id?: string;
   opponent_user_id?: string;
+  created_at?: string | null;
   challenger_user?: { username?: string };
   quiz?: { title?: string };
 };
@@ -253,9 +257,35 @@ function getAdminEmailSet() {
   );
 }
 
+function sortDuelsNewestFirst(entries: DuelEntry[]) {
+  return [...entries].sort((left, right) => {
+    const leftTs = left?.created_at ? new Date(left.created_at).getTime() : 0;
+    const rightTs = right?.created_at ? new Date(right.created_at).getTime() : 0;
+    return rightTs - leftTs;
+  });
+}
+
+function upsertDuelEntry(entries: DuelEntry[], nextEntry: DuelEntry) {
+  const duelId = String(nextEntry?.id || '').trim();
+  if (!duelId) return entries;
+
+  const index = entries.findIndex((entry) => String(entry?.id || '') === duelId);
+  if (index < 0) {
+    return sortDuelsNewestFirst([nextEntry, ...entries]);
+  }
+
+  const next = [...entries];
+  next[index] = {
+    ...next[index],
+    ...nextEntry,
+  };
+  return sortDuelsNewestFirst(next);
+}
+
 function App() {
   const [route, setRoute] = React.useState<Route>(getRoute);
   const [user, setUser] = React.useState<StoredUser>(() => getCurrentUser());
+  const [duelEntries, setDuelEntries] = React.useState<DuelEntry[]>([]);
   const [pendingDuelCount, setPendingDuelCount] = React.useState(0);
   const [duelToast, setDuelToast] = React.useState<DuelToast>(null);
   const pendingDuelIdsRef = React.useRef<Set<string>>(new Set());
@@ -319,37 +349,19 @@ function App() {
     pendingDuelIdsRef.current = new Set();
     setPendingDuelCount(0);
     setDuelToast(null);
+    setDuelEntries([]);
     if (!user?.id) return undefined;
 
     let cancelled = false;
 
-    async function poll() {
+    async function loadDuels() {
       try {
         const result = (await api.listDuelsFresh()) as { entries?: DuelEntry[] };
         if (cancelled) return;
-
         const entries = Array.isArray(result?.entries) ? result.entries : [];
-        const pending = entries.filter(
-          (entry) => entry?.status === 'pending' && entry?.opponent_user_id === user.id
-        );
-        const nextIds = new Set(pending.map((entry) => String(entry?.id || '')).filter(Boolean));
-        const prevIds = pendingDuelIdsRef.current;
-        const newlyArrived = pending.filter((entry) => entry?.id && !prevIds.has(String(entry.id)));
-
-        pendingDuelIdsRef.current = nextIds;
-        setPendingDuelCount(nextIds.size);
-
-        if (newlyArrived.length > 0) {
-          const first = newlyArrived[0];
-          const challengerName = first?.challenger_user?.username || strings.COMMON.playerFallback;
-          const quizTitle = first?.quiz?.title || '';
-          setDuelToast({
-            count: newlyArrived.length,
-            challengerName,
-            quizTitle,
-          });
-        }
+        setDuelEntries(sortDuelsNewestFirst(entries));
       } catch (error) {
+        if (cancelled) return;
         if (isUnauthorized(error)) {
           clearAuthToken();
           clearCurrentUser();
@@ -358,21 +370,51 @@ function App() {
       }
     }
 
-    void poll();
-    const intervalId = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void poll();
-    }, 10_000);
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') void poll();
+    const handleDuelChanged = (payload: { duel?: DuelEntry | null }) => {
+      const nextEntry = payload?.duel;
+      if (!nextEntry?.id) return;
+      setDuelEntries((previous) => upsertDuelEntry(previous, nextEntry));
     };
-    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    const handleConnected = () => {
+      void loadDuels();
+    };
+
+    void loadDuels();
+    const offDuelChanged = subscribeRealtimeEvent('duel:changed', handleDuelChanged);
+    const offConnected = subscribeRealtimeEvent('socket:connected', handleConnected);
 
     return () => {
       cancelled = true;
-      window.clearInterval(intervalId);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
+      offDuelChanged();
+      offConnected();
     };
   }, [user?.id]);
+
+  React.useEffect(() => {
+    if (!user?.id) return;
+
+    const pending = duelEntries.filter(
+      (entry) => entry?.status === 'pending' && entry?.opponent_user_id === user.id
+    );
+    const nextIds = new Set(pending.map((entry) => String(entry?.id || '')).filter(Boolean));
+    const prevIds = pendingDuelIdsRef.current;
+    const newlyArrived = pending.filter((entry) => entry?.id && !prevIds.has(String(entry.id)));
+
+    pendingDuelIdsRef.current = nextIds;
+    setPendingDuelCount(nextIds.size);
+
+    if (newlyArrived.length > 0) {
+      const first = newlyArrived[0];
+      const challengerName = first?.challenger_user?.username || strings.COMMON.playerFallback;
+      const quizTitle = first?.quiz?.title || '';
+      setDuelToast({
+        count: newlyArrived.length,
+        challengerName,
+        quizTitle,
+      });
+    }
+  }, [duelEntries, user?.id]);
 
   React.useEffect(() => {
     if (!duelToast) return undefined;
@@ -521,6 +563,8 @@ function App() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', color: 'text.primary' }}>
+      <ClientRealtimeSync enabled={Boolean(user?.id)} />
+
       <Navbar
         user={user}
         duelNotifCount={pendingDuelCount}
