@@ -68,6 +68,12 @@ const strings = STRINGS as any;
 const icons = ICONS as any;
 const styles = QuizViewStyle as any;
 
+/**
+ * Build the display label for quiz ratings (avg + count).
+ * @param avg Average rating.
+ * @param count Rating count.
+ * @returns Localized rating label.
+ */
 function ratingLabel(avg: number | string | undefined, count: number | string | undefined) {
   const numericAverage = Number(avg);
   const numericCount = Number(count);
@@ -78,6 +84,12 @@ function ratingLabel(avg: number | string | undefined, count: number | string | 
   return strings.QUIZ_VIEW.rating.label(averageText, countText);
 }
 
+/**
+ * Quiz details page: play, rate, view leaderboard, edit (owner), duel, or report a quiz.
+ * @param quizId Quiz id to display.
+ * @param user Current user snapshot.
+ * @returns React element.
+ */
 export default function QuizView({
   quizId,
   user,

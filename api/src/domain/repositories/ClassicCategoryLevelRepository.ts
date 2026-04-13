@@ -40,10 +40,18 @@ function toAppError(error: DatabaseErrorLike): AppError | null {
 
 const mapLevelRow = (row: unknown): ClassicCategoryLevelRow => row as unknown as ClassicCategoryLevelRow;
 
+/**
+ * Repository for classic category level definitions (`classic_category_levels`).
+ */
 export class ClassicCategoryLevelRepository {
   selectFields =
     'id, category_id, level_number, title, difficulty_min, difficulty_max, xp_reward, created_at';
 
+  /**
+   * List levels for a category ordered by level number.
+   * @param categoryId Category id.
+   * @returns Array of level rows.
+   */
   async listByCategoryId(categoryId: string): Promise<ClassicCategoryLevelRow[]> {
     const normalizedCategoryId = String(categoryId || '').trim();
     if (!normalizedCategoryId) return [];
@@ -58,6 +66,11 @@ export class ClassicCategoryLevelRepository {
     return (data || []).map(mapLevelRow);
   }
 
+  /**
+   * Find a classic level by id.
+   * @param levelId Level id.
+   * @returns Level row or `null`.
+   */
   async findById(levelId: string): Promise<ClassicCategoryLevelRow | null> {
     const normalizedLevelId = String(levelId || '').trim();
     if (!normalizedLevelId) return null;
@@ -71,6 +84,12 @@ export class ClassicCategoryLevelRepository {
     return data?.[0] ? mapLevelRow(data[0]) : null;
   }
 
+  /**
+   * Find a level by category and level number.
+   * @param categoryId Category id.
+   * @param levelNumber Level number.
+   * @returns Level row or `null`.
+   */
   async findByCategoryAndLevelNumber(
     categoryId: string,
     levelNumber: number
@@ -89,6 +108,11 @@ export class ClassicCategoryLevelRepository {
     return data?.[0] ? mapLevelRow(data[0]) : null;
   }
 
+  /**
+   * Get the highest level number configured for a category.
+   * @param categoryId Category id.
+   * @returns Max level number (0 when none).
+   */
   async getMaxLevelNumberByCategory(categoryId: string): Promise<number> {
     const normalizedCategoryId = String(categoryId || '').trim();
     if (!normalizedCategoryId) return 0;
@@ -103,6 +127,11 @@ export class ClassicCategoryLevelRepository {
     return Number((data?.[0] as { level_number?: number } | undefined)?.level_number) || 0;
   }
 
+  /**
+   * Create a classic category level row.
+   * @param payload Insert payload.
+   * @returns Created level row or `null`.
+   */
   async create(payload: CreateClassicCategoryLevelInput): Promise<ClassicCategoryLevelRow | null> {
     const { data, error } = await supabase
       .from('classic_category_levels')
@@ -113,6 +142,11 @@ export class ClassicCategoryLevelRepository {
     return data?.[0] ? mapLevelRow(data[0]) : null;
   }
 
+  /**
+   * Delete a level by id.
+   * @param levelId Level id.
+   * @returns `true` if a row was deleted.
+   */
   async delete(levelId: string): Promise<boolean> {
     const normalizedLevelId = String(levelId || '').trim();
     if (!normalizedLevelId) return false;

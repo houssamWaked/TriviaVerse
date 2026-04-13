@@ -42,6 +42,13 @@ export class QuizBuilderController {
   sessionStartService: SessionStartServiceLike;
   quizReportService: QuizReportServiceLike;
 
+  /**
+   * Construct the quiz builder controller.
+   * @param quizBuilderService Service for quiz CRUD and ownership checks.
+   * @param sessionStartService Service for starting custom quiz sessions.
+   * @param quizReportService Service for reporting quizzes.
+   * @returns A `QuizBuilderController` instance.
+   */
   constructor(
     quizBuilderService: QuizBuilderServiceLike,
     sessionStartService: SessionStartServiceLike,
@@ -52,21 +59,45 @@ export class QuizBuilderController {
     this.quizReportService = quizReportService;
   }
 
+  /**
+   * List quizzes owned by the current user.
+   * @param req Express request (expects `req.user`).
+   * @param res Express response.
+   * @returns A 200 response with quizzes.
+   */
   listQuizzes = async (req: Request, res: Response) => {
     const data = await this.quizBuilderService.listQuizzes(req.user!.id);
     res.status(200).json(data);
   };
 
+  /**
+   * Create a new quiz for the current user.
+   * @param req Express request (expects quiz payload in `req.body`).
+   * @param res Express response.
+   * @returns A 201 response with the created quiz.
+   */
   createQuiz = async (req: Request, res: Response) => {
     const data = await this.quizBuilderService.createQuiz(req.user!.id, req.body);
     res.status(201).json(data);
   };
 
+  /**
+   * Fetch a quiz owned by the current user.
+   * @param req Express request (expects `:quiz_id`).
+   * @param res Express response.
+   * @returns A 200 response with quiz details.
+   */
   getQuiz = async (req: Request, res: Response) => {
     const data = await this.quizBuilderService.getQuiz(req.user!.id, getParam(req.params.quiz_id));
     res.status(200).json(data);
   };
 
+  /**
+   * Patch quiz metadata (owner-only).
+   * @param req Express request (expects `:quiz_id` and patch payload in `req.body`).
+   * @param res Express response.
+   * @returns A 200 response with the updated quiz.
+   */
   patchQuiz = async (req: Request, res: Response) => {
     const data = await this.quizBuilderService.patchQuiz(
       req.user!.id,
@@ -76,11 +107,23 @@ export class QuizBuilderController {
     res.status(200).json(data);
   };
 
+  /**
+   * Publish a quiz (owner-only).
+   * @param req Express request (expects `:quiz_id`).
+   * @param res Express response.
+   * @returns A 200 response with the published quiz.
+   */
   publishQuiz = async (req: Request, res: Response) => {
     const data = await this.quizBuilderService.publishQuiz(req.user!.id, getParam(req.params.quiz_id));
     res.status(200).json(data);
   };
 
+  /**
+   * List quiz questions (owner-only).
+   * @param req Express request (expects `:quiz_id`).
+   * @param res Express response.
+   * @returns A 200 response with questions + options.
+   */
   listQuizQuestions = async (req: Request, res: Response) => {
     const data = await this.quizBuilderService.listQuizQuestions(
       req.user!.id,
@@ -89,6 +132,12 @@ export class QuizBuilderController {
     res.status(200).json(data);
   };
 
+  /**
+   * Add a question to a quiz (owner-only).
+   * @param req Express request (expects `:quiz_id` and question payload in `req.body`).
+   * @param res Express response.
+   * @returns A 201 response with the created question.
+   */
   addQuizQuestion = async (req: Request, res: Response) => {
     const data = await this.quizBuilderService.addQuizQuestion(
       req.user!.id,
@@ -98,6 +147,12 @@ export class QuizBuilderController {
     res.status(201).json(data);
   };
 
+  /**
+   * Patch a quiz question (owner-only).
+   * @param req Express request (expects `:question_id` and patch payload in `req.body`).
+   * @param res Express response.
+   * @returns A 200 response with the updated question.
+   */
   patchQuizQuestion = async (req: Request, res: Response) => {
     const data = await this.quizBuilderService.patchQuizQuestion(
       req.user!.id,
@@ -107,6 +162,12 @@ export class QuizBuilderController {
     res.status(200).json(data);
   };
 
+  /**
+   * Add an option to a question (owner-only).
+   * @param req Express request (expects `:question_id` and option payload in `req.body`).
+   * @param res Express response.
+   * @returns A 201 response with the created option.
+   */
   addQuestionOption = async (req: Request, res: Response) => {
     const data = await this.quizBuilderService.addQuestionOption(
       req.user!.id,
@@ -116,6 +177,12 @@ export class QuizBuilderController {
     res.status(201).json(data);
   };
 
+  /**
+   * Patch a question option (owner-only).
+   * @param req Express request (expects `:option_id` and patch payload in `req.body`).
+   * @param res Express response.
+   * @returns A 200 response with the updated option.
+   */
   patchQuestionOption = async (req: Request, res: Response) => {
     const data = await this.quizBuilderService.patchQuestionOption(
       req.user!.id,
@@ -125,6 +192,12 @@ export class QuizBuilderController {
     res.status(200).json(data);
   };
 
+  /**
+   * Rate a quiz as the current user.
+   * @param req Express request (expects `:quiz_id` and `req.body.rating`).
+   * @param res Express response.
+   * @returns A 200 response with rating summary.
+   */
   rateQuiz = async (req: Request, res: Response) => {
     const data = await this.quizBuilderService.rateQuiz(
       req.user!.id,
@@ -134,6 +207,12 @@ export class QuizBuilderController {
     res.status(200).json(data);
   };
 
+  /**
+   * List explicit access rows for a quiz (owner-only).
+   * @param req Express request (expects `:quiz_id`).
+   * @param res Express response.
+   * @returns A 200 response with access list.
+   */
   listQuizAccess = async (req: Request, res: Response) => {
     const data = await this.quizBuilderService.listQuizAccess(
       req.user!.id,
@@ -142,6 +221,12 @@ export class QuizBuilderController {
     res.status(200).json(data);
   };
 
+  /**
+   * Add a user to a quiz access allow-list (owner-only).
+   * @param req Express request (expects `:quiz_id` and payload in `req.body`).
+   * @param res Express response.
+   * @returns A 201 response with added user summary.
+   */
   addQuizAccess = async (req: Request, res: Response) => {
     const data = await this.quizBuilderService.addQuizAccess(
       req.user!.id,
@@ -151,6 +236,12 @@ export class QuizBuilderController {
     res.status(201).json(data);
   };
 
+  /**
+   * Remove a user from a quiz access allow-list (owner-only).
+   * @param req Express request (expects `:quiz_id` and `:user_id`).
+   * @param res Express response.
+   * @returns A 200 response with success payload.
+   */
   removeQuizAccess = async (req: Request, res: Response) => {
     const data = await this.quizBuilderService.removeQuizAccess(
       req.user!.id,
@@ -160,6 +251,12 @@ export class QuizBuilderController {
     res.status(200).json(data);
   };
 
+  /**
+   * Start a playable custom quiz session for the current user (or guest).
+   * @param req Express request (expects `:quiz_id`).
+   * @param res Express response.
+   * @returns A 201 response with session start payload.
+   */
   startCustomSession = async (req: Request, res: Response) => {
     const data = await this.sessionStartService.startCustomQuizSession(
       req.user?.id || null,
@@ -168,16 +265,34 @@ export class QuizBuilderController {
     res.status(201).json(data);
   };
 
+  /**
+   * List quizzes the current user has played (best-scores).
+   * @param req Express request (expects `req.user`).
+   * @param res Express response.
+   * @returns A 200 response with `{ entries }`.
+   */
   listPlayedQuizzes = async (req: Request, res: Response) => {
     const data = await this.quizBuilderService.listMyPlayedQuizzes(req.user!.id);
     res.status(200).json({ entries: data });
   };
 
+  /**
+   * Delete a quiz owned by the current user.
+   * @param req Express request (expects `:quiz_id`).
+   * @param res Express response.
+   * @returns A 200 response with success payload.
+   */
   deleteQuiz = async (req: Request, res: Response) => {
     const data = await this.quizBuilderService.deleteQuiz(req.user!.id, getParam(req.params.quiz_id));
     res.status(200).json(data);
   };
 
+  /**
+   * Report a published quiz as the current user.
+   * @param req Express request (expects `:quiz_id` and payload in `req.body`).
+   * @param res Express response.
+   * @returns A 201 response with report result.
+   */
   reportQuiz = async (req: Request, res: Response) => {
     const data = await this.quizReportService.reportQuiz(
       req.user!.id,

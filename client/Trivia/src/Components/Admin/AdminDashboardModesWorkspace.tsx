@@ -3,12 +3,22 @@ import AdminStyle from '../../Styles/ComponentStyles/AdminStyle';
 import AdminDashboardStyle from '../../Styles/ComponentStyles/AdminDashboardStyle';
 import { STRINGS } from '@/constants/strings';
 
+/**
+ * Clamp an input to a bounded integer range.
+ * @param value Value to parse.
+ * @param min Minimum allowed value.
+ * @param max Maximum allowed value.
+ * @returns Clamped integer.
+ */
 function clampInt(value, min, max) {
   const n = Number(value);
   if (!Number.isFinite(n)) return min;
   return Math.min(max, Math.max(min, Math.floor(n)));
 }
 
+/**
+ * Admin "Modes" workspace: manage mode pools (classic/blitz/millionaire) and seed/clear pools.
+ */
 export default function AdminDashboardModesWorkspace({
   busy,
   modes,

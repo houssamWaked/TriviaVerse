@@ -79,11 +79,18 @@ function isVerificationThrottled(email: string | null | undefined): boolean {
   return Date.now() - last < Math.max(0, Number(EMAIL_SEND_THROTTLE_MS) || 0);
 }
 
+// Domain service responsible for registration/login/token refresh and email verification flows.
 export class AuthService {
   private userRepository: UserRepositoryLike;
   private userStatsRepository: UserStatsRepositoryLike;
   private _googleClient: OAuth2Client | null;
 
+  /**
+   * Construct the auth service.
+   * @param userRepository Repository for user records.
+   * @param userStatsRepository Repository for per-user stats initialization.
+   * @returns An `AuthService` instance.
+   */
   constructor(userRepository: UserRepositoryLike, userStatsRepository: UserStatsRepositoryLike) {
     this.userRepository = userRepository;
     this.userStatsRepository = userStatsRepository;
@@ -91,10 +98,18 @@ export class AuthService {
     this._googleClient = null;
   }
 
+  /**
+   * Determine whether the service is running in production mode.
+   * @returns True when `NODE_ENV === 'production'`.
+   */
   #isProd() {
     return process.env.NODE_ENV === 'production';
   }
 
+  /**
+   * Lazily initialize the Google OAuth client and parse configured audiences.
+   * @returns The OAuth client + list of accepted client IDs (audiences).
+   */
   #getGoogleClient() {
     const raw = String(process.env.GOOGLE_CLIENT_ID || '').trim();
     const audiences = raw
@@ -112,6 +127,11 @@ export class AuthService {
     return { audiences, client: this._googleClient };
   }
 
+  /**
+   * Generate a unique username by normalizing the base and trying random suffixes.
+   * @param base Desired username seed (name/email prefix).
+   * @returns A unique username string.
+   */
   async #ensureUniqueUsername(base: string): Promise<string> {
     const cleaned = String(base || '')
       .trim()
@@ -137,6 +157,12 @@ export class AuthService {
     throw new AppError('Failed to generate a unique username', 500, 'USERNAME_GENERATION_FAILED');
   }
 
+  /**
+   * Send an email verification link using Supabase OTP (when configured) or a dev console fallback.
+   * @param user The user who needs verification.
+   * @param token Signed verification token to embed in the link.
+   * @returns Resolves when delivery is attempted/queued; may throw on hard failures.
+   */
   async #deliverVerification(user: UserLike, token: string): Promise<void> {
     if (process.env.NODE_ENV === 'test') return;
 
@@ -149,6 +175,7 @@ export class AuthService {
           'EMAIL_RATE_LIMITED'
         );
       }
+      // Throttle by email to avoid provider rate limits and spam.
       markVerificationAttempt(user?.email);
 
       const { error } = await supabasePublic.auth.signInWithOtp({
@@ -220,6 +247,13 @@ export class AuthService {
     console.log(`[auth] Email verification for ${user.email}: ${display}`);
   }
 
+  /**
+   * Create a new user account and trigger email verification.
+   * @param username Desired username.
+   * @param email Email address (unique).
+   * @param password Plaintext password (will be bcrypt-hashed).
+   * @returns Registration result including `needs_email_verification` and dev-only verification helpers.
+   */
   async register({
     username,
     email,
@@ -279,6 +313,12 @@ export class AuthService {
     return payload;
   }
 
+  /**
+   * Authenticate a user with email/password and issue an access token.
+   * @param email Account email.
+   * @param password Plaintext password.
+   * @returns `{ user, token }` when credentials are valid.
+   */
   async login({ email, password }: { email: string; password: string }) {
     const user = await this.userRepository.findByEmail(email);
     if (!user) {
@@ -314,6 +354,11 @@ export class AuthService {
     return { user: UserDTO.fromEntity(user), token };
   }
 
+  /**
+   * Authenticate (or create) a user using a Google ID token.
+   * @param id_token Google ID token from the client.
+   * @returns `{ user, token }` for the authenticated account.
+   */
   async googleLogin({ id_token }: { id_token: string }) {
     const token = String(id_token || '').trim();
     if (!token) throw new AppError('id_token is required', 400, 'VALIDATION_ERROR');
@@ -371,6 +416,11 @@ export class AuthService {
     return { user: UserDTO.fromEntity(user), token: access };
   }
 
+  /**
+   * Exchange a refresh token for a new access token.
+   * @param refreshToken Signed refresh token (usually from the httpOnly cookie).
+   * @returns `{ user, token }` for the refreshed session.
+   */
   async refresh(refreshToken: string) {
     const decoded = verifyRefreshToken(refreshToken);
     const userId = decoded.sub;
@@ -386,6 +436,11 @@ export class AuthService {
     return { user: UserDTO.fromEntity(user), token };
   }
 
+  /**
+   * Verify an email verification token and mark the user as verified.
+   * @param token Signed verification token.
+   * @returns Verification outcome (including `already_verified` when applicable).
+   */
   async verifyEmailToken(token: string) {
     const { userId, email } = verifyEmailVerificationToken(token);
 
@@ -408,6 +463,11 @@ export class AuthService {
     return { success: true };
   }
 
+  /**
+   * Trigger a new verification email for an unverified account.
+   * @param email Target email address.
+   * @returns `{ success: true }` (suppresses delivery failures in production to avoid enumeration).
+   */
   async resendVerification({ email }: { email: string }) {
     const user = await this.userRepository.findByEmail(email);
     // Avoid account enumeration: return 204-ish response shape even if no user.

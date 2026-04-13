@@ -18,6 +18,12 @@ type HomeHeroProps = {
   onCreateQuiz?: () => void | Promise<void>;
 };
 
+/**
+ * Home hero section: headline, primary CTAs, and stat cards.
+ * @param metrics Pre-formatted metrics for display.
+ * @param onStartPlaying Callback to scroll/navigate into modes.
+ * @returns React element.
+ */
 export default function HomeHero({
   metrics = STRINGS.HOME.statsDefaults,
   onStartPlaying,

@@ -28,6 +28,11 @@ const selectFields = 'id, session_id, lifeline_type, used_at, payload_json';
 const mapSessionLifelineRow = (row: unknown): SessionLifelineRow => row as unknown as SessionLifelineRow;
 
 export class SessionLifelineRepository {
+  /**
+   * List lifeline rows for a session.
+   * @param sessionId Game session id.
+   * @returns Array of lifeline rows ordered by use time.
+   */
   async listBySessionId(sessionId: string): Promise<SessionLifelineRow[]> {
     const { data, error } = await supabase
       .from('session_lifelines')
@@ -38,6 +43,12 @@ export class SessionLifelineRepository {
     return (data || []).map(mapSessionLifelineRow);
   }
 
+  /**
+   * Find a lifeline row by session and lifeline type.
+   * @param sessionId Game session id.
+   * @param lifelineType Lifeline identifier (e.g. `50_50`).
+   * @returns Lifeline row or `null`.
+   */
   async findBySessionAndType(sessionId: string, lifelineType: string): Promise<SessionLifelineRow | null> {
     const { data, error } = await supabase
       .from('session_lifelines')
@@ -49,6 +60,11 @@ export class SessionLifelineRepository {
     return data?.[0] ? mapSessionLifelineRow(data[0]) : null;
   }
 
+  /**
+   * Create a lifeline row for a session.
+   * @param payload Insert payload.
+   * @returns Created lifeline row or `null`.
+   */
   async create(payload: CreateSessionLifelineInput): Promise<SessionLifelineRow | null> {
     const { data, error } = await supabase.from('session_lifelines').insert(payload).select(selectFields).limit(1);
     if (error) throw toAppError(error);

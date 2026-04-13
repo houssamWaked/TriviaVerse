@@ -31,15 +31,29 @@ function toAppError(error: DatabaseErrorLike): AppError | null {
 
 const mapDuelClaimRow = (row: unknown): DuelClaimRow => row as unknown as DuelClaimRow;
 
+/**
+ * Repository for `duel_claims` rows (first-correct claims per question).
+ */
 export class DuelClaimRepository {
   selectFields = 'duel_id, question_index, winner_user_id, answered_ms, created_at';
 
+  /**
+   * Create a claim row for a duel question.
+   * @param payload Insert payload.
+   * @returns Created claim row or `null`.
+   */
   async create(payload: CreateDuelClaimInput): Promise<DuelClaimRow | null> {
     const { data, error } = await supabase.from('duel_claims').insert(payload).select(this.selectFields).limit(1);
     if (error) throw toAppError(error);
     return data?.[0] ? mapDuelClaimRow(data[0]) : null;
   }
 
+  /**
+   * Find an existing claim for a duel question.
+   * @param duelId Duel id.
+   * @param questionIndex Question index (1-based).
+   * @returns Claim row or `null`.
+   */
   async findByDuelAndQuestionIndex(duelId: string, questionIndex: number): Promise<DuelClaimRow | null> {
     const { data, error } = await supabase
       .from('duel_claims')

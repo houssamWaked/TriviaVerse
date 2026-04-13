@@ -40,6 +40,11 @@ type StoryProps = {
   onPlaySession?: (sessionId?: string, levelNumber?: number) => void;
 };
 
+/**
+ * Normalize difficulty text to a known label.
+ * @param raw Raw difficulty value from the API.
+ * @returns One of the known difficulty strings or an "unknown" fallback.
+ */
 function toDifficultyLabel(raw: string | null | undefined) {
   const d = String(raw || '').toLowerCase();
   if (d === STRINGS.STORY.difficulty.easy) return STRINGS.STORY.difficulty.easy;
@@ -48,10 +53,21 @@ function toDifficultyLabel(raw: string | null | undefined) {
   return STRINGS.STORY.difficulty.unknown;
 }
 
+/**
+ * Clamp stars to the \([0,3]\) display range.
+ * @param n Raw stars value.
+ * @returns Clamped stars count.
+ */
 function clampStars(n: number | string | null | undefined) {
   return Math.max(0, Math.min(3, Number(n) || 0));
 }
 
+/**
+ * Story mode start page: shows story levels, progress, and starts sessions.
+ * @param user Current user snapshot (enables server-backed progress).
+ * @param onPlaySession Callback invoked with a started session id.
+ * @returns React element.
+ */
 export default function Story({
   user,
   onRequireAuth,

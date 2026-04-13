@@ -4,6 +4,9 @@ import AdminDashboardStyle from '../../Styles/ComponentStyles/AdminDashboardStyl
 import AdminQuestionBankTab from './AdminQuestionBankTab';
 import { STRINGS } from '@/constants/strings';
 
+/**
+ * Admin "Questions" workspace: create global questions and browse/edit the global question bank.
+ */
 export default function AdminDashboardQuestionsWorkspace({
   busy,
   questionForm,

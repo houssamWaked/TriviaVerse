@@ -44,6 +44,12 @@ type AuthModalProps = {
   errorDetails?: AuthFieldError[] | null;
 };
 
+/**
+ * Authentication modal: login/signup form with optional Google One Tap button and resend verification flow.
+ * @param open Whether the dialog is visible.
+ * @param mode `login` or `signup`.
+ * @returns React element.
+ */
 export default function AuthModal({
   open,
   mode = 'signup',

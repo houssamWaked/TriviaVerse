@@ -24,6 +24,12 @@ type Props = {
   storyProgressPct: number;
 };
 
+/**
+ * Session header UI: renders either the standard top row or the story-style progress header.
+ * @param finished Whether the session is finished.
+ * @param isStory Whether this session is in story variant.
+ * @returns React element or null.
+ */
 export default function PlaySessionTopBar({
   finished,
   isStory,

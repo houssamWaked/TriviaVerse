@@ -37,7 +37,18 @@ function toAppError(error: DatabaseErrorLike): AppError | null {
 
 const mapClassicSessionRow = (row: unknown): ClassicSessionRow => row as unknown as ClassicSessionRow;
 
+/**
+ * Repository for classic session metadata rows (`classic_sessions`).
+ */
 export class ClassicSessionRepository {
+  /**
+   * Create a classic session metadata row.
+   * @param session_id Game session id.
+   * @param category_id Category id.
+   * @param level_id Optional level id.
+   * @param level_number Optional level number.
+   * @returns Created row or `null`.
+   */
   async create({
     session_id,
     category_id,
@@ -53,6 +64,11 @@ export class ClassicSessionRepository {
     return data?.[0] ? mapClassicSessionRow(data[0]) : null;
   }
 
+  /**
+   * Find classic session metadata by session id.
+   * @param sessionId Game session id.
+   * @returns Row or `null`.
+   */
   async findBySessionId(sessionId: string): Promise<ClassicSessionRow | null> {
     const { data, error } = await supabase
       .from('classic_sessions')
@@ -63,6 +79,11 @@ export class ClassicSessionRepository {
     return data?.[0] ? mapClassicSessionRow(data[0]) : null;
   }
 
+  /**
+   * Delete classic session rows for a level.
+   * @param levelId Level id.
+   * @returns `true` on success.
+   */
   async deleteByLevelId(levelId: string): Promise<boolean> {
     const normalizedLevelId = String(levelId || '').trim();
     if (!normalizedLevelId) return true;

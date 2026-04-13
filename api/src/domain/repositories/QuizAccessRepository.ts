@@ -30,7 +30,15 @@ function toAppError(error: DatabaseErrorLike): AppError | null {
 const selectFields = 'quiz_id, user_id, created_at';
 const mapAccessRow = (row: unknown): QuizAccessRow => row as unknown as QuizAccessRow;
 
+/**
+ * Repository for explicit private quiz access allow-lists (`quiz_access`).
+ */
 export class QuizAccessRepository {
+  /**
+   * List quiz ids a user is allowed to access.
+   * @param userId User id.
+   * @returns Array of quiz ids.
+   */
   async listQuizIdsForUser(userId: string): Promise<string[]> {
     const { data, error } = await supabase.from('quiz_access').select('quiz_id').eq('user_id', userId);
     if (error) throw toAppError(error);
@@ -39,6 +47,11 @@ export class QuizAccessRepository {
       .filter((value): value is string => Boolean(value));
   }
 
+  /**
+   * List access rows for a quiz.
+   * @param quizId Quiz id.
+   * @returns Array of access rows ordered by newest first.
+   */
   async listByQuizId(quizId: string): Promise<QuizAccessRow[]> {
     const { data, error } = await supabase
       .from('quiz_access')
@@ -49,6 +62,12 @@ export class QuizAccessRepository {
     return (data || []).map(mapAccessRow);
   }
 
+  /**
+   * Add an access row.
+   * @param quiz_id Quiz id.
+   * @param user_id User id.
+   * @returns Created access row or `null`.
+   */
   async add({ quiz_id, user_id }: QuizAccessInput): Promise<QuizAccessRow | null> {
     const { data, error } = await supabase
       .from('quiz_access')
@@ -59,6 +78,12 @@ export class QuizAccessRepository {
     return data?.[0] ? mapAccessRow(data[0]) : null;
   }
 
+  /**
+   * Remove an access row.
+   * @param quiz_id Quiz id.
+   * @param user_id User id.
+   * @returns `true` if a row was deleted.
+   */
   async remove({ quiz_id, user_id }: QuizAccessInput): Promise<boolean> {
     const { error, count } = await supabase
       .from('quiz_access')
@@ -69,6 +94,11 @@ export class QuizAccessRepository {
     return (count ?? 0) > 0;
   }
 
+  /**
+   * Delete all access rows for a quiz.
+   * @param quizId Quiz id.
+   * @returns `true` on success.
+   */
   async deleteByQuizId(quizId: string): Promise<true> {
     const { error } = await supabase.from('quiz_access').delete().eq('quiz_id', quizId);
     if (error) throw toAppError(error);

@@ -37,6 +37,7 @@ function shuffleInPlace(arr: unknown[]) {
   }
 }
 
+// Admin-only domain service for moderation and pool/content management.
 export class AdminService {
   storyLevelRepository: GenericRepository;
   storyLevelPoolRepository: GenericRepository;
@@ -60,6 +61,11 @@ export class AdminService {
   quizReportRepository: GenericRepository;
   userRepository: GenericRepository;
 
+  /**
+   * Construct the admin service with repositories for all moderated resources.
+   * @param deps Repositories needed for story/classic pools, global questions, and moderation.
+   * @returns An `AdminService` instance.
+   */
   constructor({
     storyLevelRepository,
     storyLevelPoolRepository,
@@ -108,6 +114,11 @@ export class AdminService {
     this.userRepository = userRepository;
   }
 
+  /**
+   * List quiz reports along with relevant quiz + user context.
+   * @param query Filter/paging query (status/limit/offset).
+   * @returns A page of report entries.
+   */
   async listQuizReports(
     query: { status?: string; limit?: number | string; offset?: number | string } = {}
   ) {
@@ -169,6 +180,12 @@ export class AdminService {
     };
   }
 
+  /**
+   * Mark a quiz report as resolved (audited by admin email when provided).
+   * @param reportId Quiz report id.
+   * @param adminEmail Admin email for auditing.
+   * @returns `{ success: true }` when updated; throws when not found.
+   */
   async resolveQuizReport(reportId, { adminEmail = null } = {}) {
     if (!this.quizReportRepository) {
       throw new AppError('Quiz reports are not configured', 501, 'NOT_CONFIGURED');
@@ -181,6 +198,11 @@ export class AdminService {
     return { success: true };
   }
 
+  /**
+   * Delete a custom quiz and best-effort cleanup of related rows.
+   * @param quizId Quiz id to delete.
+   * @returns `{ success: true }` when deleted; throws when not found.
+   */
   async deleteCustomQuizAsAdmin(quizId) {
     const qid = String(quizId || '').trim();
     if (!qid) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
@@ -243,6 +265,13 @@ export class AdminService {
     return { success: true };
   }
 
+  /**
+   * Ban a user via the users table ban columns.
+   * @param userId Target user id.
+   * @param reason Optional ban reason.
+   * @param adminEmail Optional admin email for auditing.
+   * @returns `{ success: true }` when updated; throws when not found.
+   */
   async banUser(userId, { reason = null, adminEmail = null } = {}) {
     if (!this.userRepository) throw new AppError('Not configured', 501, 'NOT_CONFIGURED');
     const uid = String(userId || '').trim();
@@ -253,6 +282,11 @@ export class AdminService {
     return { success: true };
   }
 
+  /**
+   * Validate that question ids are not already assigned in story pools.
+   * @param questionIds Candidate quiz question ids.
+   * @returns Nothing; throws `POOL_CONFLICT` if any ids are already assigned.
+   */
   async assertNotInStoryPool(questionIds = []) {
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (ids.length === 0) return;
@@ -268,6 +302,12 @@ export class AdminService {
     );
   }
 
+  /**
+   * Enforce that question ids are exclusive to the requested mode pool (not in other pools).
+   * @param mode Target mode.
+   * @param questionIds Candidate quiz question ids.
+   * @returns Nothing; throws `POOL_CONFLICT` when conflicts exist.
+   */
   async assertExclusiveForModePool(mode, questionIds = []) {
     const m = String(mode || '')
       .trim()
@@ -312,6 +352,12 @@ export class AdminService {
     }
   }
 
+  /**
+   * Filter out question ids that are assigned to pools other than the requested mode.
+   * @param mode Target mode.
+   * @param questionIds Candidate quiz question ids.
+   * @returns Eligible ids that can be added to the mode pool.
+   */
   async filterEligibleForModePool(mode, questionIds = []) {
     const m = String(mode || '')
       .trim()
@@ -357,6 +403,12 @@ export class AdminService {
     return ids.filter((id) => !blocked.has(id));
   }
 
+  /**
+   * Enforce that question ids are exclusive to the requested classic category pool.
+   * @param categoryId Target classic category id.
+   * @param questionIds Candidate quiz question ids.
+   * @returns Nothing; throws `POOL_CONFLICT` when conflicts exist.
+   */
   async assertExclusiveForClassicCategory(categoryId, questionIds = []) {
     const cid = String(categoryId || '').trim();
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
@@ -399,6 +451,12 @@ export class AdminService {
     }
   }
 
+  /**
+   * Filter out question ids that are assigned to pools other than the requested classic category.
+   * @param categoryId Target category id.
+   * @param questionIds Candidate quiz question ids.
+   * @returns Eligible ids that can be added to the category pool.
+   */
   async filterEligibleForClassicCategory(categoryId, questionIds = []) {
     const cid = String(categoryId || '').trim();
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
@@ -442,6 +500,12 @@ export class AdminService {
     return ids.filter((id) => !blocked.has(id));
   }
 
+  /**
+   * Enforce that question ids are exclusive to the requested story level.
+   * @param levelId Target story level id.
+   * @param questionIds Candidate quiz question ids.
+   * @returns Nothing; throws `POOL_CONFLICT` when conflicts exist.
+   */
   async assertExclusiveForStoryLevel(levelId, questionIds = []) {
     const lid = String(levelId || '').trim();
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
@@ -485,6 +549,12 @@ export class AdminService {
     }
   }
 
+  /**
+   * Filter out question ids that are assigned to pools other than the requested story level.
+   * @param levelId Target story level id.
+   * @param questionIds Candidate quiz question ids.
+   * @returns Eligible ids that can be added to the level pool.
+   */
   async filterEligibleForStoryLevel(levelId, questionIds = []) {
     const lid = String(levelId || '').trim();
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
@@ -528,6 +598,11 @@ export class AdminService {
     return ids.filter((id) => !blocked.has(id));
   }
 
+  /**
+   * Filter out question ids that are already assigned to any story level.
+   * @param questionIds Candidate quiz question ids.
+   * @returns Only ids not assigned to story levels.
+   */
   async filterOutStoryAssigned(questionIds = []) {
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
     if (ids.length === 0) return [];
@@ -537,6 +612,10 @@ export class AdminService {
     return ids.filter((id) => !blocked.has(id));
   }
 
+  /**
+   * List all story levels with best-effort pool counts.
+   * @returns Story levels (each enriched with `pool_count` when available).
+   */
   async listStoryLevels() {
     const levels = await this.storyLevelRepository.listAll();
 
@@ -555,6 +634,11 @@ export class AdminService {
     return withCounts;
   }
 
+  /**
+   * Create a new story level (auto-increments level number when omitted).
+   * @param payload Level creation payload.
+   * @returns Created level row.
+   */
   async createStoryLevel(payload) {
     const nextNumber =
       payload.level_number ?? ((await this.storyLevelRepository.getMaxLevelNumber()) || 0) + 1;
@@ -572,6 +656,11 @@ export class AdminService {
     return created;
   }
 
+  /**
+   * Delete a story level and best-effort cleanup of pool/progress/session metadata.
+   * @param levelId Story level id.
+   * @returns `{ success: boolean }`.
+   */
   async deleteStoryLevel(levelId) {
     const level = await this.storyLevelRepository.findById(levelId);
     if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
@@ -599,6 +688,12 @@ export class AdminService {
     return { success: !!ok };
   }
 
+  /**
+   * Add question ids to a story level pool (enforces pool exclusivity).
+   * @param levelId Story level id.
+   * @param questionIds Quiz question ids.
+   * @returns `{ success, added_count }`.
+   */
   async addStoryLevelPool(levelId, questionIds = []) {
     const level = await this.storyLevelRepository.findById(levelId);
     if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
@@ -611,6 +706,13 @@ export class AdminService {
     return { success: true, added_count: ids.length };
   }
 
+  /**
+   * List questions assigned to a story level pool (paged).
+   * @param levelId Story level id.
+   * @param limit Page size.
+   * @param offset Page offset.
+   * @returns Paged question list for the level.
+   */
   async listStoryLevelPoolQuestions(levelId, { limit = 50, offset = 0 } = {}) {
     const level = await this.storyLevelRepository.findById(levelId);
     if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
@@ -639,6 +741,11 @@ export class AdminService {
     };
   }
 
+  /**
+   * List all question ids assigned to a story level pool.
+   * @param levelId Story level id.
+   * @returns `{ level_id, count, ids }`.
+   */
   async listStoryLevelPoolQuestionIds(levelId) {
     const level = await this.storyLevelRepository.findById(levelId);
     if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
@@ -648,6 +755,10 @@ export class AdminService {
     return { level_id: level.id, count: unique.length, ids: unique };
   }
 
+  /**
+   * List all assigned question ids across all configured pools.
+   * @returns Combined id set and per-pool breakdown.
+   */
   async listAllAssignedQuestionIds() {
     const story = await this.safeListIds(() =>
       this.storyLevelPoolRepository?.listAllQuestionIds?.()
@@ -681,6 +792,11 @@ export class AdminService {
     };
   }
 
+  /**
+   * Best-effort helper for listing ids from optional repositories.
+   * @param fn Async function returning ids.
+   * @returns A unique list of ids (empty when not configured).
+   */
   async safeListIds(fn) {
     try {
       const res = await fn();
@@ -692,6 +808,12 @@ export class AdminService {
     }
   }
 
+  /**
+   * Remove question ids from a story level pool.
+   * @param levelId Story level id.
+   * @param questionIds Quiz question ids.
+   * @returns `{ success, removed_count }`.
+   */
   async removeStoryLevelPoolQuestions(levelId, questionIds = []) {
     const level = await this.storyLevelRepository.findById(levelId);
     if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
@@ -703,6 +825,12 @@ export class AdminService {
     return { success: true, removed_count: ids.length };
   }
 
+  /**
+   * Replace an entire story level pool with the provided question ids.
+   * @param levelId Story level id.
+   * @param questionIds Quiz question ids.
+   * @returns `{ success, count }`.
+   */
   async replaceStoryLevelPool(levelId, questionIds = []) {
     const level = await this.storyLevelRepository.findById(levelId);
     if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
@@ -714,6 +842,12 @@ export class AdminService {
     return { success: true, count: ids.length };
   }
 
+  /**
+   * Seed a story level pool using random global questions (difficulty range aware).
+   * @param levelId Story level id.
+   * @param random_count Number of questions to try to add.
+   * @returns `{ success, added_count }`.
+   */
   async seedStoryLevelPool(levelId, { random_count = 10 } = {}) {
     const level = await this.storyLevelRepository.findById(levelId);
     if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
@@ -745,6 +879,11 @@ export class AdminService {
     return { success: true, added_count: eligible.length };
   }
 
+  /**
+   * Create a global question and its options (and optionally assign to a single mode pool).
+   * @param payload Question creation payload including options.
+   * @returns `{ question_id }` of the created row.
+   */
   async createGlobalQuestion(payload) {
     const options = Array.isArray(payload.options) ? payload.options : [];
     if (options.length < 2) {
@@ -812,6 +951,14 @@ export class AdminService {
     return { question_id: created.id };
   }
 
+  /**
+   * List global questions with search/paging and assignment filtering.
+   * @param q Search query.
+   * @param limit Page size.
+   * @param offset Page offset.
+   * @param assigned Assignment filter (`all`/etc.).
+   * @returns Paged list of global questions.
+   */
   async listGlobalQuestions({ q = '', limit = 20, offset = 0, assigned = 'all' } = {}) {
     const rows = await this.quizQuestionRepository.listGlobal({ q, limit, offset, assigned });
     return {
@@ -828,6 +975,12 @@ export class AdminService {
     };
   }
 
+  /**
+   * Add questions to a mode pool (enforces pool exclusivity).
+   * @param mode Mode key.
+   * @param questionIds Quiz question ids.
+   * @returns `{ success, added_count }`.
+   */
   async addQuestionsToModePool(mode, questionIds = []) {
     const m = String(mode || '')
       .trim()
@@ -842,6 +995,12 @@ export class AdminService {
     return { success: true, added_count: ids.length };
   }
 
+  /**
+   * Remove questions from a mode pool.
+   * @param mode Mode key.
+   * @param questionIds Quiz question ids.
+   * @returns `{ success, removed_count }`.
+   */
   async removeModePoolQuestions(mode, questionIds = []) {
     const m = String(mode || '')
       .trim()
@@ -855,6 +1014,12 @@ export class AdminService {
     return { success: true, removed_count: ids.length };
   }
 
+  /**
+   * Replace a mode pool with the provided question ids.
+   * @param mode Mode key.
+   * @param questionIds Quiz question ids.
+   * @returns `{ success, count }`.
+   */
   async replaceModePool(mode, questionIds = []) {
     const m = String(mode || '')
       .trim()
@@ -868,6 +1033,11 @@ export class AdminService {
     return { success: true, count: ids.length };
   }
 
+  /**
+   * Get a global question and its options for admin editing.
+   * @param questionId Quiz question id.
+   * @returns Question payload + options.
+   */
   async getGlobalQuestion(questionId) {
     const qid = String(questionId || '').trim();
     if (!qid) throw new AppError('Invalid question_id', 400, 'INVALID_INPUT');
@@ -898,6 +1068,12 @@ export class AdminService {
     };
   }
 
+  /**
+   * Patch editable fields on a global question.
+   * @param questionId Quiz question id.
+   * @param patch Partial patch payload.
+   * @returns Updated question fields.
+   */
   async patchGlobalQuestion(
     questionId,
     patch: {
@@ -951,6 +1127,12 @@ export class AdminService {
     };
   }
 
+  /**
+   * Replace all options for a global question (validates option count and correctness).
+   * @param questionId Quiz question id.
+   * @param payload Payload containing new option list.
+   * @returns `{ success, options }` for the created option rows.
+   */
   async replaceGlobalQuestionOptions(
     questionId,
     payload: { options?: Array<{ option_text?: string; is_correct?: boolean }> } = {}
@@ -999,6 +1181,11 @@ export class AdminService {
     };
   }
 
+  /**
+   * Return a lightweight summary of a mode pool.
+   * @param mode Mode key.
+   * @returns `{ mode, count }`.
+   */
   async listModePool(mode) {
     const ids = await this.modeQuestionPoolRepository.listQuestionIdsByMode(mode);
     const copy = ids.slice();
@@ -1011,6 +1198,11 @@ export class AdminService {
     };
   }
 
+  /**
+   * List all question ids assigned to a mode pool.
+   * @param mode Mode key.
+   * @returns `{ mode, count, ids }`.
+   */
   async listModePoolQuestionIds(mode) {
     const m = String(mode || '')
       .trim()
@@ -1022,6 +1214,12 @@ export class AdminService {
     return { mode: m, count: unique.length, ids: unique };
   }
 
+  /**
+   * Seed a mode pool using random global questions (enforces pool eligibility).
+   * @param mode Mode key.
+   * @param random_count Number of questions to try to add.
+   * @returns `{ success, added_count }`.
+   */
   async seedModePool(mode, { random_count = 10 } = {}) {
     const m = String(mode || '')
       .trim()
@@ -1042,6 +1240,13 @@ export class AdminService {
     return { success: true, added_count: eligible.length };
   }
 
+  /**
+   * List paged questions assigned to a mode pool.
+   * @param mode Mode key.
+   * @param limit Page size.
+   * @param offset Page offset.
+   * @returns Paged pool questions.
+   */
   async listModePoolQuestions(mode, { limit = 50, offset = 0 } = {}) {
     const m = String(mode || '')
       .trim()
@@ -1071,6 +1276,10 @@ export class AdminService {
     };
   }
 
+  /**
+   * List classic categories (and best-effort pool counts).
+   * @returns Category rows enriched with `pool_count` when available.
+   */
   async listClassicCategories() {
     const rows = await this.categoryRepository.findAll();
 
@@ -1089,6 +1298,11 @@ export class AdminService {
     return withCounts;
   }
 
+  /**
+   * Create a classic category record.
+   * @param payload Category payload.
+   * @returns Created category fields.
+   */
   async createClassicCategory(payload) {
     const created = await this.categoryRepository.create({
       name: payload.name,
@@ -1097,6 +1311,11 @@ export class AdminService {
     return { id: created.id, name: created.name, icon: created.icon ?? null };
   }
 
+  /**
+   * Delete a classic category record.
+   * @param categoryId Category id.
+   * @returns `{ success: boolean }`.
+   */
   async deleteClassicCategory(categoryId) {
     const cat = await this.categoryRepository.findById(categoryId);
     if (!cat) throw new AppError('Category not found', 404, 'NOT_FOUND');
@@ -1105,6 +1324,13 @@ export class AdminService {
     return { success: !!ok };
   }
 
+  /**
+   * List paged questions assigned to a classic category pool.
+   * @param categoryId Category id.
+   * @param limit Page size.
+   * @param offset Page offset.
+   * @returns Paged pool questions.
+   */
   async listClassicCategoryPoolQuestions(categoryId, { limit = 50, offset = 0 } = {}) {
     const cat = await this.categoryRepository.findById(categoryId);
     if (!cat) throw new AppError('Category not found', 404, 'NOT_FOUND');
@@ -1132,6 +1358,11 @@ export class AdminService {
     };
   }
 
+  /**
+   * List all question ids assigned to a classic category pool.
+   * @param categoryId Category id.
+   * @returns `{ category_id, count, ids }`.
+   */
   async listClassicCategoryPoolQuestionIds(categoryId) {
     const cat = await this.categoryRepository.findById(categoryId);
     if (!cat) throw new AppError('Category not found', 404, 'NOT_FOUND');
@@ -1141,6 +1372,12 @@ export class AdminService {
     return { category_id: cat.id, count: unique.length, ids: unique };
   }
 
+  /**
+   * Add questions to a classic category pool (enforces pool exclusivity).
+   * @param categoryId Category id.
+   * @param questionIds Quiz question ids.
+   * @returns `{ success, added_count }`.
+   */
   async addClassicCategoryPool(categoryId, questionIds = []) {
     const cat = await this.categoryRepository.findById(categoryId);
     if (!cat) throw new AppError('Category not found', 404, 'NOT_FOUND');
@@ -1153,6 +1390,12 @@ export class AdminService {
     return { success: true, added_count: ids.length };
   }
 
+  /**
+   * Remove questions from a classic category pool.
+   * @param categoryId Category id.
+   * @param questionIds Quiz question ids.
+   * @returns `{ success, removed_count }`.
+   */
   async removeClassicCategoryPool(categoryId, questionIds = []) {
     const cat = await this.categoryRepository.findById(categoryId);
     if (!cat) throw new AppError('Category not found', 404, 'NOT_FOUND');
@@ -1164,6 +1407,12 @@ export class AdminService {
     return { success: true, removed_count: ids.length };
   }
 
+  /**
+   * Replace a classic category pool with the provided question ids.
+   * @param categoryId Category id.
+   * @param questionIds Quiz question ids.
+   * @returns `{ success, count }`.
+   */
   async replaceClassicCategoryPool(categoryId, questionIds = []) {
     const cat = await this.categoryRepository.findById(categoryId);
     if (!cat) throw new AppError('Category not found', 404, 'NOT_FOUND');
@@ -1175,6 +1424,12 @@ export class AdminService {
     return { success: true, count: ids.length };
   }
 
+  /**
+   * Seed a classic category pool using random global questions (enforces pool eligibility).
+   * @param categoryId Category id.
+   * @param random_count Number of questions to try to add.
+   * @returns `{ success, added_count }`.
+   */
   async seedClassicCategoryPool(categoryId, { random_count = 10 } = {}) {
     const cat = await this.categoryRepository.findById(categoryId);
     if (!cat) throw new AppError('Category not found', 404, 'NOT_FOUND');
@@ -1193,6 +1448,11 @@ export class AdminService {
 
   // ===== Classic category levels (story-like classic) =====
 
+  /**
+   * List classic levels for a category.
+   * @param categoryId Category id.
+   * @returns Category info + levels (with pool counts when available).
+   */
   async listClassicCategoryLevels(categoryId) {
     if (!this.classicCategoryLevelRepository) {
       throw new AppError(
@@ -1235,6 +1495,12 @@ export class AdminService {
     };
   }
 
+  /**
+   * Create a classic category level.
+   * @param categoryId Category id.
+   * @param payload Level creation payload.
+   * @returns Created level row.
+   */
   async createClassicCategoryLevel(categoryId, payload) {
     if (!this.classicCategoryLevelRepository) {
       throw new AppError(
@@ -1264,6 +1530,11 @@ export class AdminService {
     return created;
   }
 
+  /**
+   * Delete a classic category level and best-effort cleanup of pool/progress/session metadata.
+   * @param levelId Level id.
+   * @returns `{ success: boolean }`.
+   */
   async deleteClassicCategoryLevel(levelId) {
     if (!this.classicCategoryLevelRepository) {
       throw new AppError(
@@ -1299,6 +1570,12 @@ export class AdminService {
     return { success: !!ok };
   }
 
+  /**
+   * Enforce that question ids are exclusive to the requested classic level pool.
+   * @param levelId Level id.
+   * @param questionIds Quiz question ids.
+   * @returns Nothing; throws `POOL_CONFLICT` when conflicts exist.
+   */
   async assertExclusiveForClassicLevel(levelId, questionIds = []) {
     const lid = String(levelId || '').trim();
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
@@ -1339,6 +1616,12 @@ export class AdminService {
     }
   }
 
+  /**
+   * Filter out question ids that are assigned to pools other than the requested classic level.
+   * @param levelId Level id.
+   * @param questionIds Candidate quiz question ids.
+   * @returns Eligible ids that can be added to the level pool.
+   */
   async filterEligibleForClassicLevel(levelId, questionIds = []) {
     const lid = String(levelId || '').trim();
     const ids = Array.from(new Set((questionIds || []).filter(Boolean)));
@@ -1382,6 +1665,13 @@ export class AdminService {
     return ids.filter((id) => !blocked.has(id));
   }
 
+  /**
+   * List paged questions assigned to a classic level pool.
+   * @param levelId Level id.
+   * @param limit Page size.
+   * @param offset Page offset.
+   * @returns Paged pool questions.
+   */
   async listClassicCategoryLevelPoolQuestions(levelId, { limit = 50, offset = 0 } = {}) {
     if (!this.classicCategoryLevelRepository || !this.classicCategoryLevelPoolRepository) {
       throw new AppError(
@@ -1422,6 +1712,11 @@ export class AdminService {
     };
   }
 
+  /**
+   * List all question ids assigned to a classic level pool.
+   * @param levelId Level id.
+   * @returns `{ level_id, count, ids }`.
+   */
   async listClassicCategoryLevelPoolQuestionIds(levelId) {
     if (!this.classicCategoryLevelRepository || !this.classicCategoryLevelPoolRepository) {
       throw new AppError(
@@ -1439,6 +1734,12 @@ export class AdminService {
     return { level_id: level.id, count: unique.length, ids: unique };
   }
 
+  /**
+   * Add questions to a classic level pool (enforces pool exclusivity).
+   * @param levelId Level id.
+   * @param questionIds Quiz question ids.
+   * @returns `{ success, added_count }`.
+   */
   async addClassicCategoryLevelPool(levelId, questionIds = []) {
     if (!this.classicCategoryLevelRepository || !this.classicCategoryLevelPoolRepository) {
       throw new AppError(
@@ -1459,6 +1760,12 @@ export class AdminService {
     return { success: true, added_count: ids.length };
   }
 
+  /**
+   * Remove questions from a classic level pool.
+   * @param levelId Level id.
+   * @param questionIds Quiz question ids.
+   * @returns `{ success, removed_count }`.
+   */
   async removeClassicCategoryLevelPool(levelId, questionIds = []) {
     if (!this.classicCategoryLevelPoolRepository) {
       throw new AppError(
@@ -1478,6 +1785,12 @@ export class AdminService {
     return { success: true, removed_count: ids.length };
   }
 
+  /**
+   * Replace a classic level pool with the provided question ids.
+   * @param levelId Level id.
+   * @param questionIds Quiz question ids.
+   * @returns `{ success, count }`.
+   */
   async replaceClassicCategoryLevelPool(levelId, questionIds = []) {
     if (!this.classicCategoryLevelPoolRepository) {
       throw new AppError(
@@ -1497,6 +1810,12 @@ export class AdminService {
     return { success: true, count: ids.length };
   }
 
+  /**
+   * Seed a classic level pool using random global questions (difficulty range aware).
+   * @param levelId Level id.
+   * @param random_count Number of questions to try to add.
+   * @returns `{ success, added_count }`.
+   */
   async seedClassicCategoryLevelPool(levelId, { random_count = 10 } = {}) {
     if (!this.classicCategoryLevelRepository || !this.classicCategoryLevelPoolRepository) {
       throw new AppError(
@@ -1532,6 +1851,11 @@ export class AdminService {
     return { success: true, added_count: eligible.length };
   }
 
+  /**
+   * Delete a global question and best-effort remove it from pools and session references.
+   * @param questionId Quiz question id.
+   * @returns `{ success: true }` when deleted.
+   */
   async deleteGlobalQuestion(questionId) {
     const qid = String(questionId || '').trim();
     if (!qid) throw new AppError('Invalid question_id', 400, 'INVALID_INPUT');

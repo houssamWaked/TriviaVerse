@@ -14,6 +14,7 @@ export type UserRecord = {
   created_at?: string | null;
 };
 
+// Domain model for a user row (normalized into predictable JS types).
 export class User {
   id: string;
   username: string;
@@ -26,6 +27,11 @@ export class User {
   banned_at: string | null;
   created_at: string | null;
 
+  /**
+   * Create a `User` entity from a database row.
+   * @param record Raw user record from the database.
+   * @returns A normalized `User` instance.
+   */
   constructor({
     id,
     username,

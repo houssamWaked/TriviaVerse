@@ -203,6 +203,21 @@ export class QuizBuilderService {
   private storyLevelPoolRepository: StoryLevelPoolRepositoryLike;
   private sessionQuestionRepository: SessionQuestionRepositoryLike;
 
+  /**
+   * Construct the quiz builder service.
+   * @param quizRepository Quiz CRUD storage.
+   * @param quizQuestionRepository Quiz question CRUD storage.
+   * @param questionOptionRepository Question option CRUD storage.
+   * @param userRepository User lookups for access and display.
+   * @param quizAccessRepository Private quiz allow-list (optional).
+   * @param friendRepository Friendship checks for private visibility.
+   * @param quizRatingRepository Ratings persistence (optional).
+   * @param quizScoreRepository Best-score persistence (optional).
+   * @param gameSessionRepository Session compatibility helpers (optional).
+   * @param storyLevelPoolRepository Story pool cleanup helpers (optional).
+   * @param sessionQuestionRepository Session snapshot cleanup helpers (optional).
+   * @returns A `QuizBuilderService` instance.
+   */
   constructor(
     quizRepository: QuizRepositoryLike,
     quizQuestionRepository: QuizQuestionRepositoryLike,
@@ -229,6 +244,12 @@ export class QuizBuilderService {
     this.sessionQuestionRepository = sessionQuestionRepository;
   }
 
+  /**
+   * Enforce quiz visibility/access rules for a user.
+   * @param userId Current user id (nullable).
+   * @param quiz Quiz row (nullable).
+   * @returns `true` when access is allowed.
+   */
   async assertCanViewQuiz(userId: string | null | undefined, quiz: QuizLike | null) {
     if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
 
@@ -256,6 +277,12 @@ export class QuizBuilderService {
     throw new AppError('Forbidden', 403, 'FORBIDDEN');
   }
 
+  /**
+   * Create a new quiz owned by a user.
+   * @param userId Owner user id.
+   * @param payload Quiz creation fields.
+   * @returns Created quiz DTO.
+   */
   async createQuiz(userId: string, payload: CreateQuizInput) {
     const keywords = normalizeKeywords(payload.keywords);
     const quiz = await this.quizRepository.create({
@@ -271,11 +298,22 @@ export class QuizBuilderService {
     return QuizDTO.fromRow(quiz as any);
   }
 
+  /**
+   * List quizzes owned by the user.
+   * @param userId Owner user id.
+   * @returns Array of quiz DTOs.
+   */
   async listQuizzes(userId: string) {
     const rows = await this.quizRepository.listByOwnerUserId(userId);
     return rows.map((r) => QuizDTO.fromRow(r as any));
   }
 
+  /**
+   * Get a quiz owned by the user.
+   * @param userId Owner user id.
+   * @param quizId Quiz id.
+   * @returns Quiz DTO.
+   */
   async getQuiz(userId: string, quizId: string) {
     const quiz = await this.quizRepository.findById(quizId);
     if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
@@ -283,6 +321,13 @@ export class QuizBuilderService {
     return QuizDTO.fromRow(quiz as any);
   }
 
+  /**
+   * Patch quiz metadata (owner-only).
+   * @param userId Owner user id.
+   * @param quizId Quiz id.
+   * @param patch Partial update fields.
+   * @returns Updated quiz DTO.
+   */
   async patchQuiz(userId: string, quizId: string, patch: PatchQuizInput) {
     const quiz = await this.quizRepository.findById(quizId);
     if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
@@ -304,6 +349,12 @@ export class QuizBuilderService {
     return QuizDTO.fromRow(updated as any);
   }
 
+  /**
+   * Publish a draft quiz after validating it has playable questions/options.
+   * @param userId Owner user id.
+   * @param quizId Quiz id.
+   * @returns Published quiz DTO.
+   */
   async publishQuiz(userId: string, quizId: string) {
     const quiz = await this.quizRepository.findById(quizId);
     if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
@@ -354,6 +405,12 @@ export class QuizBuilderService {
     return QuizDTO.fromRow(updated as any);
   }
 
+  /**
+   * List questions + options for a quiz (owner-only).
+   * @param userId Owner user id.
+   * @param quizId Quiz id.
+   * @returns Array of question DTOs with options.
+   */
   async listQuizQuestions(userId: string, quizId: string) {
     const quiz = await this.quizRepository.findById(quizId);
     if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
@@ -377,6 +434,13 @@ export class QuizBuilderService {
     );
   }
 
+  /**
+   * Add a new question to a quiz (owner-only).
+   * @param userId Owner user id.
+   * @param quizId Quiz id.
+   * @param payload Question fields.
+   * @returns Created question DTO.
+   */
   async addQuizQuestion(userId: string, quizId: string, payload: AddQuestionInput) {
     const quiz = await this.quizRepository.findById(quizId);
     if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
@@ -394,6 +458,13 @@ export class QuizBuilderService {
     return QuizQuestionDTO.fromRow({ ...created, options: [] } as any);
   }
 
+  /**
+   * Patch an existing quiz question (owner-only).
+   * @param userId Owner user id.
+   * @param questionId Question id.
+   * @param patch Partial update fields.
+   * @returns Updated question DTO.
+   */
   async patchQuizQuestion(userId: string, questionId: string, patch: PatchQuestionInput) {
     const q = await this.quizQuestionRepository.findById(questionId);
     if (!q) throw new AppError('Question not found', 404, 'NOT_FOUND');
@@ -412,6 +483,13 @@ export class QuizBuilderService {
     return QuizQuestionDTO.fromRow({ ...updated, options: [] } as any);
   }
 
+  /**
+   * Add an option to a question (owner-only).
+   * @param userId Owner user id.
+   * @param questionId Question id.
+   * @param payload Option fields.
+   * @returns Created option DTO.
+   */
   async addQuestionOption(userId: string, questionId: string, payload: AddOptionInput) {
     const q = await this.quizQuestionRepository.findById(questionId);
     if (!q) throw new AppError('Question not found', 404, 'NOT_FOUND');
@@ -429,6 +507,13 @@ export class QuizBuilderService {
     return QuestionOptionDTO.fromRow(created as any);
   }
 
+  /**
+   * Patch a question option (owner-only).
+   * @param userId Owner user id.
+   * @param optionId Option id.
+   * @param patch Partial update fields.
+   * @returns Updated option DTO.
+   */
   async patchQuestionOption(userId: string, optionId: string, patch: PatchOptionInput) {
     const opt = await this.questionOptionRepository.findById(optionId);
     if (!opt) throw new AppError('Option not found', 404, 'NOT_FOUND');
@@ -447,6 +532,13 @@ export class QuizBuilderService {
     return QuestionOptionDTO.fromRow(updated as any);
   }
 
+  /**
+   * Rate a quiz (updates per-user rating and returns updated averages).
+   * @param userId Current user id.
+   * @param quizId Quiz id.
+   * @param rating Rating value (number).
+   * @returns `{ ratings_avg, ratings_count, my_rating }`.
+   */
   async rateQuiz(userId: string, quizId: string, rating: number) {
     const quiz = await this.quizRepository.findById(quizId);
     if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
@@ -471,6 +563,12 @@ export class QuizBuilderService {
     return { ratings_avg, ratings_count: count, my_rating: Number(rating) };
   }
 
+  /**
+   * List users with explicit access to a private quiz (owner-only).
+   * @param userId Owner user id.
+   * @param quizId Quiz id.
+   * @returns Array of user summaries.
+   */
   async listQuizAccess(userId: string, quizId: string) {
     const quiz = await this.quizRepository.findById(quizId);
     if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
@@ -487,6 +585,13 @@ export class QuizBuilderService {
       .map((u) => ({ user_id: u.id, username: u.username, avatar_url: u.avatar_url }));
   }
 
+  /**
+   * Grant a user access to a private quiz by username (owner-only).
+   * @param userId Owner user id.
+   * @param quizId Quiz id.
+   * @param username Target username.
+   * @returns Added user summary.
+   */
   async addQuizAccess(userId: string, quizId: string, { username }: { username: string }) {
     const quiz = await this.quizRepository.findById(quizId);
     if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
@@ -500,6 +605,13 @@ export class QuizBuilderService {
     return { user_id: target.id, username: target.username, avatar_url: target.avatar_url };
   }
 
+  /**
+   * Revoke a user's access to a private quiz (owner-only).
+   * @param userId Owner user id.
+   * @param quizId Quiz id.
+   * @param targetUserId Target user id.
+   * @returns `{ success: true }`.
+   */
   async removeQuizAccess(userId: string, quizId: string, targetUserId: string) {
     const quiz = await this.quizRepository.findById(quizId);
     if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
@@ -513,6 +625,11 @@ export class QuizBuilderService {
     return { success: true };
   }
 
+  /**
+   * List quizzes the user has played (including private ones they can access).
+   * @param userId Current user id.
+   * @returns Array of played quiz summaries.
+   */
   async listMyPlayedQuizzes(userId: string) {
     let rows: QuizScoreLike[] = [];
     try {
@@ -565,6 +682,12 @@ export class QuizBuilderService {
       .map(({ owner_user_id, ...rest }) => rest);
   }
 
+  /**
+   * Delete a quiz and best-effort cleanup related rows (owner-only).
+   * @param userId Owner user id.
+   * @param quizId Quiz id.
+   * @returns `{ success: true }`.
+   */
   async deleteQuiz(userId: string, quizId: string) {
     const quiz = await this.quizRepository.findById(quizId);
     if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');

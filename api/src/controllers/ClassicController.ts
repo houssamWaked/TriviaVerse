@@ -26,11 +26,19 @@ type ClassicCategoryLevelPoolRepositoryLike = {
   countByLevelId?(levelId: string): Promise<number | null>;
 } | null;
 
+// HTTP adapter for Classic mode endpoints (start session, list levels, fetch progress).
 export class ClassicController {
   sessionStartService: SessionStartServiceLike;
   classicCategoryService: ClassicCategoryServiceLike;
   classicCategoryLevelPoolRepository: ClassicCategoryLevelPoolRepositoryLike;
 
+  /**
+   * Construct the classic controller.
+   * @param sessionStartService Service that creates Classic sessions.
+   * @param classicCategoryService Service for classic levels/progress.
+   * @param classicCategoryLevelPoolRepository Optional repo for per-level pool counts.
+   * @returns A `ClassicController` instance.
+   */
   constructor(
     sessionStartService: SessionStartServiceLike,
     classicCategoryService: ClassicCategoryServiceLike,
@@ -41,11 +49,23 @@ export class ClassicController {
     this.classicCategoryLevelPoolRepository = classicCategoryLevelPoolRepository;
   }
 
+  /**
+   * Start a Classic session for a category/level.
+   * @param req Express request (uses `req.user?.id` and start payload in `req.body`).
+   * @param res Express response.
+   * @returns A 201 response with session id and initial state.
+   */
   start = async (req: Request, res: Response) => {
     const data = await this.sessionStartService.startClassicSession(req.user?.id || null, req.body);
     res.status(201).json(data);
   };
 
+  /**
+   * List levels for a classic category (optionally enriched with pool counts).
+   * @param req Express request (expects `:category_id`).
+   * @param res Express response.
+   * @returns A 200 response with levels.
+   */
   listLevels = async (req: Request, res: Response) => {
     const categoryId = String(req.params.category_id || '').trim();
     const levels = await this.classicCategoryService.listLevels(categoryId);
@@ -81,6 +101,12 @@ export class ClassicController {
     });
   };
 
+  /**
+   * Fetch progress for the current user in a classic category.
+   * @param req Express request (requires `req.user` and `:category_id`).
+   * @param res Express response.
+   * @returns A 200 response with progress payload.
+   */
   progress = async (req: Request, res: Response) => {
     const categoryId = String(req.params.category_id || '').trim();
     const data = await this.classicCategoryService.getUserProgress(req.user!.id, categoryId);

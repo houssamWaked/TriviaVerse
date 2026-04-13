@@ -4,6 +4,10 @@ import AdminStoryTabStyle from '../../Styles/ComponentStyles/AdminStoryTabStyle'
 import { SearchResults } from './AdminUi';
 import { STRINGS } from '@/constants/strings';
 
+/**
+ * Admin "Story" workspace panel: create/seed levels and manage the question pool for a selected level.
+ * All state is owned by the parent dashboard hook; this component is a pure UI shell.
+ */
 export default function AdminStoryTab({
   busy,
   levels,

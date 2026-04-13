@@ -6,6 +6,10 @@ type ClientRealtimeSyncProps = {
   enabled?: boolean;
 };
 
+/**
+ * React-only bridge that connects the Socket.IO client and translates server events into
+ * app-local realtime events (`emitRealtimeEvent`) so other UI code can subscribe.
+ */
 export default function ClientRealtimeSync({
   enabled = true,
 }: ClientRealtimeSyncProps) {

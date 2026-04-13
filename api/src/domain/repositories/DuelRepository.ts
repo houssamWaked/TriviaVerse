@@ -56,6 +56,9 @@ function toAppError(error: DatabaseErrorLike): AppError | null {
 
 const mapDuelRow = (row: unknown): DuelRow => row as unknown as DuelRow;
 
+/**
+ * Repository for reading/writing `duels` rows (with fallback for older schema without blitz fields).
+ */
 export class DuelRepository {
   _extendedSchema: boolean | null;
   baseSelectFields =
@@ -63,19 +66,37 @@ export class DuelRepository {
   extendedSelectFields =
     'id, mode, quiz_id, category_id, difficulty, challenger_user_id, opponent_user_id, challenger_session_id, opponent_session_id, status, winner_user_id, started_at, current_index, question_started_at, challenger_points, opponent_points, accepted_at, completed_at, created_at, summary_json';
 
+  /**
+   * Construct the duel repository.
+   * @returns A `DuelRepository` instance.
+   */
   constructor() {
     this._extendedSchema = null;
   }
 
+  /**
+   * Select columns depending on whether the extended schema is supported.
+   * @returns Comma-separated column list.
+   */
   selectFields(): string {
     return this._extendedSchema === false ? this.baseSelectFields : this.extendedSelectFields;
   }
 
+  /**
+   * Detect missing-column schema errors for this table.
+   * @param error Supabase error object.
+   * @returns `true` when the error indicates a missing column.
+   */
   isMissingColumn(error: DatabaseErrorLike): boolean {
     const code = String(error?.code || '').trim();
     return code === '42703';
   }
 
+  /**
+   * Create a duel row (best-effort falls back when extended columns are missing).
+   * @param payload Insert payload.
+   * @returns Created duel row or `null`.
+   */
   async create(payload: CreateDuelInput): Promise<DuelRow | null> {
     const res = await supabase.from('duels').insert(payload).select(this.selectFields()).limit(1);
     if (res.error && this.isMissingColumn(res.error)) {
@@ -91,6 +112,11 @@ export class DuelRepository {
     return res.data?.[0] ? mapDuelRow(res.data[0]) : null;
   }
 
+  /**
+   * Find a duel by id (best-effort falls back when extended columns are missing).
+   * @param id Duel id.
+   * @returns Duel row or `null`.
+   */
   async findById(id: string): Promise<DuelRow | null> {
     const res = await supabase.from('duels').select(this.selectFields()).eq('id', id).limit(1);
     if (res.error && this.isMissingColumn(res.error)) {
@@ -103,6 +129,12 @@ export class DuelRepository {
     return res.data?.[0] ? mapDuelRow(res.data[0]) : null;
   }
 
+  /**
+   * List duels where the user is challenger or opponent.
+   * @param userId User id.
+   * @param limit Max rows to return.
+   * @returns Array of duel rows ordered by newest first.
+   */
   async listByUserId(userId: string, limit = 50): Promise<DuelRow[]> {
     const lim = Math.min(100, Math.max(1, Number(limit) || 50));
     const filter = `challenger_user_id.eq.${userId},opponent_user_id.eq.${userId}`;
@@ -127,6 +159,12 @@ export class DuelRepository {
     return (res.data || []).map(mapDuelRow);
   }
 
+  /**
+   * Patch a duel row (best-effort falls back when extended columns are missing).
+   * @param id Duel id.
+   * @param patch Patch payload.
+   * @returns Updated duel row or `null`.
+   */
   async update(id: string, patch: UpdateDuelInput): Promise<DuelRow | null> {
     const res = await supabase.from('duels').update(patch).eq('id', id).select(this.selectFields()).limit(1);
     if (res.error && this.isMissingColumn(res.error)) {

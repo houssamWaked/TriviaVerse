@@ -14,6 +14,11 @@ import useAdminDashboard from './useAdminDashboard';
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
 
+/**
+ * Admin dashboard container: orchestrates admin workspaces (questions/modes/story/reports) and modals.
+ * @param user Current user snapshot (must be authorized as admin by `Pages/Admin.tsx`).
+ * @returns React element.
+ */
 export default function AdminDashboard({
   user,
   onNavigateHome,

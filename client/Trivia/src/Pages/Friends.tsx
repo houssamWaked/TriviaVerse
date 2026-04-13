@@ -31,6 +31,11 @@ type FriendsProps = {
   onOpenFriend?: (friendId?: string) => void;
 };
 
+/**
+ * Format a date-like value into a short localized date string.
+ * @param d ISO string, `Date`, or nullish.
+ * @returns Formatted date or an em dash when invalid.
+ */
 function formatDate(d: string | Date | null | undefined) {
   if (!d) return STRINGS.COMMON.separators.emDash;
   const t = new Date(d);
@@ -38,6 +43,12 @@ function formatDate(d: string | Date | null | undefined) {
   return t.toLocaleDateString();
 }
 
+/**
+ * Friends page: manage friend requests and view your friends list (realtime-updated).
+ * @param user Current user snapshot (required).
+ * @param onOpenFriend Callback to open a friend's profile.
+ * @returns React element.
+ */
 export default function Friends({
   user,
   onRequireAuth,

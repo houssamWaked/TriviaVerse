@@ -32,7 +32,15 @@ function toAppError(error: DatabaseErrorLike): AppError | null {
 
 const uniqueIds = (values: string[] = []): string[] => Array.from(new Set(values.filter(Boolean)));
 
+/**
+ * Repository for mapping classic levels to global question ids (`classic_category_level_pool`).
+ */
 export class ClassicCategoryLevelPoolRepository {
+  /**
+   * Count pool rows for a set of level ids.
+   * @param levelIds Level ids.
+   * @returns Row count.
+   */
   async countByLevelIds(levelIds: string[] = []): Promise<number> {
     const ids = uniqueIds(levelIds);
     if (ids.length === 0) return 0;
@@ -45,6 +53,10 @@ export class ClassicCategoryLevelPoolRepository {
     return count ?? 0;
   }
 
+  /**
+   * List all question ids included in any classic level pool (paged query).
+   * @returns Array of quiz question ids.
+   */
   async listAllQuestionIds(): Promise<string[]> {
     const pageSize = 1000;
     const ids: string[] = [];
@@ -67,6 +79,11 @@ export class ClassicCategoryLevelPoolRepository {
     return ids;
   }
 
+  /**
+   * Count pool rows for a level id.
+   * @param levelId Level id.
+   * @returns Row count.
+   */
   async countByLevelId(levelId: string): Promise<number> {
     const normalizedLevelId = String(levelId || '').trim();
     if (!normalizedLevelId) return 0;
@@ -79,6 +96,11 @@ export class ClassicCategoryLevelPoolRepository {
     return count ?? 0;
   }
 
+  /**
+   * List level assignments for a set of question ids.
+   * @param questionIds Quiz question ids.
+   * @returns Array of `{ level_id, quiz_question_id }` rows.
+   */
   async listAssignmentsByQuestionIds(questionIds: string[] = []): Promise<LevelAssignmentRow[]> {
     const ids = uniqueIds(questionIds);
     if (ids.length === 0) return [];
@@ -91,6 +113,11 @@ export class ClassicCategoryLevelPoolRepository {
     return (data || []) as LevelAssignmentRow[];
   }
 
+  /**
+   * List question ids assigned to a level.
+   * @param levelId Level id.
+   * @returns Array of quiz question ids.
+   */
   async listQuestionIdsByLevelId(levelId: string): Promise<string[]> {
     const normalizedLevelId = String(levelId || '').trim();
     if (!normalizedLevelId) return [];
@@ -107,6 +134,13 @@ export class ClassicCategoryLevelPoolRepository {
       .filter((value): value is string => Boolean(value));
   }
 
+  /**
+   * List question ids assigned to a level with pagination.
+   * @param levelId Level id.
+   * @param limit Page size.
+   * @param offset Page offset.
+   * @returns Array of quiz question ids.
+   */
   async listQuestionIdsByLevelIdPaged(
     levelId: string,
     { limit = 50, offset = 0 }: { limit?: number; offset?: number } = {}
@@ -130,6 +164,12 @@ export class ClassicCategoryLevelPoolRepository {
       .filter((value): value is string => Boolean(value));
   }
 
+  /**
+   * Upsert level -> question assignments.
+   * @param levelId Level id.
+   * @param questionIds Quiz question ids.
+   * @returns `true` on success.
+   */
   async upsertMany(levelId: string, questionIds: string[] = []): Promise<boolean> {
     const normalizedLevelId = String(levelId || '').trim();
     const ids = uniqueIds(questionIds);
@@ -149,6 +189,12 @@ export class ClassicCategoryLevelPoolRepository {
     return true;
   }
 
+  /**
+   * Delete a set of level -> question assignments.
+   * @param levelId Level id.
+   * @param questionIds Quiz question ids.
+   * @returns `true` on success.
+   */
   async deleteMany(levelId: string, questionIds: string[] = []): Promise<boolean> {
     const normalizedLevelId = String(levelId || '').trim();
     const ids = uniqueIds(questionIds);
@@ -163,6 +209,11 @@ export class ClassicCategoryLevelPoolRepository {
     return true;
   }
 
+  /**
+   * Delete all assignments for a level.
+   * @param levelId Level id.
+   * @returns `true` on success.
+   */
   async deleteAllByLevelId(levelId: string): Promise<boolean> {
     const normalizedLevelId = String(levelId || '').trim();
     if (!normalizedLevelId) return true;
@@ -175,6 +226,11 @@ export class ClassicCategoryLevelPoolRepository {
     return true;
   }
 
+  /**
+   * Delete assignments for a set of quiz question ids (across all levels).
+   * @param questionIds Quiz question ids.
+   * @returns `true` on success.
+   */
   async deleteByQuizQuestionIds(questionIds: string[] = []): Promise<boolean> {
     const ids = uniqueIds(questionIds);
     if (ids.length === 0) return true;

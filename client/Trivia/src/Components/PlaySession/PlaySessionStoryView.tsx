@@ -31,6 +31,12 @@ type Props = {
   onSubmit: (optionId: string) => void;
 };
 
+/**
+ * Story-mode question view: themed 4-option layout with lightweight feedback and progress stats.
+ * @param storyEmoji Mood emoji derived from last answer.
+ * @param onSubmit Callback to submit an option id.
+ * @returns React element.
+ */
 export default function PlaySessionStoryView({
   question,
   busy,

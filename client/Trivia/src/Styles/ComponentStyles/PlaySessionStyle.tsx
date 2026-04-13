@@ -1,5 +1,10 @@
 import colors from '../../constants/colors';
 
+/**
+ * Get the color/shape theme for a story-mode option card by index.
+ * @param index Option index (0-based).
+ * @returns Theme object containing gradient background and a shape glyph.
+ */
 export const getStoryOptionTheme = (index: number) => {
   if (index === 0)
     return {
@@ -22,6 +27,9 @@ export const getStoryOptionTheme = (index: number) => {
   };
 };
 
+/**
+ * Style map for the play-session UI across modes (default/millionaire/story).
+ */
 const PlaySessionStyle: any = {
   page: {
     width: '100%',

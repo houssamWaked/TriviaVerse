@@ -23,6 +23,12 @@ type MillionaireProps = {
   onPlaySession?: (sessionId?: string) => void;
 };
 
+/**
+ * Millionaire mode start page: loads config and starts a millionaire session.
+ * @param user Current user snapshot (controls auth CTA).
+ * @param onPlaySession Callback invoked with a started session id.
+ * @returns React element.
+ */
 export default function Millionaire({
   user,
   onRequireAuth,

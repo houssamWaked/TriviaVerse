@@ -35,6 +35,12 @@ function toAppError(error: DatabaseErrorLike): AppError | null {
 const mapCategory = (row: CategoryRecord): Category => new Category(row);
 
 export class CategoryRepository {
+  /**
+   * Create a new category.
+   * @param name Category name.
+   * @param icon Optional icon identifier.
+   * @returns Created category entity.
+   */
   async create({ name, icon = null }: CategoryInsert): Promise<Category> {
     const payload = { name: name.trim(), icon: icon ? icon.trim() : null };
     const { data, error } = await supabase
@@ -50,6 +56,13 @@ export class CategoryRepository {
     return mapCategory(data[0] as CategoryRecord);
   }
 
+  /**
+   * Patch an existing category.
+   * @param id Category id.
+   * @param name Optional name patch.
+   * @param icon Optional icon patch.
+   * @returns Updated category entity or `null` if not found.
+   */
   async update(id: string, { name, icon }: CategoryPatch): Promise<Category | null> {
     const patch: CategoryPatch = {};
     if (name !== undefined) patch.name = name.trim();
@@ -66,6 +79,10 @@ export class CategoryRepository {
     return data?.[0] ? mapCategory(data[0] as CategoryRecord) : null;
   }
 
+  /**
+   * List all categories.
+   * @returns Array of category entities.
+   */
   async findAll(): Promise<Category[]> {
     const { data, error } = await supabase
       .from('categories')
@@ -76,6 +93,11 @@ export class CategoryRepository {
     return (data || []).map((row) => mapCategory(row as CategoryRecord));
   }
 
+  /**
+   * Find a category by id.
+   * @param id Category id.
+   * @returns Category entity or `null`.
+   */
   async findById(id: string): Promise<Category | null> {
     const { data, error } = await supabase
       .from('categories')
@@ -87,12 +109,22 @@ export class CategoryRepository {
     return data?.[0] ? mapCategory(data[0] as CategoryRecord) : null;
   }
 
+  /**
+   * Delete a category by id.
+   * @param id Category id.
+   * @returns `true` if a row was deleted.
+   */
   async delete(id: string): Promise<boolean> {
     const { error, count } = await supabase.from('categories').delete({ count: 'exact' }).eq('id', id);
     if (error) throw toAppError(error);
     return (count ?? 0) > 0;
   }
 
+  /**
+   * Search categories by a case-insensitive name match.
+   * @param query Search text.
+   * @returns Array of matching categories.
+   */
   async search(query: string): Promise<Category[]> {
     const likeQuery = `%${String(query || '').trim()}%`;
     const { data, error } = await supabase

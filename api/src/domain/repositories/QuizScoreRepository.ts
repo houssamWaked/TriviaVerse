@@ -50,7 +50,15 @@ function toAppError(error: DatabaseErrorLike): AppError | null {
 
 const mapScoreRow = (row: unknown): QuizScoreRow => row as unknown as QuizScoreRow;
 
+/**
+ * Repository for per-user best scores on custom quizzes.
+ */
 export class QuizScoreRepository {
+  /**
+   * Count distinct players per quiz id (via RPC if available, otherwise fallback query).
+   * @param quizIds Quiz ids.
+   * @returns Map of quiz id -> played count.
+   */
   async countPlayersByQuizIds(quizIds: string[] = []): Promise<Map<string, number>> {
     const ids = Array.from(new Set(quizIds.filter(Boolean))).slice(0, 200);
     const counts = new Map<string, number>();
@@ -80,6 +88,12 @@ export class QuizScoreRepository {
     return counts;
   }
 
+  /**
+   * Find a user's score row for a quiz.
+   * @param quizId Quiz id.
+   * @param userId User id.
+   * @returns Score row or `null`.
+   */
   async findByQuizAndUser(quizId: string, userId: string): Promise<QuizScoreRow | null> {
     const { data, error } = await supabase
       .from('quiz_scores')
@@ -91,6 +105,13 @@ export class QuizScoreRepository {
     return data?.[0] ? mapScoreRow(data[0]) : null;
   }
 
+  /**
+   * Upsert a user's best score for a quiz (only writes when it improves).
+   * @param quiz_id Quiz id.
+   * @param user_id User id.
+   * @param score_value New score value.
+   * @returns Updated score row or `null`.
+   */
   async upsertBest({ quiz_id, user_id, score_value }: UpsertBestInput): Promise<QuizScoreRow | null> {
     const score = Math.max(0, Number(score_value) || 0);
     const existing = await this.findByQuizAndUser(quiz_id, user_id);
@@ -106,6 +127,12 @@ export class QuizScoreRepository {
     return data?.[0] ? mapScoreRow(data[0]) : null;
   }
 
+  /**
+   * List top scores for a quiz.
+   * @param quizId Quiz id.
+   * @param limit Max rows to return.
+   * @returns Array of score rows.
+   */
   async listTopByQuizId(quizId: string, limit = 20): Promise<QuizScoreRow[]> {
     const lim = Math.min(100, Math.max(1, Number(limit) || 20));
     const { data, error } = await supabase
@@ -119,6 +146,12 @@ export class QuizScoreRepository {
     return (data || []).map(mapScoreRow);
   }
 
+  /**
+   * List recent score rows for a user.
+   * @param userId User id.
+   * @param limit Max rows to return.
+   * @returns Array of score rows.
+   */
   async listByUserId(userId: string, limit = 100): Promise<QuizScoreRow[]> {
     const lim = Math.min(200, Math.max(1, Number(limit) || 100));
     const { data, error } = await supabase
@@ -131,6 +164,11 @@ export class QuizScoreRepository {
     return (data || []).map(mapScoreRow);
   }
 
+  /**
+   * Delete all score rows for a quiz.
+   * @param quizId Quiz id.
+   * @returns `true` on success.
+   */
   async deleteByQuizId(quizId: string): Promise<true> {
     const { error } = await supabase.from('quiz_scores').delete().eq('quiz_id', quizId);
     if (error) throw toAppError(error);

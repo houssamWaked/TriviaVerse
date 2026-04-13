@@ -48,6 +48,12 @@ type AuthModalFormProps = {
   resendMessage: string;
 };
 
+/**
+ * Auth modal form body: inputs, Google button container, and mode switching.
+ * @param mode Current auth mode (`login`/`signup`).
+ * @param onSubmit Form submit handler (provided by parent modal).
+ * @returns React element.
+ */
 export default function AuthModalForm({
   mode,
   loading,

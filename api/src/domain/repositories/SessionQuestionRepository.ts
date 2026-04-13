@@ -30,7 +30,15 @@ const selectFields =
   'id, session_id, source_question_id, question_text_snapshot, order_index, points_snapshot, time_limit_snapshot';
 const mapSessionQuestionRow = (row: unknown): SessionQuestionRow => row as unknown as SessionQuestionRow;
 
+/**
+ * Repository for reading/writing `session_questions` snapshot rows.
+ */
 export class SessionQuestionRepository {
+  /**
+   * List snapshot questions for a session.
+   * @param sessionId Session id.
+   * @returns Array of session question rows ordered by `order_index`.
+   */
   async listBySessionId(sessionId: string): Promise<SessionQuestionRow[]> {
     const { data, error } = await supabase
       .from('session_questions')
@@ -41,6 +49,11 @@ export class SessionQuestionRepository {
     return (data || []).map(mapSessionQuestionRow);
   }
 
+  /**
+   * Get the highest `order_index` currently stored for a session.
+   * @param sessionId Session id.
+   * @returns Max order index (0 when none).
+   */
   async getMaxOrderIndex(sessionId: string): Promise<number> {
     const { data, error } = await supabase
       .from('session_questions')
@@ -52,12 +65,22 @@ export class SessionQuestionRepository {
     return Number((data?.[0] as { order_index?: number } | undefined)?.order_index) || 0;
   }
 
+  /**
+   * Bulk-create snapshot question rows.
+   * @param rows Insert rows.
+   * @returns Created session question rows.
+   */
   async createMany(rows: CreateSessionQuestionInput[]): Promise<SessionQuestionRow[]> {
     const { data, error } = await supabase.from('session_questions').insert(rows).select(selectFields);
     if (error) throw toAppError(error);
     return (data || []).map(mapSessionQuestionRow);
   }
 
+  /**
+   * Clear `source_question_id` for snapshots referencing deleted questions (preserves snapshots).
+   * @param questionIds Source question ids.
+   * @returns `true` on success.
+   */
   async clearSourceQuestionIds(questionIds: string[] = []): Promise<true> {
     const ids = Array.from(new Set(questionIds.filter(Boolean)));
     if (ids.length === 0) return true;

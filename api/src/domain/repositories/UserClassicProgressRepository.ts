@@ -43,16 +43,30 @@ function toAppError(error: DatabaseErrorLike): AppError | null {
 
 const mapProgressRow = (row: unknown): UserClassicProgressRow => row as unknown as UserClassicProgressRow;
 
+/**
+ * Repository for per-user progress through classic category levels (`user_classic_progress`).
+ */
 export class UserClassicProgressRepository {
   selectFields =
     'id, user_id, level_id, best_score, stars_earned, attempts_count, is_unlocked, is_completed, last_played_at';
 
+  /**
+   * List all classic progress rows for a user.
+   * @param userId User id.
+   * @returns Array of progress rows.
+   */
   async listByUserId(userId: string): Promise<UserClassicProgressRow[]> {
     const { data, error } = await supabase.from('user_classic_progress').select(this.selectFields).eq('user_id', userId);
     if (error) throw toAppError(error);
     return (data || []).map(mapProgressRow);
   }
 
+  /**
+   * List a user's progress rows for a set of level ids.
+   * @param userId User id.
+   * @param levelIds Level ids.
+   * @returns Array of progress rows.
+   */
   async listByUserAndLevelIds(userId: string, levelIds: string[] = []): Promise<UserClassicProgressRow[]> {
     const uid = String(userId || '').trim();
     const ids = Array.from(new Set(levelIds.filter(Boolean)));
@@ -67,6 +81,12 @@ export class UserClassicProgressRepository {
     return (data || []).map(mapProgressRow);
   }
 
+  /**
+   * Find a user's progress row for a level.
+   * @param userId User id.
+   * @param levelId Level id.
+   * @returns Progress row or `null`.
+   */
   async findByUserAndLevelId(userId: string, levelId: string): Promise<UserClassicProgressRow | null> {
     const { data, error } = await supabase
       .from('user_classic_progress')
@@ -78,6 +98,13 @@ export class UserClassicProgressRepository {
     return data?.[0] ? mapProgressRow(data[0]) : null;
   }
 
+  /**
+   * Upsert a progress row for a user + level.
+   * @param userId User id.
+   * @param levelId Level id.
+   * @param patch Patch fields.
+   * @returns Upserted progress row or `null`.
+   */
   async upsertByUserAndLevelId(userId: string, levelId: string, patch: ProgressPatch = {}): Promise<UserClassicProgressRow | null> {
     const payload = { user_id: userId, level_id: levelId, ...patch };
     const { data, error } = await supabase
@@ -89,10 +116,25 @@ export class UserClassicProgressRepository {
     return data?.[0] ? mapProgressRow(data[0]) : null;
   }
 
+  /**
+   * Ensure a level is unlocked for the user (upsert with `is_unlocked: true`).
+   * @param userId User id.
+   * @param levelId Level id.
+   * @returns Updated progress row.
+   */
   async ensureUnlocked(userId: string, levelId: string): Promise<UserClassicProgressRow | null> {
     return this.upsertByUserAndLevelId(userId, levelId, { is_unlocked: true });
   }
 
+  /**
+   * Upsert a level result (best score/best stars + completion) and mark it unlocked.
+   * @param userId User id.
+   * @param levelId Level id.
+   * @param score_total Score achieved.
+   * @param stars_earned Stars earned.
+   * @param is_completed Completion flag.
+   * @returns Updated progress row.
+   */
   async upsertResult(
     userId: string,
     levelId: string,
@@ -112,6 +154,11 @@ export class UserClassicProgressRepository {
     });
   }
 
+  /**
+   * Increment attempts counter for an existing progress row.
+   * @param progressId Progress row id.
+   * @returns Updated progress row or `null`.
+   */
   async bumpAttempts(progressId: string): Promise<UserClassicProgressRow | null> {
     const { data: current, error: readError } = await supabase
       .from('user_classic_progress')
@@ -131,6 +178,11 @@ export class UserClassicProgressRepository {
     return data?.[0] ? mapProgressRow(data[0]) : null;
   }
 
+  /**
+   * Delete all progress rows for a level (admin cleanup).
+   * @param levelId Level id.
+   * @returns `true` on success.
+   */
   async deleteByLevelId(levelId: string): Promise<true> {
     const normalizedLevelId = String(levelId || '').trim();
     if (!normalizedLevelId) return true;

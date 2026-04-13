@@ -59,7 +59,18 @@ const selectFields =
   'id, quiz_id, reporter_user_id, reason, message, status, created_at, updated_at, resolved_at, resolved_by_admin_email';
 const mapReportRow = (row: unknown): QuizReportRow => row as unknown as QuizReportRow;
 
+/**
+ * Repository for reading/writing quiz report rows (`quiz_reports`).
+ */
 export class QuizReportRepository {
+  /**
+   * Upsert an open report for a quiz by a user (one open report per quiz/user pair).
+   * @param quiz_id Quiz id.
+   * @param reporter_user_id Reporter user id.
+   * @param reason Short reason code/string.
+   * @param message Optional message details.
+   * @returns Upserted report row or `null`.
+   */
   async upsertOpen({
     quiz_id,
     reporter_user_id,
@@ -83,6 +94,13 @@ export class QuizReportRepository {
     return data?.[0] ? mapReportRow(data[0]) : null;
   }
 
+  /**
+   * List reports by status with pagination.
+   * @param status Status string (defaults to `open`).
+   * @param limit Page size.
+   * @param offset Page offset.
+   * @returns Array of report rows.
+   */
   async list({ status = 'open', limit = 50, offset = 0 }: ListReportsInput = {}): Promise<QuizReportRow[]> {
     const normalizedStatus = String(status || 'open').trim();
     const lim = Math.min(200, Math.max(1, Number(limit) || 50));
@@ -97,6 +115,12 @@ export class QuizReportRepository {
     return (data || []).map(mapReportRow);
   }
 
+  /**
+   * Resolve a report by id (records admin email and timestamps).
+   * @param reportId Report id.
+   * @param adminEmail Admin email (optional).
+   * @returns Updated report row or `null`.
+   */
   async resolve(reportId: string, { adminEmail = null }: ResolveReportInput = {}): Promise<QuizReportRow | null> {
     const now = new Date().toISOString();
     const patch = {
@@ -116,6 +140,11 @@ export class QuizReportRepository {
     return data?.[0] ? mapReportRow(data[0]) : null;
   }
 
+  /**
+   * Delete all reports for a quiz.
+   * @param quizId Quiz id.
+   * @returns `{ success: true }`.
+   */
   async deleteByQuizId(quizId: string): Promise<{ success: true }> {
     const { error } = await supabase.from('quiz_reports').delete().eq('quiz_id', quizId);
     if (error) throw toAppError(error);

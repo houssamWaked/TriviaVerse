@@ -3,6 +3,13 @@ import AdminStyle from '../../Styles/ComponentStyles/AdminStyle';
 import AdminUiStyle from '../../Styles/ComponentStyles/AdminUiStyle';
 import { STRINGS } from '@/constants/strings';
 
+/**
+ * Admin UI tab button.
+ * @param active Whether the tab is active.
+ * @param label Visible tab label.
+ * @param onClick Click handler.
+ * @returns Button element.
+ */
 export function TabButton({ active, label, onClick }) {
   return (
     <button
@@ -15,6 +22,15 @@ export function TabButton({ active, label, onClick }) {
   );
 }
 
+/**
+ * Reusable modal shell for admin screens.
+ * @param open Whether the modal is visible.
+ * @param title Modal title text.
+ * @param onClose Callback invoked when the modal should close.
+ * @param children Modal body content.
+ * @param maxWidth Max card width in px.
+ * @returns Modal markup or `null` when closed.
+ */
 export function AdminModal({ open, title, onClose, children, maxWidth = 980 }) {
   if (!open) return null;
   return (
@@ -47,6 +63,15 @@ export function AdminModal({ open, title, onClose, children, maxWidth = 980 }) {
   );
 }
 
+/**
+ * Checkbox list renderer for admin question search results.
+ * @param results Array of result rows.
+ * @param selected List of selected ids.
+ * @param onToggle Toggle callback for a given id.
+ * @param busy Whether interactions are disabled.
+ * @param emptyText Text shown when results are empty.
+ * @returns Results list markup.
+ */
 export function SearchResults({
   results,
   selected,

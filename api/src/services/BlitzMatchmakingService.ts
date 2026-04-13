@@ -61,6 +61,13 @@ export class BlitzMatchmakingService {
   duelRepository: DuelRepositoryLike;
   sessionStartService: SessionStartServiceLike;
 
+  /**
+   * Construct the blitz matchmaking service.
+   * @param queueRepository Matchmaking queue persistence.
+   * @param duelRepository Duel creation for matched users.
+   * @param sessionStartService Session snapshot creation for blitz duels.
+   * @returns A `BlitzMatchmakingService` instance.
+   */
   constructor({
     queueRepository,
     duelRepository,
@@ -75,6 +82,13 @@ export class BlitzMatchmakingService {
     this.sessionStartService = sessionStartService;
   }
 
+  /**
+   * Try to find a queued opponent or enqueue the user for matchmaking.
+   * @param userId Current user id.
+   * @param difficulty Difficulty label.
+   * @param category_id Optional category id (null means any/none depending on queue).
+   * @returns Matchmaking status payload (queued/matched) with ids.
+   */
   async findOrQueue(userId: string, { difficulty, category_id = null }: FindOrQueueInput) {
     const uid = asId(userId);
     if (!uid) throw new AppError('Login required', 401, 'UNAUTHORIZED');
@@ -141,6 +155,12 @@ export class BlitzMatchmakingService {
     return { status: 'queued', request_id: created?.id || null, duel_id: null };
   }
 
+  /**
+   * Get a user's matchmaking request status.
+   * @param userId Current user id.
+   * @param requestId Queue request id.
+   * @returns Status payload including duel id when matched.
+   */
   async getStatus(userId: string, requestId: string) {
     const uid = asId(userId);
     const rid = asId(requestId);
@@ -160,6 +180,12 @@ export class BlitzMatchmakingService {
     };
   }
 
+  /**
+   * Cancel an active matchmaking request for a user.
+   * @param userId Current user id.
+   * @param requestId Queue request id.
+   * @returns `{ success, status, request_id }`.
+   */
   async cancel(userId: string, requestId: string) {
     const uid = asId(userId);
     const rid = asId(requestId);

@@ -56,6 +56,11 @@ type ClassicProps = {
   ) => void;
 };
 
+/**
+ * Map numeric difficulty to a simple label.
+ * @param max Max difficulty value.
+ * @returns `easy`, `medium`, or `hard`.
+ */
 function toDifficultyLabel(max: number | string | null | undefined) {
   const m = Number(max) || 0;
   if (m <= 3) return 'easy';
@@ -63,10 +68,20 @@ function toDifficultyLabel(max: number | string | null | undefined) {
   return 'hard';
 }
 
+/**
+ * Clamp stars to the \([0,3]\) display range.
+ * @param n Raw stars value.
+ * @returns Clamped stars count.
+ */
 function clampStars(n: number | string | null | undefined) {
   return Math.max(0, Math.min(3, Math.floor(Number(n) || 0)));
 }
 
+/**
+ * Generate a deterministic accent color from a seed.
+ * @param seed Category id/name.
+ * @returns HSL color string.
+ */
 function pickAccent(seed: string | number | null | undefined) {
   const s = String(seed || '');
   let h = 0;
@@ -74,6 +89,12 @@ function pickAccent(seed: string | number | null | undefined) {
   return `hsl(${h}deg 92% 55%)`;
 }
 
+/**
+ * Classic mode start page: category selection and per-category levels/progress.
+ * @param user Current user snapshot (enables server-backed progress).
+ * @param onPlaySession Callback invoked with a started session id.
+ * @returns React element.
+ */
 export default function Classic({
   user,
   onNavigateHome,

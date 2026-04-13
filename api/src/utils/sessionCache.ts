@@ -18,15 +18,25 @@ function nowMs() {
   return Date.now();
 }
 
+// Tiny TTL-based in-memory cache for active gameplay sessions.
 export class SessionCache {
   ttlMs: number;
   map: Map<string, CacheEntry>;
 
+  /**
+   * Create a cache instance.
+   * @param ttlMs Time-to-live in ms for entries (min 10s).
+   * @returns A `SessionCache` instance.
+   */
   constructor({ ttlMs = DEFAULT_TTL_MS }: { ttlMs?: number } = {}) {
     this.ttlMs = Math.max(10_000, Number(ttlMs) || DEFAULT_TTL_MS);
     this.map = new Map<string, CacheEntry>();
   }
 
+  /**
+   * Drop expired entries (called opportunistically on cache operations).
+   * @returns Nothing.
+   */
   private prune() {
     const currentTime = nowMs();
     for (const [key, entry] of this.map.entries()) {
@@ -39,6 +49,11 @@ export class SessionCache {
     }
   }
 
+  /**
+   * Read a cached session snapshot.
+   * @param sessionId Session id.
+   * @returns Cached value or `null` when missing/expired.
+   */
   get(sessionId: string | null | undefined) {
     if (!sessionId) return null;
     this.prune();
@@ -51,6 +66,12 @@ export class SessionCache {
     return entry.value || null;
   }
 
+  /**
+   * Write a cached session snapshot.
+   * @param sessionId Session id.
+   * @param value Cache value.
+   * @returns True when stored; false when `sessionId` is missing.
+   */
   set(sessionId: string | null | undefined, value: SessionValue) {
     if (!sessionId) return false;
     this.prune();
@@ -59,11 +80,21 @@ export class SessionCache {
     return true;
   }
 
+  /**
+   * Delete an entry by session id.
+   * @param sessionId Session id.
+   * @returns True when removed; false when missing/invalid.
+   */
   del(sessionId: string | null | undefined) {
     if (!sessionId) return false;
     return this.map.delete(String(sessionId));
   }
 
+  /**
+   * Delete all entries belonging to a given user.
+   * @param userId User id.
+   * @returns Number of entries removed.
+   */
   delByUserId(userId: string | null | undefined) {
     const normalizedUserId = String(userId || '').trim();
     if (!normalizedUserId) return 0;

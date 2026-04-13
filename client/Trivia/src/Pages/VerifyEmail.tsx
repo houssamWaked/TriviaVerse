@@ -6,6 +6,12 @@ type VerifyEmailState = {
   message: string;
 };
 
+/**
+ * Email verification landing page: verifies a token and prompts the user to log in.
+ * @param token Email verification token.
+ * @param onOpenLogin Callback to open the login modal.
+ * @returns React element.
+ */
 export default function VerifyEmail({
   token = '',
   onOpenLogin,

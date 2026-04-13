@@ -36,6 +36,16 @@ function stableParamsString(params?: QueryParams) {
   return entries.map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&');
 }
 
+/**
+ * GET helper with lightweight client-side caching.
+ * @param url Absolute or relative API URL.
+ * @param params Optional query params.
+ * @param ttlMs Cache TTL in milliseconds.
+ * @param scope Cache scope (`public` shared vs `user` keyed by user id).
+ * @param prefer Cache storage preference for standard cache mode.
+ * @param cache Cache mode (`essential` uses the resilient cache path).
+ * @returns Response data parsed as `T`.
+ */
 export async function cachedGet<T = unknown>(
   url: string,
   {
@@ -68,11 +78,21 @@ function getUserId() {
   return String(getCurrentUser()?.id || 'anon');
 }
 
+/**
+ * Invalidate user-scoped cached GET entries matching a path prefix.
+ * @param pathPrefix API path prefix (e.g. `/api/admin`).
+ * @returns Void.
+ */
 export function invalidateUserCacheByPathPrefix(pathPrefix: string) {
   const prefix = `user:${getUserId()}:${String(pathPrefix || '')}`;
   essentialCacheClearByPrefix(prefix);
 }
 
+/**
+ * Invalidate public-scoped cached GET entries matching a path prefix.
+ * @param pathPrefix API path prefix (e.g. `/api/public/home-metrics`).
+ * @returns Void.
+ */
 export function invalidatePublicCacheByPathPrefix(pathPrefix: string) {
   const prefix = `public:public:${String(pathPrefix || '')}`;
   essentialCacheClearByPrefix(prefix);
@@ -83,6 +103,12 @@ const quizBuilderIndex = {
   optionIdToQuizId: new Map<string, string>(),
 };
 
+/**
+ * Index a quiz's question and option ids so later mutations can infer `quiz_id`.
+ * @param quizId Quiz id to associate with these questions/options.
+ * @param questions Quiz question rows with nested options.
+ * @returns Void.
+ */
 export function indexQuizQuestionsForQuiz(
   quizId: string | number | null | undefined,
   questions: IndexedQuestion[] | null | undefined
@@ -99,6 +125,12 @@ export function indexQuizQuestionsForQuiz(
   }
 }
 
+/**
+ * Index a single question id -> quiz id association.
+ * @param questionId Quiz question id.
+ * @param quizId Quiz id.
+ * @returns Void.
+ */
 export function indexQuizQuestionId(
   questionId: string | number | null | undefined,
   quizId: string | number | null | undefined
@@ -109,6 +141,12 @@ export function indexQuizQuestionId(
   quizBuilderIndex.questionIdToQuizId.set(normalizedQuestionId, normalizedQuizId);
 }
 
+/**
+ * Index a single option id -> quiz id association.
+ * @param optionId Question option id.
+ * @param quizId Quiz id.
+ * @returns Void.
+ */
 export function indexQuizOptionId(
   optionId: string | number | null | undefined,
   quizId: string | number | null | undefined
@@ -119,12 +157,22 @@ export function indexQuizOptionId(
   quizBuilderIndex.optionIdToQuizId.set(normalizedOptionId, normalizedQuizId);
 }
 
+/**
+ * Look up a quiz id previously indexed for a question id.
+ * @param questionId Quiz question id.
+ * @returns Quiz id or `null` when unknown.
+ */
 export function getQuizIdForQuestionId(questionId: string | number | null | undefined) {
   const normalizedQuestionId = String(questionId || '').trim();
   if (!normalizedQuestionId) return null;
   return quizBuilderIndex.questionIdToQuizId.get(normalizedQuestionId) || null;
 }
 
+/**
+ * Look up a quiz id previously indexed for an option id.
+ * @param optionId Question option id.
+ * @returns Quiz id or `null` when unknown.
+ */
 export function getQuizIdForOptionId(optionId: string | number | null | undefined) {
   const normalizedOptionId = String(optionId || '').trim();
   if (!normalizedOptionId) return null;

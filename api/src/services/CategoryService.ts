@@ -42,6 +42,7 @@ type CategoryStats = {
   questions_available: number;
 };
 
+// Domain service that exposes category lists and category-specific question availability.
 export class CategoryService {
   categoryRepository: CategoryRepositoryLike;
   quizQuestionRepository: QuizQuestionRepositoryLike;
@@ -49,6 +50,15 @@ export class CategoryService {
   classicCategoryLevelRepository: ClassicCategoryLevelRepositoryLike;
   classicCategoryLevelPoolRepository: ClassicCategoryLevelPoolRepositoryLike;
 
+  /**
+   * Construct the category service.
+   * @param categoryRepository Category persistence.
+   * @param quizQuestionRepository Fallback repository for global question counts.
+   * @param classicCategoryPoolRepository Classic mode pool (category -> questions).
+   * @param classicCategoryLevelRepository Classic mode level metadata.
+   * @param classicCategoryLevelPoolRepository Classic mode pool (level -> questions).
+   * @returns A `CategoryService` instance.
+   */
   constructor(
     categoryRepository: CategoryRepositoryLike,
     quizQuestionRepository: QuizQuestionRepositoryLike = null,
@@ -63,10 +73,19 @@ export class CategoryService {
     this.classicCategoryLevelPoolRepository = classicCategoryLevelPoolRepository;
   }
 
+  /**
+   * List all categories.
+   * @returns Array of category DTOs.
+   */
   async listCategories(): Promise<CategoryDTO[]> {
     return (await this.categoryRepository.findAll()).map((entity) => CategoryDTO.fromEntity(entity));
   }
 
+  /**
+   * Compute available question count for a category (prefers classic-level pools when configured).
+   * @param categoryId Category id.
+   * @returns Category stats or `null` if the category does not exist.
+   */
   async getCategoryStats(categoryId: string): Promise<CategoryStats | null> {
     const exists = await this.categoryRepository.findById(categoryId);
     if (!exists) return null;

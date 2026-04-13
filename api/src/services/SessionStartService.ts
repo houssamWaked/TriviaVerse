@@ -73,6 +73,29 @@ export class SessionStartService {
   private classicSessionRepository: any;
   private classicCategoryService: any;
 
+  /**
+   * Construct the session start service.
+   * @param gameSessionRepository Game session persistence.
+   * @param sessionQuestionRepository Session question snapshots.
+   * @param sessionOptionRepository Session option snapshots.
+   * @param quizQuestionRepository Source question queries.
+   * @param questionOptionRepository Source option queries.
+   * @param quizRepository Quiz lookups for custom sessions.
+   * @param quizAccessRepository Private quiz access allow-list (optional).
+   * @param friendRepository Friendship checks for private quiz visibility.
+   * @param storySessionRepository Story session metadata (optional).
+   * @param storyLevelRepository Story levels.
+   * @param storyLevelPoolRepository Story question pool membership.
+   * @param storyService Story progress/lock checks (optional).
+   * @param millionaireLadderRepository Millionaire ladder configuration.
+   * @param modeQuestionPoolRepository Mode pools for classic/blitz/millionaire (optional).
+   * @param classicCategoryPoolRepository Category pools for classic/blitz (optional).
+   * @param classicCategoryLevelRepository Classic category levels (optional).
+   * @param classicCategoryLevelPoolRepository Level pools for classic levels (optional).
+   * @param classicSessionRepository Classic session metadata (optional).
+   * @param classicCategoryService Classic progress/lock checks (optional).
+   * @returns A `SessionStartService` instance.
+   */
   constructor({
     gameSessionRepository,
     sessionQuestionRepository,
@@ -115,6 +138,12 @@ export class SessionStartService {
     this.classicCategoryService = classicCategoryService;
   }
 
+  /**
+   * Pick a set of questions for a mode using configured pools (or global fallback).
+   * @param mode Mode name (e.g. `classic`, `blitz`, `millionaire`).
+   * @param limit Number of questions requested.
+   * @returns Array of source question rows.
+   */
   async listQuestionsForMode(mode: string, limit: number) {
     const count = Math.max(1, Number(limit) || 1);
 
@@ -175,6 +204,11 @@ export class SessionStartService {
     return this.quizQuestionRepository.listRandom(count);
   }
 
+  /**
+   * Pick a millionaire question set split by difficulty tiers.
+   * @param limit Total questions to pick.
+   * @returns Array of source question rows.
+   */
   async listQuestionsForMillionaire(limit = 15) {
     const total = Math.max(1, Number(limit) || 15);
     const desired = [
@@ -302,6 +336,13 @@ export class SessionStartService {
     return picked.slice(0, total);
   }
 
+  /**
+   * Pick questions for a mode filtered by a difficulty label.
+   * @param mode Mode name.
+   * @param limit Number of questions requested.
+   * @param difficulty Difficulty label (`easy`/`medium`/`hard`).
+   * @returns Array of source question rows.
+   */
   async listQuestionsForModeByDifficulty(
     mode: string,
     limit: number,
@@ -392,6 +433,12 @@ export class SessionStartService {
     return picked.slice(0, count);
   }
 
+  /**
+   * Pick classic mode questions (optionally constrained to a configured category pool).
+   * @param category_id Optional category id.
+   * @param limit Number of questions requested.
+   * @returns Array of source question rows.
+   */
   async listQuestionsForClassic({
     category_id = null,
     limit,
@@ -462,6 +509,11 @@ export class SessionStartService {
     return this.listQuestionsForMode('classic', count);
   }
 
+  /**
+   * Pick questions for a configured classic category level.
+   * @param levelId Classic level id.
+   * @returns Array of source question rows.
+   */
   async listQuestionsForClassicLevel(levelId: string) {
     const lid = String(levelId || '').trim();
     if (!lid) return [];
@@ -502,6 +554,13 @@ export class SessionStartService {
     return questions;
   }
 
+  /**
+   * Pick blitz questions (optional category + difficulty).
+   * @param category_id Optional category id.
+   * @param limit Number of questions requested.
+   * @param difficulty Optional difficulty label.
+   * @returns Array of source question rows.
+   */
   async listBlitzQuestions({
     category_id = null,
     limit,
@@ -559,6 +618,12 @@ export class SessionStartService {
     return this.listQuestionsForModeByDifficulty('blitz', count, difficulty);
   }
 
+  /**
+   * Enforce quiz visibility/access rules for a user.
+   * @param userId Current user id (nullable for guests).
+   * @param quiz Quiz row.
+   * @returns `true` when access is allowed.
+   */
   async assertCanViewQuiz(userId: string | null | undefined, quiz: any) {
     if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
 
@@ -586,6 +651,12 @@ export class SessionStartService {
     throw new AppError('Forbidden', 403, 'FORBIDDEN');
   }
 
+  /**
+   * Create session_question/session_option snapshots from source quiz questions.
+   * @param sessionId Game session id.
+   * @param sourceQuestions Source question rows.
+   * @returns Void on success.
+   */
   async snapshotSessionQuestions(sessionId: string, sourceQuestions: any[]) {
     const sessionQuestionsRows = sourceQuestions.map((q, idx) => ({
       session_id: sessionId,
@@ -650,6 +721,13 @@ export class SessionStartService {
     await this.sessionOptionRepository.createMany(optionRows);
   }
 
+  /**
+   * Append additional snapshot questions/options to an existing session.
+   * @param sessionId Game session id.
+   * @param sourceQuestions Source question rows.
+   * @param orderIndexStart Order index offset for the appended rows.
+   * @returns Created session questions and options.
+   */
   async appendSessionQuestions(
     sessionId: string,
     sourceQuestions: any[],
@@ -692,6 +770,13 @@ export class SessionStartService {
     return { sessionQuestions: createdSessionQuestions, sessionOptions: createdOptions };
   }
 
+  /**
+   * Append new blitz questions to an existing blitz session (best-effort avoid repeats).
+   * @param sessionId Game session id.
+   * @param difficulty Optional difficulty label override.
+   * @param count Approximate number of new questions to append.
+   * @returns Payload containing appended questions and correct option map.
+   */
   async appendBlitzQuestionsToSession(
     sessionId: string,
     { difficulty = null, count = 50 }: { difficulty?: string | null; count?: number } = {}
@@ -801,6 +886,12 @@ export class SessionStartService {
     };
   }
 
+  /**
+   * Prime the in-memory cache for a persisted session (optimization).
+   * @param session Game session row.
+   * @param userId Session owner id.
+   * @returns Void on success (errors are treated as non-fatal by callers).
+   */
   async primeSessionCache(session: any, userId: string) {
     if (!session?.id || !session?.mode || !userId) return;
 
@@ -873,6 +964,14 @@ export class SessionStartService {
     });
   }
 
+  /**
+   * Prime the in-memory cache for a guest session using source question rows.
+   * @param sessionId Synthetic session id.
+   * @param mode Mode name.
+   * @param sourceQuestions Source question rows.
+   * @param started_at Optional started-at timestamp.
+   * @returns `true` on success.
+   */
   async primeGuestSessionCache(
     sessionId: string,
     mode: string,
@@ -979,6 +1078,12 @@ export class SessionStartService {
     return true;
   }
 
+  /**
+   * Start a story session for a given level number (persisted or guest).
+   * @param userId Current user id (nullable for guests).
+   * @param level_number Story level number.
+   * @returns Session start payload.
+   */
   async startStorySession(userId: string | null, level_number: number) {
     const level = await this.storyLevelRepository.findByLevelNumber(level_number);
     if (!level) throw new AppError('Level not found', 404, 'NOT_FOUND');
@@ -1053,6 +1158,12 @@ export class SessionStartService {
     };
   }
 
+  /**
+   * Start a millionaire session (persisted or guest).
+   * @param userId Current user id (nullable for guests).
+   * @param ladder_id Optional ladder config id.
+   * @returns Session start payload.
+   */
   async startMillionaireSession(userId: string | null, ladder_id: string | null | undefined) {
     if (ladder_id) {
       const ladder = await this.millionaireLadderRepository.findById(ladder_id);
@@ -1100,6 +1211,15 @@ export class SessionStartService {
     };
   }
 
+  /**
+   * Start a classic session (level-based when configured; otherwise legacy random/pool).
+   * @param userId Current user id (nullable for guests).
+   * @param category_id Optional category selection.
+   * @param level_number Optional classic level number (when configured).
+   * @param difficulty Optional difficulty label (legacy classic).
+   * @param questions_count Optional question count (legacy classic).
+   * @returns Session start payload.
+   */
   async startClassicSession(
     userId: string | null,
     {
@@ -1228,6 +1348,13 @@ export class SessionStartService {
     };
   }
 
+  /**
+   * Start a blitz session (persisted or guest).
+   * @param userId Current user id (nullable for guests).
+   * @param category_id Optional category selection.
+   * @param difficulty Optional difficulty label.
+   * @returns Session start payload.
+   */
   async startBlitzSession(
     userId: string | null,
     { category_id, difficulty }: { category_id?: string | null; difficulty?: string | null }
@@ -1287,6 +1414,14 @@ export class SessionStartService {
     };
   }
 
+  /**
+   * Start a blitz session used as the canonical snapshot for a blitz duel.
+   * @param userId Current user id (must be authenticated).
+   * @param category_id Optional category selection.
+   * @param difficulty Optional difficulty label.
+   * @param total_questions Question count for the duel.
+   * @returns Session start payload.
+   */
   async startBlitzDuelSession(
     userId: string,
     {
@@ -1342,6 +1477,12 @@ export class SessionStartService {
     };
   }
 
+  /**
+   * Start a custom quiz session (persisted or guest).
+   * @param userId Current user id (nullable for guests).
+   * @param quizId Quiz id.
+   * @returns Session start payload.
+   */
   async startCustomQuizSession(userId: string | null, quizId: string) {
     const quiz = await this.quizRepository.findById(quizId);
     if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');

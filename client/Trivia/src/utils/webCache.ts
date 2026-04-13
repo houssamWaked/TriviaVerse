@@ -73,6 +73,11 @@ function storageClearByPrefix(prefix: string): void {
   }
 }
 
+/**
+ * Read a cached value (performance-consent gated).
+ * @param key Cache key.
+ * @returns Cached value or `null` if missing/expired/consent disabled.
+ */
 export function cacheGet<T = unknown>(key: string): T | null {
   if (!hasPerformanceConsent()) return null;
   const storageKey = `${PREFIX}${String(key || '')}`;
@@ -99,6 +104,14 @@ export function cacheGet<T = unknown>(key: string): T | null {
   return null;
 }
 
+/**
+ * Store a cached value (performance-consent gated).
+ * @param key Cache key.
+ * @param value Value to cache.
+ * @param ttlMs Cache TTL in milliseconds.
+ * @param prefer Where to store (localStorage/cookie/both).
+ * @returns Void.
+ */
 export function cacheSet(
   key: string,
   value: unknown,
@@ -126,6 +139,11 @@ export function cacheSet(
   }
 }
 
+/**
+ * Delete a cached entry.
+ * @param key Cache key.
+ * @returns Void.
+ */
 export function cacheDelete(key: string): void {
   if (!hasPerformanceConsent()) return;
   const storageKey = `${PREFIX}${String(key || '')}`;
@@ -134,10 +152,19 @@ export function cacheDelete(key: string): void {
   storageDelete(storageKey);
 }
 
+/**
+ * Clear all standard cache entries.
+ * @returns Void.
+ */
 export function cacheClearAll(): void {
   storageClearByPrefix(PREFIX);
 }
 
+/**
+ * Read an "essential" cached value (not consent-gated).
+ * @param key Cache key.
+ * @returns Cached value or `null` if missing/expired.
+ */
 export function essentialCacheGet<T = unknown>(key: string): T | null {
   const storageKey = `${ESSENTIAL_PREFIX}${String(key || '')}`;
   if (storageKey === ESSENTIAL_PREFIX) return null;
@@ -151,6 +178,13 @@ export function essentialCacheGet<T = unknown>(key: string): T | null {
   return null;
 }
 
+/**
+ * Store an "essential" cached value (not consent-gated).
+ * @param key Cache key.
+ * @param value Value to cache.
+ * @param ttlMs Cache TTL in milliseconds.
+ * @returns Void.
+ */
 export function essentialCacheSet(
   key: string,
   value: unknown,
@@ -163,16 +197,30 @@ export function essentialCacheSet(
   storageSet(storageKey, encodeRecord(record));
 }
 
+/**
+ * Delete an essential cache entry.
+ * @param key Cache key.
+ * @returns Void.
+ */
 export function essentialCacheDelete(key: string): void {
   const storageKey = `${ESSENTIAL_PREFIX}${String(key || '')}`;
   if (storageKey === ESSENTIAL_PREFIX) return;
   storageDelete(storageKey);
 }
 
+/**
+ * Clear all essential cache entries.
+ * @returns Void.
+ */
 export function essentialCacheClearAll(): void {
   storageClearByPrefix(ESSENTIAL_PREFIX);
 }
 
+/**
+ * Clear essential cache entries matching a prefix.
+ * @param prefix Key prefix (without internal prefixing).
+ * @returns Void.
+ */
 export function essentialCacheClearByPrefix(prefix: string): void {
   const storageKey = `${ESSENTIAL_PREFIX}${String(prefix || '')}`;
   if (storageKey === ESSENTIAL_PREFIX) return;

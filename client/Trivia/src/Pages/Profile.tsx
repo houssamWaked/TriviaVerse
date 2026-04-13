@@ -77,6 +77,11 @@ type ProfileProps = {
   onBack?: () => void;
 };
 
+/**
+ * Format a date-like value into a short localized date string.
+ * @param d ISO string, `Date`, or nullish.
+ * @returns Formatted date or an em dash when invalid.
+ */
 function formatDate(d: string | Date | null | undefined) {
   if (!d) return STRINGS.COMMON.separators.emDash;
   const t = new Date(d);
@@ -84,12 +89,22 @@ function formatDate(d: string | Date | null | undefined) {
   return t.toLocaleDateString();
 }
 
+/**
+ * Compute a 1-letter avatar fallback from a username.
+ * @param username Username.
+ * @returns Uppercased initial or a fallback glyph.
+ */
 function initials(username: string | null | undefined) {
   const u = String(username || '').trim();
   if (!u) return STRINGS.PROFILE.initialsFallback;
   return u.slice(0, 1).toUpperCase();
 }
 
+/**
+ * Map a mode key to a user-facing label.
+ * @param mode Internal mode key.
+ * @returns Display label.
+ */
 function modeLabel(mode: string | null | undefined) {
   if (mode === 'story') return STRINGS.PROFILE.modes.story;
   if (mode === 'classic') return STRINGS.PROFILE.modes.classic;
@@ -99,6 +114,11 @@ function modeLabel(mode: string | null | undefined) {
   return mode;
 }
 
+/**
+ * Map a mode key to an icon.
+ * @param mode Internal mode key.
+ * @returns Icon string.
+ */
 function modeIcon(mode: string | null | undefined) {
   if (mode === 'story') return ICONS.common.openBook;
   if (mode === 'classic') return ICONS.common.bookmark;
@@ -108,24 +128,46 @@ function modeIcon(mode: string | null | undefined) {
   return ICONS.common.user;
 }
 
+/**
+ * Resolve the current user's role in a duel entry.
+ * @param d Duel entry.
+ * @param myUserId Current user id.
+ * @returns `challenger`, `opponent`, or null.
+ */
 function getMeRole(d: DuelEntry, myUserId: string | undefined) {
   if (myUserId && d?.challenger_user_id === myUserId) return 'challenger';
   if (myUserId && d?.opponent_user_id === myUserId) return 'opponent';
   return d?.me_role || null;
 }
 
+/**
+ * Resolve the opponent's display name from a duel entry.
+ * @param d Duel entry.
+ * @param myUserId Current user id.
+ * @returns Opponent username fallback-safe.
+ */
 function getOpponentName(d: DuelEntry, myUserId: string | undefined) {
   const meRole = getMeRole(d, myUserId);
   if (meRole === 'challenger') return d?.opponent_user?.username || STRINGS.COMMON.playerFallback;
   return d?.challenger_user?.username || STRINGS.COMMON.playerFallback;
 }
 
+/**
+ * Humanize duel status text.
+ * @param d Duel entry.
+ * @returns Title-cased status or em dash.
+ */
 function statusText(d: DuelEntry) {
   const s = String(d?.status || '');
   if (!s) return STRINGS.COMMON.separators.emDash;
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/**
+ * Choose a badge style for duel status.
+ * @param d Duel entry.
+ * @returns Inline style object.
+ */
 function statusPillStyle(d: DuelEntry) {
   const s = String(d?.status || '');
   if (s === 'completed') return { ...ProfileStyle.statusPill, ...ProfileStyle.statusPillGood };
@@ -135,6 +177,12 @@ function statusPillStyle(d: DuelEntry) {
   return ProfileStyle.statusPill;
 }
 
+/**
+ * Compute a short "you won / you lost / tie" message for a completed duel.
+ * @param d Duel entry.
+ * @param myUserId Current user id.
+ * @returns Result text or empty string when not completed.
+ */
 function duelResultText(d: DuelEntry, myUserId: string | undefined) {
   if (d?.status !== 'completed') return '';
   if (!d?.winner_user_id) return STRINGS.PROFILE.duels.result.tie;
@@ -142,6 +190,11 @@ function duelResultText(d: DuelEntry, myUserId: string | undefined) {
   return STRINGS.PROFILE.duels.result.youLost;
 }
 
+/**
+ * Sort duels by newest created timestamp first.
+ * @param entries Duel entries.
+ * @returns New array sorted by created_at desc.
+ */
 function sortDuelsNewestFirst(entries: DuelEntry[]) {
   return [...entries].sort((left, right) => {
     const leftTs = left?.created_at ? new Date(left.created_at).getTime() : 0;
@@ -150,6 +203,12 @@ function sortDuelsNewestFirst(entries: DuelEntry[]) {
   });
 }
 
+/**
+ * Insert or update a duel entry and keep list sorted newest-first.
+ * @param entries Current duel list.
+ * @param nextEntry Updated duel entry.
+ * @returns Next duel list.
+ */
 function upsertDuelEntry(entries: DuelEntry[], nextEntry: DuelEntry) {
   const duelId = String(nextEntry?.id || '').trim();
   if (!duelId) return entries;
@@ -167,6 +226,13 @@ function upsertDuelEntry(entries: DuelEntry[], nextEntry: DuelEntry) {
   return sortDuelsNewestFirst(next);
 }
 
+/**
+ * Merge realtime duel state payload into the duel list.
+ * @param entries Current duel list.
+ * @param state Realtime state payload.
+ * @param duelId Duel id fallback (when payload omits it).
+ * @returns Next duel list.
+ */
 function mergeDuelState(entries: DuelEntry[], state: any, duelId: string | null | undefined) {
   const resolvedDuelId = String(state?.id || duelId || '').trim();
   if (!resolvedDuelId) return entries;
@@ -186,6 +252,12 @@ function mergeDuelState(entries: DuelEntry[], state: any, duelId: string | null 
   });
 }
 
+/**
+ * Profile page: shows player stats, best plays, and duel list; supports friend profile view.
+ * @param user Current user snapshot (required for self profile).
+ * @param friendUserId Optional user id to view a friend's profile.
+ * @returns React element.
+ */
 export default function Profile({
   user,
   friendUserId,

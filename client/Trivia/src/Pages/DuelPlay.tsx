@@ -57,18 +57,34 @@ type DuelPlayProps = {
   onBack?: () => void;
 };
 
+/**
+ * Format milliseconds remaining as a short seconds string.
+ * @param ms Milliseconds until start (or time left).
+ * @returns Text like `3s`.
+ */
 function formatMs(ms: number | string | null | undefined) {
   const x = Math.max(0, Number(ms) || 0);
   const s = Math.ceil(x / 1000);
   return `${s}s`;
 }
 
+/**
+ * Clamp a percentage-like value to the \([0,100]\) range.
+ * @param n Raw percentage.
+ * @returns Clamped percent.
+ */
 function clampPct(n: number | string | null | undefined) {
   const x = Number(n);
   if (!Number.isFinite(x)) return 0;
   return Math.max(0, Math.min(100, x));
 }
 
+/**
+ * Duel play screen: syncs duel state via API/realtime and submits answers per question.
+ * @param user Current user snapshot (required).
+ * @param duelId Duel id.
+ * @returns React element.
+ */
 export default function DuelPlay({
   user,
   duelId,

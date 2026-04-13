@@ -38,6 +38,10 @@ function normalizeNumberMap(value: unknown): Record<string, number> {
   );
 }
 
+/**
+ * Load guest story progress from localStorage.
+ * @returns Progress bucket containing completion, best scores, and stars.
+ */
 export function loadGuestStoryProgress(): GuestStoryBucket {
   if (typeof window === 'undefined') return { completed: {}, bestScore: {}, stars: {} };
   const raw = window.localStorage.getItem(KEY);
@@ -50,6 +54,14 @@ export function loadGuestStoryProgress(): GuestStoryBucket {
   };
 }
 
+/**
+ * Save a guest story session result for a level (updates best score/stars and completion).
+ * @param levelNumber Story level number.
+ * @param scoreTotal Session score total.
+ * @param passed Whether the level was passed.
+ * @param stars Stars earned for this attempt.
+ * @returns `true` on success, `false` for invalid input.
+ */
 export function saveGuestStoryResult(
   levelNumber: unknown,
   { scoreTotal = 0, passed = false, stars = 0 }: GuestStoryResultInput = {}
@@ -77,6 +89,11 @@ export function saveGuestStoryResult(
   return true;
 }
 
+/**
+ * Compute the maximum unlocked story level for a guest based on completed levels.
+ * @param levels Full level list (used to cap unlock value).
+ * @returns Highest unlocked level number (>= 1).
+ */
 export function computeGuestStoryUnlockedMax(levels: LevelLike[] = []): number {
   const progress = loadGuestStoryProgress();
   const completedNums = Object.keys(progress.completed)

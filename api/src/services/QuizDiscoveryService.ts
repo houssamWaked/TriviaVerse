@@ -131,6 +131,17 @@ export class QuizDiscoveryService {
   quizRatingRepository: QuizRatingRepositoryLike;
   quizScoreRepository: QuizScoreRepositoryLike;
 
+  /**
+   * Construct the quiz discovery service.
+   * @param quizRepository Published quiz search/list queries.
+   * @param quizQuestionRepository Question counts for quiz details.
+   * @param userRepository Owner/user lookups.
+   * @param quizAccessRepository Private quiz allow-list (optional).
+   * @param friendRepository Friendship checks for private visibility.
+   * @param quizRatingRepository Ratings aggregation (optional).
+   * @param quizScoreRepository Played counts + leaderboards (optional).
+   * @returns A `QuizDiscoveryService` instance.
+   */
   constructor({
     quizRepository,
     quizQuestionRepository,
@@ -159,6 +170,13 @@ export class QuizDiscoveryService {
     this.quizScoreRepository = quizScoreRepository;
   }
 
+  /**
+   * Search published quizzes by title with access/visibility filtering.
+   * @param q Search query.
+   * @param userId Current user id (nullable for guests).
+   * @param limit Max results to return.
+   * @returns `{ q, results }` payload sorted by popularity/ratings/recency.
+   */
   async search({ q, userId = null, limit = 30 }: SearchInput) {
     const visibilities = userId ? ['public', 'private'] : ['public'];
     const rows = await this.quizRepository.searchPublishedByTitle({ q, visibilities, limit });
@@ -234,6 +252,12 @@ export class QuizDiscoveryService {
     return { q: String(q || '').trim(), results: payload };
   }
 
+  /**
+   * List top quizzes with access/visibility filtering.
+   * @param userId Current user id (nullable for guests).
+   * @param limit Max results to return.
+   * @returns `{ results }` payload sorted by popularity/ratings/recency.
+   */
   async top({ userId = null, limit = 20 }: TopInput) {
     const visibilities = userId ? ['public', 'private'] : ['public'];
     const lim = Math.min(50, Math.max(1, Number(limit) || 20));
@@ -311,6 +335,12 @@ export class QuizDiscoveryService {
     return { results: payload };
   }
 
+  /**
+   * Enforce quiz visibility/access rules for a user.
+   * @param quiz Quiz row (nullable).
+   * @param userId Current user id (nullable).
+   * @returns `true` when access is allowed.
+   */
   async assertCanViewQuiz({ quiz, userId = null }: ViewQuizInput): Promise<true> {
     if (!quiz) throw new AppError('Quiz not found', 404, 'NOT_FOUND');
     if (quiz.status !== 'published' && (!userId || quiz.owner_user_id !== userId)) {
@@ -341,6 +371,12 @@ export class QuizDiscoveryService {
     throw new AppError('Forbidden', 403, 'FORBIDDEN');
   }
 
+  /**
+   * Get quiz details + owner and question count (with access checks).
+   * @param quizId Quiz id.
+   * @param userId Current user id (nullable).
+   * @returns Details payload for the quiz details page.
+   */
   async getQuizDetails({ quizId, userId = null }: QuizDetailsInput) {
     const quiz = await this.quizRepository.findById(quizId);
     await this.assertCanViewQuiz({ quiz, userId });
@@ -358,6 +394,12 @@ export class QuizDiscoveryService {
     };
   }
 
+  /**
+   * Get quiz rating summary (and the current user's rating if available).
+   * @param quizId Quiz id.
+   * @param userId Current user id (nullable).
+   * @returns `{ ratings_avg, ratings_count, my_rating }`.
+   */
   async getRatingsSummary({ quizId, userId = null }: RatingsSummaryInput) {
     let rows: RatingRowLike[] = [];
     try {
@@ -386,6 +428,13 @@ export class QuizDiscoveryService {
     return { ratings_avg, ratings_count: count, my_rating };
   }
 
+  /**
+   * Get the leaderboard for a custom quiz (with access checks).
+   * @param quizId Quiz id.
+   * @param userId Current user id (nullable).
+   * @param limit Max entries to return.
+   * @returns Leaderboard payload (may include `not_configured`).
+   */
   async getCustomQuizLeaderboard({ quizId, userId = null, limit = 20 }: QuizLeaderboardInput) {
     const quiz = await this.quizRepository.findById(quizId);
     await this.assertCanViewQuiz({ quiz, userId });

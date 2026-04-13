@@ -42,6 +42,11 @@ export function getCurrentUser() {
   }
 }
 
+/**
+ * Persist the current user snapshot to localStorage and (optionally) a cookie.
+ * @param user User object to store, or `null` to clear.
+ * @returns Void.
+ */
 export function setCurrentUser(user: StoredUser) {
   try {
     if (!user) window.localStorage.removeItem(USER_KEY);
@@ -68,6 +73,10 @@ export function setCurrentUser(user: StoredUser) {
   }
 }
 
+/**
+ * Clear the stored user snapshot.
+ * @returns Void.
+ */
 export function clearCurrentUser() {
   setCurrentUser(null);
 }

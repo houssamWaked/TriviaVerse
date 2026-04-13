@@ -29,6 +29,12 @@ type DiscoverQuizzesProps = {
   onNavigateHome?: () => void;
 };
 
+/**
+ * Format quiz rating as a short star string.
+ * @param avg Average rating value.
+ * @param count Number of ratings.
+ * @returns Render-friendly rating text.
+ */
 function formatRating(
   avg: number | string | null | undefined,
   count: number | string | null | undefined
@@ -40,6 +46,12 @@ function formatRating(
   return `${ICONS.common.star} ${avgText} (${countText})`;
 }
 
+/**
+ * Public quiz discovery/search page (top list + debounced search).
+ * @param user Current user snapshot (controls private quiz visibility).
+ * @param onOpenQuiz Callback to open a quiz detail view.
+ * @returns React element.
+ */
 export default function DiscoverQuizzes({
   user,
   onOpenQuiz,
@@ -262,7 +274,9 @@ export default function DiscoverQuizzes({
               {STRINGS.DISCOVER_QUIZZES.empty.title}
             </div>
             <div style={DiscoverQuizzesStyle.emptyText}>
-              {busy ? STRINGS.DISCOVER_QUIZZES.empty.loading : STRINGS.DISCOVER_QUIZZES.empty.noQuizzes}
+              {busy
+                ? STRINGS.DISCOVER_QUIZZES.empty.loading
+                : STRINGS.DISCOVER_QUIZZES.empty.noQuizzes}
             </div>
           </div>
         )}

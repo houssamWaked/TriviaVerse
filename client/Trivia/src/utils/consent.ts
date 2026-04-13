@@ -16,6 +16,10 @@ function safeParse(raw: string): unknown {
   }
 }
 
+/**
+ * Read the persisted consent preferences.
+ * @returns Stored consent value or `null` if not set/invalid.
+ */
 export function getConsent(): ConsentValue | null {
   try {
     const raw = window.localStorage.getItem(KEY);
@@ -32,10 +36,19 @@ export function getConsent(): ConsentValue | null {
   }
 }
 
+/**
+ * Check whether the user has opted into performance storage/caching.
+ * @returns `true` when performance consent is enabled.
+ */
 export function hasPerformanceConsent(): boolean {
   return Boolean(getConsent()?.performance);
 }
 
+/**
+ * Persist consent preferences and broadcast a `tv:consent` event.
+ * @param performance Whether to allow performance storage/caching.
+ * @returns The saved consent value.
+ */
 export function setConsent({
   performance,
 }: {
@@ -67,6 +80,10 @@ export function setConsent({
   return value;
 }
 
+/**
+ * Decide whether the app should display the consent banner.
+ * @returns `true` if no consent record exists yet.
+ */
 export function shouldShowConsentBanner(): boolean {
   return getConsent() == null;
 }

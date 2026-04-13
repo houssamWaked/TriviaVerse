@@ -35,16 +35,30 @@ function toAppError(error: DatabaseErrorLike): AppError | null {
 
 const mapProgressRow = (row: unknown): UserStoryProgressRow => row as unknown as UserStoryProgressRow;
 
+/**
+ * Repository for per-user progress through story levels (`user_story_progress`).
+ */
 export class UserStoryProgressRepository {
   selectFields =
     'id, user_id, level_id, best_score, stars_earned, attempts_count, is_unlocked, is_completed, last_played_at';
 
+  /**
+   * List all story progress rows for a user.
+   * @param userId User id.
+   * @returns Array of progress rows.
+   */
   async listByUserId(userId: string): Promise<UserStoryProgressRow[]> {
     const { data, error } = await supabase.from('user_story_progress').select(this.selectFields).eq('user_id', userId);
     if (error) throw toAppError(error);
     return (data || []).map(mapProgressRow);
   }
 
+  /**
+   * Find a user's progress row for a level.
+   * @param userId User id.
+   * @param levelId Level id.
+   * @returns Progress row or `null`.
+   */
   async findByUserAndLevelId(userId: string, levelId: string): Promise<UserStoryProgressRow | null> {
     const { data, error } = await supabase
       .from('user_story_progress')
@@ -56,6 +70,13 @@ export class UserStoryProgressRepository {
     return data?.[0] ? mapProgressRow(data[0]) : null;
   }
 
+  /**
+   * Upsert a progress row for a user + level.
+   * @param userId User id.
+   * @param levelId Level id.
+   * @param patch Patch fields.
+   * @returns Upserted progress row or `null`.
+   */
   async upsertByUserAndLevelId(userId: string, levelId: string, patch: ProgressPatch = {}): Promise<UserStoryProgressRow | null> {
     const payload = { user_id: userId, level_id: levelId, ...patch };
     const { data, error } = await supabase
@@ -67,10 +88,25 @@ export class UserStoryProgressRepository {
     return data?.[0] ? mapProgressRow(data[0]) : null;
   }
 
+  /**
+   * Ensure a level is unlocked for the user (upsert with `is_unlocked: true`).
+   * @param userId User id.
+   * @param levelId Level id.
+   * @returns Updated progress row.
+   */
   async ensureUnlocked(userId: string, levelId: string): Promise<UserStoryProgressRow | null> {
     return this.upsertByUserAndLevelId(userId, levelId, { is_unlocked: true });
   }
 
+  /**
+   * Upsert a level result (best score/best stars + completion) and mark it unlocked.
+   * @param userId User id.
+   * @param levelId Level id.
+   * @param score_total Score achieved.
+   * @param stars_earned Stars earned.
+   * @param is_completed Completion flag.
+   * @returns Updated progress row.
+   */
   async upsertResult(
     userId: string,
     levelId: string,
@@ -90,6 +126,11 @@ export class UserStoryProgressRepository {
     });
   }
 
+  /**
+   * Increment attempts counter for an existing progress row.
+   * @param progressId Progress row id.
+   * @returns Updated progress row or `null`.
+   */
   async bumpAttempts(progressId: string): Promise<UserStoryProgressRow | null> {
     const { data: current, error: readError } = await supabase
       .from('user_story_progress')
@@ -109,6 +150,11 @@ export class UserStoryProgressRepository {
     return data?.[0] ? mapProgressRow(data[0]) : null;
   }
 
+  /**
+   * Delete all progress rows for a level (admin cleanup).
+   * @param levelId Level id.
+   * @returns `true` on success.
+   */
   async deleteByLevelId(levelId: string): Promise<true> {
     const normalizedLevelId = String(levelId || '').trim();
     if (!normalizedLevelId) return true;

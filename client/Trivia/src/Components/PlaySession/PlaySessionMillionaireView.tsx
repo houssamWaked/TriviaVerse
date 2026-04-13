@@ -43,6 +43,12 @@ type Props = {
   pendingChoiceId: string | null;
 };
 
+/**
+ * Millionaire-mode session view: classic ladder layout with lifelines and prize display.
+ * @param prizeLadder Ladder rows with the current active index.
+ * @param onWalkAway Callback to exit with current prize (abandons session).
+ * @returns React element.
+ */
 export default function PlaySessionMillionaireView({
   question,
   busy,

@@ -30,6 +30,12 @@ type BlitzProps = {
   onOpenDuel?: (duelId?: string) => void;
 };
 
+/**
+ * Blitz mode start page: choose difficulty, start a timed session, or challenge a friend.
+ * @param user Current user snapshot (enables duel flow and auth gating).
+ * @param onPlaySession Callback invoked with a started session id.
+ * @returns React element.
+ */
 export default function Blitz({
   user,
   onRequireAuth,

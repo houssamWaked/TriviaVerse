@@ -16,18 +16,36 @@ const getParam = (value: string | string[] | undefined): string => {
   return value ?? '';
 };
 
+// HTTP adapter for category endpoints (list + per-category stats).
 export class CategoryController {
   categoryService: CategoryServiceLike;
 
+  /**
+   * Construct a controller that delegates to the category service.
+   * @param categoryService Domain service for categories.
+   * @returns A `CategoryController` instance.
+   */
   constructor(categoryService: CategoryServiceLike) {
     this.categoryService = categoryService;
   }
 
+  /**
+   * List all categories.
+   * @param _req Express request (unused).
+   * @param res Express response.
+   * @returns A JSON array of categories.
+   */
   list = async (_req: Request, res: Response) => {
     const data = await this.categoryService.listCategories();
     res.json(data);
   };
 
+  /**
+   * Fetch category stats (e.g., available questions).
+   * @param req Express request (expects `:id` route param).
+   * @param res Express response.
+   * @returns A 200 response with stats; throws 404 if category is missing.
+   */
   stats = async (req: Request, res: Response) => {
     const data = await this.categoryService.getCategoryStats(getParam(req.params.id));
     if (!data) {

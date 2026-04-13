@@ -28,7 +28,14 @@ function toAppError(error: DatabaseErrorLike): AppError | null {
 
 const uniqueIds = (values: string[] = []): string[] => Array.from(new Set(values.filter(Boolean)));
 
+/**
+ * Repository for mapping classic categories to global question ids (`classic_category_pool`).
+ */
 export class ClassicCategoryPoolRepository {
+  /**
+   * List all question ids included in any category pool (paged query).
+   * @returns Array of quiz question ids.
+   */
   async listAllQuestionIds(): Promise<string[]> {
     const pageSize = 1000;
     const ids: string[] = [];
@@ -51,6 +58,11 @@ export class ClassicCategoryPoolRepository {
     return ids;
   }
 
+  /**
+   * List category assignments for a set of question ids.
+   * @param questionIds Quiz question ids.
+   * @returns Array of `{ category_id, quiz_question_id }` rows.
+   */
   async listAssignmentsByQuestionIds(questionIds: string[] = []): Promise<CategoryAssignmentRow[]> {
     const ids = uniqueIds(questionIds);
     if (ids.length === 0) return [];
@@ -63,6 +75,11 @@ export class ClassicCategoryPoolRepository {
     return (data || []) as CategoryAssignmentRow[];
   }
 
+  /**
+   * Count pool rows for a category.
+   * @param categoryId Category id.
+   * @returns Row count.
+   */
   async countByCategoryId(categoryId: string): Promise<number> {
     const normalizedCategoryId = String(categoryId || '').trim();
     if (!normalizedCategoryId) return 0;
@@ -75,6 +92,11 @@ export class ClassicCategoryPoolRepository {
     return count ?? 0;
   }
 
+  /**
+   * List question ids assigned to a category.
+   * @param categoryId Category id.
+   * @returns Array of quiz question ids.
+   */
   async listQuestionIdsByCategoryId(categoryId: string): Promise<string[]> {
     const normalizedCategoryId = String(categoryId || '').trim();
     if (!normalizedCategoryId) return [];
@@ -91,6 +113,13 @@ export class ClassicCategoryPoolRepository {
       .filter((value): value is string => Boolean(value));
   }
 
+  /**
+   * List question ids assigned to a category with pagination.
+   * @param categoryId Category id.
+   * @param limit Page size.
+   * @param offset Page offset.
+   * @returns Array of quiz question ids.
+   */
   async listQuestionIdsByCategoryIdPaged(
     categoryId: string,
     { limit = 50, offset = 0 }: { limit?: number; offset?: number } = {}
@@ -114,6 +143,12 @@ export class ClassicCategoryPoolRepository {
       .filter((value): value is string => Boolean(value));
   }
 
+  /**
+   * Upsert category -> question assignments.
+   * @param categoryId Category id.
+   * @param questionIds Quiz question ids.
+   * @returns `true` on success.
+   */
   async upsertMany(categoryId: string, questionIds: string[] = []): Promise<boolean> {
     const normalizedCategoryId = String(categoryId || '').trim();
     const ids = uniqueIds(questionIds);
@@ -133,6 +168,12 @@ export class ClassicCategoryPoolRepository {
     return true;
   }
 
+  /**
+   * Delete a set of category -> question assignments.
+   * @param categoryId Category id.
+   * @param questionIds Quiz question ids.
+   * @returns `true` on success.
+   */
   async deleteMany(categoryId: string, questionIds: string[] = []): Promise<boolean> {
     const normalizedCategoryId = String(categoryId || '').trim();
     const ids = uniqueIds(questionIds);
@@ -147,6 +188,11 @@ export class ClassicCategoryPoolRepository {
     return true;
   }
 
+  /**
+   * Delete all assignments for a category.
+   * @param categoryId Category id.
+   * @returns `true` on success.
+   */
   async deleteAllByCategoryId(categoryId: string): Promise<boolean> {
     const normalizedCategoryId = String(categoryId || '').trim();
     if (!normalizedCategoryId) return true;
@@ -159,6 +205,11 @@ export class ClassicCategoryPoolRepository {
     return true;
   }
 
+  /**
+   * Delete assignments for a set of quiz question ids (across all categories).
+   * @param questionIds Quiz question ids.
+   * @returns `true` on success.
+   */
   async deleteByQuizQuestionIds(questionIds: string[] = []): Promise<boolean> {
     const ids = uniqueIds(questionIds);
     if (ids.length === 0) return true;

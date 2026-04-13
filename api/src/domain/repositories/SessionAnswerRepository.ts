@@ -31,7 +31,15 @@ const selectFields =
   'id, session_question_id, chosen_option_id, is_correct, answered_in_sec, answered_at';
 const mapSessionAnswerRow = (row: unknown): SessionAnswerRow => row as unknown as SessionAnswerRow;
 
+/**
+ * Repository for reading/writing `session_answers` rows.
+ */
 export class SessionAnswerRepository {
+  /**
+   * Find an answer row for a session question.
+   * @param sessionQuestionId Session question id.
+   * @returns Answer row or `null`.
+   */
   async findBySessionQuestionId(sessionQuestionId: string): Promise<SessionAnswerRow | null> {
     const { data, error } = await supabase
       .from('session_answers')
@@ -42,6 +50,11 @@ export class SessionAnswerRepository {
     return data?.[0] ? mapSessionAnswerRow(data[0]) : null;
   }
 
+  /**
+   * List answer rows for a set of session question ids.
+   * @param sessionQuestionIds Session question ids.
+   * @returns Array of answer rows.
+   */
   async listBySessionQuestionIds(sessionQuestionIds: string[] = []): Promise<SessionAnswerRow[]> {
     const ids = sessionQuestionIds.filter(Boolean);
     if (ids.length === 0) return [];
@@ -51,6 +64,11 @@ export class SessionAnswerRepository {
     return (data || []).map(mapSessionAnswerRow);
   }
 
+  /**
+   * Create an answer row for a session question.
+   * @param payload Insert payload.
+   * @returns Created answer row or `null`.
+   */
   async create(payload: CreateSessionAnswerInput): Promise<SessionAnswerRow | null> {
     const { data, error } = await supabase.from('session_answers').insert(payload).select(selectFields).limit(1);
     if (error) throw toAppError(error);

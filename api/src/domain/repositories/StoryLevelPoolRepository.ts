@@ -27,7 +27,14 @@ function toAppError(error: DatabaseErrorLike): AppError | null {
 
 const uniqueIds = (values: string[] = []): string[] => Array.from(new Set(values.filter(Boolean)));
 
+/**
+ * Repository for mapping story levels to global question ids (`story_level_pool`).
+ */
 export class StoryLevelPoolRepository {
+  /**
+   * List all question ids included in any story pool (paged query).
+   * @returns Array of quiz question ids.
+   */
   async listAllQuestionIds(): Promise<string[]> {
     const pageSize = 1000;
     const ids: string[] = [];
@@ -60,6 +67,11 @@ export class StoryLevelPoolRepository {
     return ids;
   }
 
+  /**
+   * List level assignments for a set of question ids.
+   * @param questionIds Quiz question ids.
+   * @returns Array of `{ level_id, quiz_question_id }` rows.
+   */
   async listAssignmentsByQuestionIds(questionIds: string[] = []): Promise<StoryLevelPoolAssignment[]> {
     const ids = uniqueIds(questionIds);
     if (ids.length === 0) return [];
@@ -72,6 +84,11 @@ export class StoryLevelPoolRepository {
     return (data || []) as StoryLevelPoolAssignment[];
   }
 
+  /**
+   * List question ids assigned to a level.
+   * @param levelId Story level id.
+   * @returns Array of quiz question ids.
+   */
   async listQuestionIdsByLevelId(levelId: string): Promise<string[]> {
     let res = await supabase
       .from('story_level_pool')
@@ -94,6 +111,13 @@ export class StoryLevelPoolRepository {
       .filter((value): value is string => Boolean(value));
   }
 
+  /**
+   * List question ids assigned to a level with pagination.
+   * @param levelId Story level id.
+   * @param limit Page size.
+   * @param offset Page offset.
+   * @returns Array of quiz question ids.
+   */
   async listQuestionIdsByLevelIdPaged(
     levelId: string,
     { limit = 50, offset = 0 }: { limit?: number; offset?: number } = {}
@@ -127,6 +151,12 @@ export class StoryLevelPoolRepository {
       .filter((value): value is string => Boolean(value));
   }
 
+  /**
+   * Upsert level -> question assignments.
+   * @param levelId Story level id.
+   * @param questionIds Quiz question ids.
+   * @returns `true` on success.
+   */
   async upsertMany(levelId: string, questionIds: string[] = []): Promise<true> {
     const normalizedLevelId = String(levelId || '').trim();
     const ids = uniqueIds(questionIds);
@@ -143,6 +173,12 @@ export class StoryLevelPoolRepository {
     return true;
   }
 
+  /**
+   * Delete a set of level -> question assignments.
+   * @param levelId Story level id.
+   * @param questionIds Quiz question ids.
+   * @returns `true` on success.
+   */
   async deleteMany(levelId: string, questionIds: string[] = []): Promise<true> {
     const normalizedLevelId = String(levelId || '').trim();
     const ids = uniqueIds(questionIds);
@@ -157,6 +193,11 @@ export class StoryLevelPoolRepository {
     return true;
   }
 
+  /**
+   * Delete all assignments for a level.
+   * @param levelId Story level id.
+   * @returns `true` on success.
+   */
   async deleteAllByLevelId(levelId: string): Promise<true> {
     const normalizedLevelId = String(levelId || '').trim();
     if (!normalizedLevelId) return true;
@@ -166,6 +207,11 @@ export class StoryLevelPoolRepository {
     return true;
   }
 
+  /**
+   * Delete assignments for a set of quiz question ids (across all levels).
+   * @param questionIds Quiz question ids.
+   * @returns `true` on success.
+   */
   async deleteByQuizQuestionIds(questionIds: string[] = []): Promise<true> {
     const ids = uniqueIds(questionIds);
     if (ids.length === 0) return true;

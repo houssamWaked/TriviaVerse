@@ -141,6 +141,7 @@ function pickPhoneSuggestion(options: any[]) {
   return incorrect[Math.floor(Math.random() * incorrect.length)].id;
 }
 
+// Core gameplay service for all modes (custom/story/classic/blitz/millionaire).
 export class SessionService {
   private gameSessionRepository: any;
   private sessionQuestionRepository: any;
@@ -160,6 +161,27 @@ export class SessionService {
   private classicSessionRepository: any;
   private sessionStartService: any;
 
+  /**
+   * Construct the gameplay service with all required repositories/services.
+   * @param gameSessionRepository Session persistence and score/status updates.
+   * @param sessionQuestionRepository Session question snapshots.
+   * @param sessionOptionRepository Session option snapshots.
+   * @param sessionAnswerRepository Answer persistence.
+   * @param sessionLifelineRepository Lifeline persistence.
+   * @param leaderboardRepository Leaderboard writes.
+   * @param userStatsRepository XP updates.
+   * @param quizQuestionRepository Source question lookup (explanations).
+   * @param quizScoreRepository Per-quiz best score tracking.
+   * @param quizRatingRepository Quiz rating lookup for XP eligibility.
+   * @param storyLevelRepository Story-level metadata.
+   * @param userStoryProgressRepository Story progress persistence.
+   * @param storySessionRepository Story session metadata for a game session.
+   * @param classicCategoryLevelRepository Classic level metadata.
+   * @param userClassicProgressRepository Classic progress persistence.
+   * @param classicSessionRepository Classic session metadata for a game session.
+   * @param sessionStartService Session creation/append helpers.
+   * @returns A `SessionService` instance.
+   */
   constructor({
     gameSessionRepository,
     sessionQuestionRepository,
@@ -198,6 +220,12 @@ export class SessionService {
     this.sessionStartService = sessionStartService;
   }
 
+  /**
+   * Ensure the caller is the owner of the session (for non-guest sessions).
+   * @param sessionId Session id.
+   * @param userId Authenticated user id.
+   * @returns The session record if accessible.
+   */
   async assertSessionOwner(sessionId: string, userId: string | null | undefined) {
     if (!userId) throw new AppError('Missing Bearer token', 401, 'UNAUTHORIZED');
     const session = await this.gameSessionRepository.findById(sessionId);
@@ -206,6 +234,12 @@ export class SessionService {
     return session;
   }
 
+  /**
+   * Get the current question payload for a session.
+   * @param sessionId Session id.
+   * @param userId Authenticated user id (or null for guests).
+   * @returns The current question state (includes mode-specific fields like lifelines/timers).
+   */
   async getCurrent(sessionId: string, userId: string | null | undefined) {
     const cached = sessionCache.get(sessionId);
     if (cached?.mode) {
@@ -371,6 +405,12 @@ export class SessionService {
     return payload;
   }
 
+  /**
+   * Build a review view of a session (answers + correct options + explanations when missed).
+   * @param sessionId Session id.
+   * @param userId Authenticated user id (or null for guests).
+   * @returns Review payload for the client.
+   */
   async getReview(sessionId: string, userId: string | null | undefined) {
     const cached = sessionCache.get(sessionId);
     if (cached?.mode && cached.is_guest) {
@@ -486,6 +526,13 @@ export class SessionService {
     };
   }
 
+  /**
+   * Record an answer for the current question and advance the session (mode-specific rules apply).
+   * @param sessionId Session id.
+   * @param userId Authenticated user id (or null for guests).
+   * @param body Answer payload containing the session question id and chosen option id.
+   * @returns Answer outcome (correctness, score updates, and optionally the next question).
+   */
   async submitAnswer(
     sessionId: string,
     userId: string | null | undefined,
@@ -1182,6 +1229,13 @@ export class SessionService {
     };
   }
 
+  /**
+   * Use a lifeline (millionaire-only) and persist its payload.
+   * @param sessionId Session id.
+   * @param userId Authenticated user id (or null for guests).
+   * @param body Lifeline payload containing type and session question id.
+   * @returns Lifeline result payload (disabled options, poll, phone hint, etc.).
+   */
   async useLifeline(
     sessionId: string,
     userId: string | null | undefined,
@@ -1391,6 +1445,13 @@ export class SessionService {
     return { lifeline_type: body.lifeline_type, ...payload };
   }
 
+  /**
+   * Mark a session as finished and perform post-processing (leaderboards, XP, progress unlocks).
+   * @param sessionId Session id.
+   * @param userId Authenticated user id (or null for guests).
+   * @param status Final session status (e.g. `completed`, `abandoned`).
+   * @returns Summary payload including warnings and mode-specific completion details.
+   */
   async finish(sessionId: string, userId: string | null | undefined, status: string) {
     const cached = sessionCache.get(sessionId);
     if (cached?.mode && cached.is_guest) {

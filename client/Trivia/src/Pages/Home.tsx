@@ -25,6 +25,11 @@ type HomeProps = {
   onNavigateBlitz?: () => void;
 };
 
+/**
+ * Format a large numeric metric into a compact display string.
+ * @param n Raw numeric-ish value.
+ * @returns Human-friendly string (e.g. `1K+`, `3M+`) or an em dash when invalid.
+ */
 function formatCount(n: number | string | null | undefined) {
   const num = Number(n);
   if (!Number.isFinite(num)) return STRINGS.COMMON.separators.emDash;
@@ -33,6 +38,12 @@ function formatCount(n: number | string | null | undefined) {
   return String(num);
 }
 
+/**
+ * Home/landing page: fetches public metrics and presents the primary game mode entry points.
+ * @param user Current user snapshot (used to gate "Create Quiz").
+ * @param onRequireAuth Callback to trigger auth UI when a protected action is requested.
+ * @returns React element.
+ */
 function Home({
   user,
   onRequireAuth,
@@ -112,5 +123,4 @@ function Home({
 }
 
 export default Home;
-
 

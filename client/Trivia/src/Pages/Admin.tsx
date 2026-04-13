@@ -14,6 +14,10 @@ type AdminProps = {
   onNavigateCreateQuiz?: () => void;
 };
 
+/**
+ * Parse the configured admin email allowlist from Vite env.
+ * @returns Lowercased set of allowed admin emails.
+ */
 function getAdminEmailSet() {
   const raw =
     import.meta.env.VITE_ADMIN_EMAILS || import.meta.env.VITE_ADMIN_EMAIL || '';
@@ -25,6 +29,12 @@ function getAdminEmailSet() {
   );
 }
 
+/**
+ * Admin page gate: checks configured admin emails and renders the admin dashboard for authorized users.
+ * @param user Current user snapshot.
+ * @param onRequireAuth Callback to open login flow.
+ * @returns React element.
+ */
 export default function Admin({
   user,
   onRequireAuth,

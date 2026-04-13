@@ -30,7 +30,17 @@ function toAppError(error: DatabaseErrorLike): AppError | null {
 const selectFields = 'session_id, level_id, level_number, created_at';
 const mapStorySessionRow = (row: unknown): StorySessionRow => row as unknown as StorySessionRow;
 
+/**
+ * Repository for story session metadata rows (`story_sessions`).
+ */
 export class StorySessionRepository {
+  /**
+   * Create a story session row for a game session.
+   * @param session_id Game session id.
+   * @param level_id Story level id.
+   * @param level_number Story level number.
+   * @returns Created story session row or `null`.
+   */
   async create({ session_id, level_id, level_number }: CreateStorySessionInput): Promise<StorySessionRow | null> {
     const { data, error } = await supabase
       .from('story_sessions')
@@ -41,6 +51,11 @@ export class StorySessionRepository {
     return data?.[0] ? mapStorySessionRow(data[0]) : null;
   }
 
+  /**
+   * Find story metadata by session id.
+   * @param sessionId Game session id.
+   * @returns Story session row or `null`.
+   */
   async findBySessionId(sessionId: string): Promise<StorySessionRow | null> {
     const { data, error } = await supabase
       .from('story_sessions')
@@ -51,6 +66,11 @@ export class StorySessionRepository {
     return data?.[0] ? mapStorySessionRow(data[0]) : null;
   }
 
+  /**
+   * Delete story session rows for a level.
+   * @param levelId Story level id.
+   * @returns `true` on success.
+   */
   async deleteByLevelId(levelId: string): Promise<true> {
     const normalizedLevelId = String(levelId || '').trim();
     if (!normalizedLevelId) return true;

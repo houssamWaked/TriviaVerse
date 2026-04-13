@@ -10,6 +10,11 @@ type DeleteCookieOptions = {
   path?: string;
 };
 
+/**
+ * Read a cookie value by name.
+ * @param name Cookie name.
+ * @returns Cookie value (decoded) or `null` if missing/unavailable.
+ */
 export function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;
   const normalizedName = String(name).trim();
@@ -22,6 +27,13 @@ export function getCookie(name: string): string | null {
   return null;
 }
 
+/**
+ * Set a cookie with basic options (max-age/path/samesite).
+ * @param name Cookie name.
+ * @param value Cookie value (stringified).
+ * @param options Cookie options.
+ * @returns Void.
+ */
 export function setCookie(name: string, value: unknown, options: CookieOptions = {}): void {
   if (typeof document === 'undefined') return;
   const normalizedName = String(name).trim();
@@ -36,6 +48,12 @@ export function setCookie(name: string, value: unknown, options: CookieOptions =
   )}; Path=${path}; SameSite=${sameSite}${secure}`;
 }
 
+/**
+ * Delete a cookie by setting a zero Max-Age.
+ * @param name Cookie name.
+ * @param options Delete options (path must match how it was set).
+ * @returns Void.
+ */
 export function deleteCookie(name: string, options: DeleteCookieOptions = {}): void {
   if (typeof document === 'undefined') return;
   const normalizedName = String(name).trim();
@@ -44,6 +62,12 @@ export function deleteCookie(name: string, options: DeleteCookieOptions = {}): v
   document.cookie = `${normalizedName}=; Max-Age=0; Path=${path}; SameSite=Lax`;
 }
 
+/**
+ * Delete all cookies whose names start with a prefix.
+ * @param prefix Cookie name prefix.
+ * @param options Delete options (path must match how cookies were set).
+ * @returns Void.
+ */
 export function deleteCookiesByPrefix(prefix: string, options: DeleteCookieOptions = {}): void {
   if (typeof document === 'undefined') return;
   const normalizedPrefix = String(prefix);

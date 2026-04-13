@@ -10,12 +10,25 @@ const DEFAULT_GLOBAL_QUESTION_OPTIONS = [
   STRINGS.ADMIN.placeholders.optionD,
 ];
 
+/**
+ * Clamp an input to a bounded integer range.
+ * @param value Value to parse.
+ * @param min Minimum allowed value.
+ * @param max Maximum allowed value.
+ * @returns Clamped integer.
+ */
 function clampInt(value, min, max) {
   const n = Number(value);
   if (!Number.isFinite(n)) return min;
   return Math.min(max, Math.max(min, Math.floor(n)));
 }
 
+/**
+ * Admin dashboard state + actions hook (admin API orchestration).
+ * Returns UI state for all workspaces and the async actions that mutate it.
+ * @param user Current user snapshot.
+ * @returns Hook state/actions object.
+ */
 export default function useAdminDashboard({ user }) {
   const [workspace, setWorkspace] = useState('story');
   const [busy, setBusy] = useState(false);

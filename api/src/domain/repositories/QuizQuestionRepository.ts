@@ -74,13 +74,25 @@ async function selectWithFallback(run: QueryRunner): Promise<QueryResult<QuizQue
 
 const mapQuestionRow = (row: unknown): QuizQuestionRow => row as unknown as QuizQuestionRow;
 
+/**
+ * Repository for reading/writing `quiz_questions` rows (with schema fallbacks for optional columns).
+ */
 export class QuizQuestionRepository {
+  /**
+   * Count all quiz questions.
+   * @returns Total row count.
+   */
   async countAll(): Promise<number> {
     const { count, error } = await supabase.from('quiz_questions').select('*', { count: 'exact', head: true });
     if (error) throw toAppError(error);
     return count ?? 0;
   }
 
+  /**
+   * Count questions for a quiz.
+   * @param quizId Quiz id.
+   * @returns Count of questions for the quiz.
+   */
   async countByQuizId(quizId: string): Promise<number> {
     const id = String(quizId || '').trim();
     if (!id) return 0;
@@ -92,6 +104,11 @@ export class QuizQuestionRepository {
     return count ?? 0;
   }
 
+  /**
+   * List questions for a quiz ordered by `order_index`.
+   * @param quizId Quiz id.
+   * @returns Array of question rows.
+   */
   async listByQuizId(quizId: string): Promise<QuizQuestionRow[]> {
     const res = await selectWithFallback((fields) =>
       supabase.from('quiz_questions').select(fields).eq('quiz_id', quizId).order('order_index', { ascending: true })
@@ -100,6 +117,11 @@ export class QuizQuestionRepository {
     return (res.data || []).map(mapQuestionRow);
   }
 
+  /**
+   * Find a question by id.
+   * @param id Question id.
+   * @returns Question row or `null`.
+   */
   async findById(id: string): Promise<QuizQuestionRow | null> {
     const res = await selectWithFallback((fields) =>
       supabase.from('quiz_questions').select(fields).eq('id', id).limit(1)
@@ -108,6 +130,11 @@ export class QuizQuestionRepository {
     return res.data?.[0] ? mapQuestionRow(res.data[0]) : null;
   }
 
+  /**
+   * Create a question row.
+   * @param payload Insert payload.
+   * @returns Created question row or `null`.
+   */
   async create(payload: CreateQuizQuestionInput): Promise<QuizQuestionRow | null> {
     const res = await selectWithFallback((fields) =>
       supabase.from('quiz_questions').insert(payload).select(fields).limit(1)
@@ -116,6 +143,12 @@ export class QuizQuestionRepository {
     return res.data?.[0] ? mapQuestionRow(res.data[0]) : null;
   }
 
+  /**
+   * Patch a question row by id.
+   * @param id Question id.
+   * @param patch Patch payload.
+   * @returns Updated question row or `null`.
+   */
   async update(id: string, patch: UpdateQuizQuestionInput): Promise<QuizQuestionRow | null> {
     const res = await selectWithFallback((fields) =>
       supabase.from('quiz_questions').update(patch).eq('id', id).select(fields).limit(1)
@@ -124,12 +157,22 @@ export class QuizQuestionRepository {
     return res.data?.[0] ? mapQuestionRow(res.data[0]) : null;
   }
 
+  /**
+   * Delete a question by id.
+   * @param id Question id.
+   * @returns `true` if a row was deleted.
+   */
   async delete(id: string): Promise<boolean> {
     const { error, count } = await supabase.from('quiz_questions').delete({ count: 'exact' }).eq('id', id);
     if (error) throw toAppError(error);
     return (count ?? 0) > 0;
   }
 
+  /**
+   * List a random set of questions (any quiz/global).
+   * @param limit Number of questions requested.
+   * @returns Array of question rows.
+   */
   async listRandom(limit: number): Promise<QuizQuestionRow[]> {
     const cap = Math.min(200, Math.max(1, limit * 5));
     const res = await selectWithFallback((fields) => supabase.from('quiz_questions').select(fields).limit(cap));
@@ -142,6 +185,11 @@ export class QuizQuestionRepository {
     return rows.slice(0, Math.min(limit, rows.length));
   }
 
+  /**
+   * List a random set of global questions (`quiz_id` is null).
+   * @param limit Number of questions requested.
+   * @returns Array of global question rows.
+   */
   async listRandomGlobal(limit: number): Promise<QuizQuestionRow[]> {
     const cap = Math.min(200, Math.max(1, limit * 5));
     const res = await selectWithFallback((fields) =>
@@ -156,6 +204,13 @@ export class QuizQuestionRepository {
     return rows.slice(0, Math.min(limit, rows.length));
   }
 
+  /**
+   * List a random set of global questions constrained by difficulty rating.
+   * @param limit Number of questions requested.
+   * @param min Minimum difficulty rating.
+   * @param max Maximum difficulty rating.
+   * @returns Array of global question rows.
+   */
   async listRandomGlobalByDifficultyRange(
     limit: number,
     { min = 1, max = 10 }: DifficultyRange = {}
@@ -180,6 +235,11 @@ export class QuizQuestionRepository {
     return rows.slice(0, Math.min(lim, rows.length));
   }
 
+  /**
+   * List questions by ids.
+   * @param ids Question ids.
+   * @returns Array of question rows.
+   */
   async listByIds(ids: string[] = []): Promise<QuizQuestionRow[]> {
     const unique = Array.from(new Set(ids.filter(Boolean)));
     if (unique.length === 0) return [];
@@ -190,6 +250,14 @@ export class QuizQuestionRepository {
     return (res.data || []).map(mapQuestionRow);
   }
 
+  /**
+   * List global questions with optional search/pagination/assignment filtering.
+   * @param q Optional search text.
+   * @param limit Page size.
+   * @param offset Page offset.
+   * @param assigned `all` | `assigned` | `unassigned` (best-effort based on schema).
+   * @returns Array of global question rows.
+   */
   async listGlobal({ q = '', limit = 20, offset = 0, assigned = 'all' }: ListGlobalInput = {}): Promise<QuizQuestionRow[]> {
     const query = String(q || '').trim();
     const lim = Math.min(50, Math.max(1, Number(limit) || 20));
@@ -218,6 +286,11 @@ export class QuizQuestionRepository {
     return (res.data || []).map(mapQuestionRow);
   }
 
+  /**
+   * Delete all questions for a quiz.
+   * @param quizId Quiz id.
+   * @returns `true` on success.
+   */
   async deleteByQuizId(quizId: string): Promise<true> {
     const { error } = await supabase.from('quiz_questions').delete().eq('quiz_id', quizId);
     if (error) throw toAppError(error);

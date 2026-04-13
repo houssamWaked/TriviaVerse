@@ -52,6 +52,12 @@ type Props = {
   modeLabel: string;
 };
 
+/**
+ * End-of-session results screen: score summary, share CTA, and review of missed questions.
+ * @param review Session review data for explanations.
+ * @param playAgain Callback to restart flow.
+ * @returns React element.
+ */
 export default function PlaySessionResults({
   busy,
   isStory,

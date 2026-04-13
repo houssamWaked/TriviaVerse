@@ -17,6 +17,11 @@ type LeaderboardResponse = {
   entries?: LeaderboardEntry[];
 };
 
+/**
+ * Leaderboard page: shows ranked users with mode/period filters.
+ * @param onNavigateHome Callback to return to the home page.
+ * @returns React element.
+ */
 export default function Leaderboard({ onNavigateHome }: { onNavigateHome?: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');

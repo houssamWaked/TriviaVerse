@@ -55,9 +55,17 @@ const normalizeId = (value: unknown): string => String(value || '').trim();
 const normalizeDifficulty = (value: unknown): string => String(value || '').trim().toLowerCase();
 const mapQueueRow = (row: unknown): BlitzMatchmakingQueueRow => row as unknown as BlitzMatchmakingQueueRow;
 
+/**
+ * Repository for blitz matchmaking queue entries (`blitz_matchmaking_queue`).
+ */
 export class BlitzMatchmakingQueueRepository {
   selectFields = 'id, user_id, category_id, difficulty, status, duel_id, created_at, updated_at';
 
+  /**
+   * Find a queue entry by id.
+   * @param id Queue entry id.
+   * @returns Queue row or `null`.
+   */
   async findById(id: string): Promise<BlitzMatchmakingQueueRow | null> {
     const normalizedId = normalizeId(id);
     if (!normalizedId) return null;
@@ -70,6 +78,11 @@ export class BlitzMatchmakingQueueRepository {
     return data?.[0] ? mapQueueRow(data[0]) : null;
   }
 
+  /**
+   * Find the most recent active queue entry for a user.
+   * @param userId User id.
+   * @returns Queue row or `null`.
+   */
   async findActiveByUserId(userId: string): Promise<BlitzMatchmakingQueueRow | null> {
     const normalizedUserId = normalizeId(userId);
     if (!normalizedUserId) return null;
@@ -84,6 +97,13 @@ export class BlitzMatchmakingQueueRepository {
     return data?.[0] ? mapQueueRow(data[0]) : null;
   }
 
+  /**
+   * Create a new queue entry for a user.
+   * @param user_id User id.
+   * @param category_id Optional category id.
+   * @param difficulty Difficulty label.
+   * @returns Created queue row or `null`.
+   */
   async create({ user_id, category_id = null, difficulty }: CreateQueueEntryInput): Promise<BlitzMatchmakingQueueRow | null> {
     const payload = {
       user_id,
@@ -102,6 +122,14 @@ export class BlitzMatchmakingQueueRepository {
     return data?.[0] ? mapQueueRow(data[0]) : null;
   }
 
+  /**
+   * Find a queued candidate matching the difficulty/category, excluding the given user.
+   * @param excludeUserId User id to exclude.
+   * @param category_id Optional category id (null matches null).
+   * @param difficulty Difficulty label.
+   * @param minCreatedAt Optional minimum created timestamp.
+   * @returns Candidate queue row or `null`.
+   */
   async findCandidate({
     excludeUserId,
     category_id = null,
@@ -127,6 +155,11 @@ export class BlitzMatchmakingQueueRepository {
     return data?.[0] ? mapQueueRow(data[0]) : null;
   }
 
+  /**
+   * Atomically claim a queued entry by switching it to `matching`.
+   * @param id Queue entry id.
+   * @returns Updated queue row or `null` if not claimable.
+   */
   async claimMatching(id: string): Promise<BlitzMatchmakingQueueRow | null> {
     const normalizedId = normalizeId(id);
     if (!normalizedId) return null;
@@ -142,6 +175,12 @@ export class BlitzMatchmakingQueueRepository {
     return data?.[0] ? mapQueueRow(data[0]) : null;
   }
 
+  /**
+   * Mark an entry as matched and attach the duel id.
+   * @param id Queue entry id.
+   * @param duelId Duel id.
+   * @returns Updated queue row or `null`.
+   */
   async markMatched(id: string, duelId: string): Promise<BlitzMatchmakingQueueRow | null> {
     const normalizedId = normalizeId(id);
     const normalizedDuelId = normalizeId(duelId);
@@ -158,6 +197,12 @@ export class BlitzMatchmakingQueueRepository {
     return data?.[0] ? mapQueueRow(data[0]) : null;
   }
 
+  /**
+   * Cancel a queued/matching entry for a user.
+   * @param id Queue entry id.
+   * @param userId User id.
+   * @returns Updated queue row or `null`.
+   */
   async cancel(id: string, userId: string): Promise<BlitzMatchmakingQueueRow | null> {
     const normalizedId = normalizeId(id);
     const normalizedUserId = normalizeId(userId);

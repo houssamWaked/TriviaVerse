@@ -20,11 +20,19 @@ type HomeMetrics = {
   fun_level: number;
 };
 
+// Domain service for unauthenticated read-only endpoints.
 export class PublicService {
   gameSessionRepository: GameSessionRepositoryLike;
   quizQuestionRepository: QuizQuestionRepositoryLike;
   quizRepository: QuizRepositoryLike;
 
+  /**
+   * Construct the public service.
+   * @param gameSessionRepository Repository for game sessions (active players).
+   * @param quizQuestionRepository Repository for total question counts.
+   * @param quizRepository Repository for total quiz counts.
+   * @returns A `PublicService` instance.
+   */
   constructor(
     gameSessionRepository: GameSessionRepositoryLike,
     quizQuestionRepository: QuizQuestionRepositoryLike,
@@ -35,6 +43,10 @@ export class PublicService {
     this.quizRepository = quizRepository;
   }
 
+  /**
+   * Build home-page metrics by aggregating counts from repositories.
+   * @returns Metric snapshot used by the client home screen.
+   */
   async getHomeMetrics(): Promise<HomeMetrics> {
     const [active_players, questions, quizzes_created] = await Promise.all([
       this.gameSessionRepository.countDistinctActivePlayers(),

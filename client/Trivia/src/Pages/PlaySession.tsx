@@ -40,6 +40,12 @@ type PlaySessionProps = {
   classicLevelNumber?: number | null;
 };
 
+/**
+ * Session play screen: renders the current question, handles answers/lifelines, and shows results/review.
+ * @param sessionId Active session id.
+ * @param user Current user snapshot (enables realtime updates).
+ * @returns React element.
+ */
 export default function PlaySession({
   sessionId,
   user,

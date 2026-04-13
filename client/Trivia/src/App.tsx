@@ -144,6 +144,10 @@ type DuelEntry = {
 
 type AuthErrorDetails = Array<{ message?: string }> | null;
 
+/**
+ * Parse the current hash URL into a typed route object.
+ * @returns Current route representation used by the app.
+ */
 function getRoute(): Route {
   const hash = String(window.location.hash || '').replace(/^#/, '') || '/';
   const [rawPath, rawQuery] = hash.split('?');
@@ -181,6 +185,12 @@ function getRoute(): Route {
   return { name: 'home' };
 }
 
+/**
+ * Navigate by updating the hash route (client-side routing).
+ * @param route Target route name.
+ * @param params Route params used to build the hash and query string.
+ * @returns Void.
+ */
 function navigate(route: RouteName | 'friend' | 'quiz' | 'play' | 'duel-play', params: NavigateParams = {}) {
   if (route === 'create-quiz') {
     const query = params.quizId ? `?quizId=${encodeURIComponent(params.quizId)}` : '';
@@ -247,6 +257,10 @@ function navigate(route: RouteName | 'friend' | 'quiz' | 'play' | 'duel-play', p
   window.location.hash = '#/';
 }
 
+/**
+ * Build the configured set of admin emails from env.
+ * @returns Set of lowercased admin email strings.
+ */
 function getAdminEmailSet() {
   const raw = import.meta.env.VITE_ADMIN_EMAILS || import.meta.env.VITE_ADMIN_EMAIL || '';
   return new Set(
@@ -257,6 +271,11 @@ function getAdminEmailSet() {
   );
 }
 
+/**
+ * Sort duel entries by newest created-at first.
+ * @param entries Duel entries list.
+ * @returns New sorted array.
+ */
 function sortDuelsNewestFirst(entries: DuelEntry[]) {
   return [...entries].sort((left, right) => {
     const leftTs = left?.created_at ? new Date(left.created_at).getTime() : 0;
@@ -265,6 +284,12 @@ function sortDuelsNewestFirst(entries: DuelEntry[]) {
   });
 }
 
+/**
+ * Insert or update a duel entry by id, keeping newest-first sorting.
+ * @param entries Existing duel entries.
+ * @param nextEntry Duel entry to insert/update.
+ * @returns Updated entries array.
+ */
 function upsertDuelEntry(entries: DuelEntry[], nextEntry: DuelEntry) {
   const duelId = String(nextEntry?.id || '').trim();
   if (!duelId) return entries;
@@ -282,6 +307,10 @@ function upsertDuelEntry(entries: DuelEntry[], nextEntry: DuelEntry) {
   return sortDuelsNewestFirst(next);
 }
 
+/**
+ * Root application component (hash-based routing + auth/session bootstrap + realtime sync).
+ * @returns App layout and the current page.
+ */
 function App() {
   const [route, setRoute] = React.useState<Route>(getRoute);
   const [user, setUser] = React.useState<StoredUser>(() => getCurrentUser());

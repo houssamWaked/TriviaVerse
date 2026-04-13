@@ -50,6 +50,11 @@ function normalizeNumberMap(value: unknown): Record<string, number> {
   );
 }
 
+/**
+ * Load guest classic progress for a category from localStorage.
+ * @param categoryId Category identifier (string/number).
+ * @returns Progress bucket containing completion, best scores, and stars.
+ */
 export function loadGuestClassicProgress(categoryId: unknown): GuestClassicBucket {
   if (typeof window === 'undefined') {
     return { completed: {}, bestScore: {}, stars: {} };
@@ -69,6 +74,15 @@ export function loadGuestClassicProgress(categoryId: unknown): GuestClassicBucke
   };
 }
 
+/**
+ * Save a guest classic session result for a category level.
+ * @param categoryId Category identifier.
+ * @param levelNumber Category level number.
+ * @param scoreTotal Session score total.
+ * @param passed Whether the level was passed.
+ * @param stars Stars earned for this attempt.
+ * @returns `true` on success, `false` for invalid input.
+ */
 export function saveGuestClassicResult(
   categoryId: unknown,
   levelNumber: unknown,
@@ -105,6 +119,12 @@ export function saveGuestClassicResult(
   return true;
 }
 
+/**
+ * Compute the maximum unlocked classic level for a guest in a category.
+ * @param categoryId Category identifier.
+ * @param levels Full level list (used to cap unlock value).
+ * @returns Highest unlocked level number (>= 1).
+ */
 export function computeGuestClassicUnlockedMax(categoryId: unknown, levels: LevelLike[] = []): number {
   const key = normalizeCategoryKey(categoryId);
   const progress = loadGuestClassicProgress(key);

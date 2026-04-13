@@ -3,6 +3,9 @@ import AdminStyle from '../../Styles/ComponentStyles/AdminStyle';
 import AdminDashboardStyle from '../../Styles/ComponentStyles/AdminDashboardStyle';
 import { STRINGS } from '@/constants/strings';
 
+/**
+ * Admin "Reports" workspace: triage/resolve quiz reports and perform moderation actions.
+ */
 export default function AdminDashboardReportsWorkspace({
   busy,
   reportsStatus,

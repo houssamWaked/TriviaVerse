@@ -103,6 +103,7 @@ function buildModeSummary(sessions: GameSessionLike[] = []) {
   return { all, by_mode: byMode };
 }
 
+// Domain service for current-user operations (profile aggregation + self-service reset).
 export class MeService {
   userRepository: UserRepositoryLike;
   userStatsRepository: UserStatsRepositoryLike;
@@ -111,6 +112,16 @@ export class MeService {
   quizScoreRepository: QuizScoreRepositoryLike;
   quizRepository: QuizRepositoryLike;
 
+  /**
+   * Construct the current-user service.
+   * @param userRepository User lookup repository.
+   * @param userStatsRepository User stats repository.
+   * @param gameSessionRepository Session history repository.
+   * @param storyService Story progress service (optional; failures are tolerated).
+   * @param quizScoreRepository Custom quiz best-score repository.
+   * @param quizRepository Quiz metadata repository.
+   * @returns A `MeService` instance.
+   */
   constructor({
     userRepository,
     userStatsRepository,
@@ -134,6 +145,11 @@ export class MeService {
     this.quizRepository = quizRepository;
   }
 
+  /**
+   * Aggregate a user profile: basic user info, stats, mode summaries, story progress, and best custom scores.
+   * @param userId Authenticated user id.
+   * @returns Profile payload for the client.
+   */
   async getProfile(userId: string) {
     const [userEntity, stats, sessions] = await Promise.all([
       this.userRepository.findById(userId),
@@ -186,6 +202,11 @@ export class MeService {
     };
   }
 
+  /**
+   * Reset a user's progress data (best-effort, preserves duel-linked sessions to avoid affecting others).
+   * @param userId Authenticated user id.
+   * @returns `{ success, user_id, warnings }`.
+   */
   async resetProgress(userId: string) {
     const uid = String(userId || '').trim();
     if (!uid) throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
@@ -200,6 +221,7 @@ export class MeService {
       return code === '42P01';
     };
 
+    // Run an operation and treat "table missing" as a warning (some features are optional by migration).
     const safe = async <T>(op: () => Promise<T>, { table = null as string | null } = {}): Promise<T | null> => {
       try {
         return await op();
@@ -255,6 +277,7 @@ export class MeService {
       return true;
     }, { table: 'duels' });
 
+    // Preserve duel sessions so resetting one user doesn't break the other player's duel history/state.
     const deletableSessionIds = duelSessionIds.size > 0 ? sessionIds.filter((id) => !duelSessionIds.has(id)) : sessionIds;
     if (deletableSessionIds.length !== sessionIds.length) {
       warnings.push({

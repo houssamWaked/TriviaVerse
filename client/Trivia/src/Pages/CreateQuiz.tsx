@@ -15,10 +15,21 @@ type CreateQuizProps = {
   onNavigateHome?: () => void;
 };
 
+/**
+ * Sort by `order_index` for quiz questions/options.
+ * @param a Left item.
+ * @param b Right item.
+ * @returns Sort comparator result.
+ */
 function sortByOrderIndex(a: any, b: any) {
   return (a?.order_index ?? 0) - (b?.order_index ?? 0);
 }
 
+/**
+ * Validate quiz questions before publishing (minimum options, exactly one correct, has explanation).
+ * @param questions Quiz questions with options.
+ * @returns List of validation issue strings (empty means publishable).
+ */
 function validateQuestionsForPublish(questions: any[] = []) {
   const issues: string[] = [];
   for (const q of questions || []) {
@@ -49,6 +60,12 @@ function validateQuestionsForPublish(questions: any[] = []) {
   return issues;
 }
 
+/**
+ * Quiz builder page: create/edit/publish quizzes and manage questions/options/access.
+ * @param user Current user snapshot (required).
+ * @param onRequireAuth Callback to open auth UI if needed.
+ * @returns React element.
+ */
 export default function CreateQuiz({
   user,
   onRequireAuth,

@@ -40,6 +40,12 @@ type Props = {
   onFinish: () => void;
 };
 
+/**
+ * Default session question view: renders question/options and lifelines for supported modes.
+ * @param question Current session question.
+ * @param answerResult Server result used to reveal correct/wrong state.
+ * @returns React element.
+ */
 export default function PlaySessionDefaultQuestionView({
   question,
   busy,

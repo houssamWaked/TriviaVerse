@@ -3,6 +3,12 @@ import AdminStyle from '../../Styles/ComponentStyles/AdminStyle';
 import AdminDashboardStyle from '../../Styles/ComponentStyles/AdminDashboardStyle';
 import { STRINGS } from '@/constants/strings';
 
+/**
+ * Simple progress bar used in story level overview.
+ * @param value Current count.
+ * @param max Max count.
+ * @returns React element.
+ */
 function ProgressBar({ value, max }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
   return (
@@ -12,6 +18,9 @@ function ProgressBar({ value, max }) {
   );
 }
 
+/**
+ * Admin "Story" workspace: create levels, view overview, and open/seed/edit story level pools.
+ */
 export default function AdminDashboardStoryWorkspace({
   busy,
   levelForm,

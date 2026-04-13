@@ -132,6 +132,17 @@ export class FriendService {
   gameSessionRepository: GameSessionRepositoryLike;
   storyService: StoryServiceLike;
 
+  /**
+   * Construct the friends service.
+   * @param friendRepository Friendships + friend request persistence.
+   * @param userRepository User lookups by username/id.
+   * @param userStatsRepository Stats lookups for profiles.
+   * @param quizScoreRepository Best-score history for profiles.
+   * @param quizRepository Quiz metadata for best-score rows.
+   * @param gameSessionRepository Session history for mode summaries.
+   * @param storyService Story progress aggregation.
+   * @returns A `FriendService` instance.
+   */
   constructor({
     friendRepository,
     userRepository,
@@ -158,6 +169,12 @@ export class FriendService {
     this.storyService = storyService;
   }
 
+  /**
+   * Send a friend request by username (auto-accepts if an inverse request exists).
+   * @param userId Current user id.
+   * @param username Target username.
+   * @returns Result describing whether the users are now friends or a request was created.
+   */
   async sendRequest(userId: string, username: string) {
     const target = await this.userRepository.findByUsername(username);
     if (!target) throw new AppError('User not found', 404, 'NOT_FOUND');
@@ -209,6 +226,11 @@ export class FriendService {
     };
   }
 
+  /**
+   * List incoming and outgoing friend requests for a user.
+   * @param userId Current user id.
+   * @returns `{ incoming, outgoing }` request lists (empty when feature not configured).
+   */
   async listRequests(userId: string) {
     let incoming: FriendRequestLike[] = [];
     let outgoing: FriendRequestLike[] = [];
@@ -246,6 +268,12 @@ export class FriendService {
     };
   }
 
+  /**
+   * Accept an incoming friend request.
+   * @param userId Current user id (must match request recipient).
+   * @param requestId Friend request id.
+   * @returns `{ success, friend }`.
+   */
   async acceptRequest(userId: string, requestId: string) {
     const requestRow = await this.friendRepository.findRequestById(requestId);
     if (!requestRow) throw new AppError('Request not found', 404, 'NOT_FOUND');
@@ -260,6 +288,12 @@ export class FriendService {
     };
   }
 
+  /**
+   * Decline an incoming friend request.
+   * @param userId Current user id (must match request recipient).
+   * @param requestId Friend request id.
+   * @returns `{ success, other_user_id, request_id }`.
+   */
   async declineRequest(userId: string, requestId: string) {
     const requestRow = await this.friendRepository.findRequestById(requestId);
     if (!requestRow) throw new AppError('Request not found', 404, 'NOT_FOUND');
@@ -272,6 +306,12 @@ export class FriendService {
     };
   }
 
+  /**
+   * Cancel an outgoing friend request.
+   * @param userId Current user id (must match request sender).
+   * @param requestId Friend request id.
+   * @returns `{ success, other_user_id, request_id }`.
+   */
   async cancelRequest(userId: string, requestId: string) {
     const requestRow = await this.friendRepository.findRequestById(requestId);
     if (!requestRow) throw new AppError('Request not found', 404, 'NOT_FOUND');
@@ -284,6 +324,11 @@ export class FriendService {
     };
   }
 
+  /**
+   * List friends for a user.
+   * @param userId Current user id.
+   * @returns Array of friend user summaries.
+   */
   async listFriends(userId: string) {
     let friendIds: string[] = [];
     try {
@@ -296,6 +341,12 @@ export class FriendService {
     return users.map((user) => ({ id: user.id, username: user.username, avatar_url: user.avatar_url }));
   }
 
+  /**
+   * Fetch a friend's profile as viewed by the current user (requires friendship).
+   * @param userId Current user id.
+   * @param friendUserId Friend user id.
+   * @returns Profile payload including stats/mode summary/story progress and safe best-scores.
+   */
   async getFriendProfile(userId: string, friendUserId: string) {
     const ok = await this.friendRepository.areFriends(userId, friendUserId);
     if (!ok) throw new AppError('Forbidden', 403, 'FORBIDDEN');

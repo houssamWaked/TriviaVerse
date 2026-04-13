@@ -55,30 +55,56 @@ const mapQuizRow = (row: unknown): QuizRow => row as unknown as QuizRow;
 export class QuizRepository {
   _keywordsSupported: boolean | null;
 
+  /**
+   * Construct the quiz repository.
+   * @returns A `QuizRepository` instance.
+   */
   constructor() {
     this._keywordsSupported = null;
   }
 
+  /**
+   * Base select columns for queries (without `keywords`).
+   * @returns Comma-separated column list.
+   */
   baseSelectColumns(): string {
     return 'id, owner_user_id, title, description, cover_image_url, visibility, status, created_at, published_at';
   }
 
+  /**
+   * Select columns for queries (includes `keywords` when supported).
+   * @returns Comma-separated column list.
+   */
   selectColumns(): string {
     if (this._keywordsSupported === false) return this.baseSelectColumns();
     return `${this.baseSelectColumns()}, keywords`;
   }
 
+  /**
+   * Detect missing-column schema errors for this table.
+   * @param error Supabase error object.
+   * @returns `true` when the error indicates a missing column.
+   */
   isSchemaMissingColumn(error: DatabaseErrorLike): boolean {
     const code = String(error?.code || '').trim();
     return code === '42703';
   }
 
+  /**
+   * Count all quizzes (any status/visibility).
+   * @returns Total row count.
+   */
   async countAll(): Promise<number> {
     const { count, error } = await supabase.from('quizzes').select('*', { count: 'exact', head: true });
     if (error) throw toAppError(error);
     return count ?? 0;
   }
 
+  /**
+   * Create a quiz row (best-effort handles older schemas without `keywords`).
+   * @param payload Insert payload.
+   * @returns Created quiz row or `null`.
+   */
   async create(payload: CreateQuizInput): Promise<QuizRow | null> {
     const { data, error } = await supabase.from('quizzes').insert(payload).select(this.selectColumns()).limit(1);
     if (error) {
@@ -97,6 +123,11 @@ export class QuizRepository {
     return data?.[0] ? mapQuizRow(data[0]) : null;
   }
 
+  /**
+   * Find a quiz by id (best-effort handles older schemas without `keywords`).
+   * @param id Quiz id.
+   * @returns Quiz row or `null`.
+   */
   async findById(id: string): Promise<QuizRow | null> {
     const res = await supabase.from('quizzes').select(this.selectColumns()).eq('id', id).limit(1);
     if (res.error && this.isSchemaMissingColumn(res.error)) {
@@ -109,6 +140,11 @@ export class QuizRepository {
     return res.data?.[0] ? mapQuizRow(res.data[0]) : null;
   }
 
+  /**
+   * Find quizzes by ids (best-effort handles older schemas without `keywords`).
+   * @param ids Quiz ids.
+   * @returns Array of quiz rows.
+   */
   async findByIds(ids: string[] = []): Promise<QuizRow[]> {
     const unique = Array.from(new Set(ids.filter(Boolean)));
     if (unique.length === 0) return [];
@@ -124,6 +160,12 @@ export class QuizRepository {
     return (res.data || []).map(mapQuizRow);
   }
 
+  /**
+   * Patch a quiz row (best-effort handles older schemas without `keywords`).
+   * @param id Quiz id.
+   * @param patch Patch payload.
+   * @returns Updated quiz row or `null`.
+   */
   async update(id: string, patch: UpdateQuizInput): Promise<QuizRow | null> {
     const res = await supabase.from('quizzes').update(patch).eq('id', id).select(this.selectColumns()).limit(1);
     if (res.error && this.isSchemaMissingColumn(res.error)) {
@@ -137,6 +179,11 @@ export class QuizRepository {
     return res.data?.[0] ? mapQuizRow(res.data[0]) : null;
   }
 
+  /**
+   * List quizzes owned by a user.
+   * @param owner_user_id Owner user id.
+   * @returns Array of quiz rows.
+   */
   async listByOwnerUserId(owner_user_id: string): Promise<QuizRow[]> {
     const res = await supabase
       .from('quizzes')
@@ -157,6 +204,13 @@ export class QuizRepository {
     return (res.data || []).map(mapQuizRow);
   }
 
+  /**
+   * Search published quizzes by title/description/keywords (and by id when query is a UUID).
+   * @param q Search text.
+   * @param visibilities Allowed visibilities (defaults to public only).
+   * @param limit Max rows to return.
+   * @returns Array of matching quiz rows.
+   */
   async searchPublishedByTitle({
     q,
     visibilities = ['public'],
@@ -233,6 +287,12 @@ export class QuizRepository {
     return merged.slice(0, lim);
   }
 
+  /**
+   * List published quizzes for the given visibility set.
+   * @param visibilities Allowed visibilities (defaults to public only).
+   * @param limit Max rows to return.
+   * @returns Array of quiz rows.
+   */
   async listPublishedByVisibility({ visibilities = ['public'], limit = 50 }: ListPublishedInput = {}): Promise<QuizRow[]> {
     const lim = Math.min(200, Math.max(1, Number(limit) || 50));
     const res = await supabase
@@ -258,6 +318,11 @@ export class QuizRepository {
     return (res.data || []).map(mapQuizRow);
   }
 
+  /**
+   * Delete a quiz by id.
+   * @param id Quiz id.
+   * @returns `true` if a row was deleted.
+   */
   async delete(id: string): Promise<boolean> {
     const { error, count } = await supabase.from('quizzes').delete({ count: 'exact' }).eq('id', id);
     if (error) throw toAppError(error);

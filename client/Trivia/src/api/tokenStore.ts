@@ -48,6 +48,11 @@ export function getAuthToken() {
   return memoryToken;
 }
 
+/**
+ * Set the current in-memory access token (also mirrors into `sessionStorage`).
+ * @param token JWT access token, or null/undefined to clear.
+ * @returns Void.
+ */
 export function setAuthToken(token: string | null | undefined) {
   bootstrapLegacyToken();
   memoryToken = token ? String(token) : null;
@@ -59,6 +64,10 @@ export function setAuthToken(token: string | null | undefined) {
   }
 }
 
+/**
+ * Clear the current access token.
+ * @returns Void.
+ */
 export function clearAuthToken() {
   setAuthToken(null);
 }

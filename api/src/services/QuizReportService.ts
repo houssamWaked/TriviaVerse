@@ -32,6 +32,12 @@ export class QuizReportService {
   quizRepository: QuizRepositoryLike;
   quizReportRepository: QuizReportRepositoryLike;
 
+  /**
+   * Construct the quiz report service.
+   * @param quizRepository Quiz lookups for validation.
+   * @param quizReportRepository Report persistence.
+   * @returns A `QuizReportService` instance.
+   */
   constructor({
     quizRepository,
     quizReportRepository,
@@ -43,6 +49,14 @@ export class QuizReportService {
     this.quizReportRepository = quizReportRepository;
   }
 
+  /**
+   * Create or update an open report for a published quiz (prevents self-reporting).
+   * @param userId Reporter user id.
+   * @param quizId Quiz id.
+   * @param reason Reason code/string.
+   * @param message Optional message details.
+   * @returns `{ success: true, report_id }`.
+   */
   async reportQuiz(userId: string, quizId: string, { reason = 'other', message = null }: ReportQuizInput = {}) {
     const uid = String(userId || '').trim();
     const qid = String(quizId || '').trim();

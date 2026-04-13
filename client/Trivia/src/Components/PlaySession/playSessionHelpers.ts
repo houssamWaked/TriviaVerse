@@ -4,10 +4,21 @@ export function clampPct(n: number | string | null | undefined): number {
   return Math.max(0, Math.min(100, x));
 }
 
+/**
+ * Clamp a value to the 0–3 star range.
+ * @param n Input value.
+ * @returns Integer in \([0, 3]\).
+ */
 export function clampStars(n: number | string | null | undefined): number {
   return Math.max(0, Math.min(3, Math.floor(Number(n) || 0)));
 }
 
+/**
+ * Compute story-mode outcome (pass/stars/accuracy) from correct/total counts.
+ * @param correctCount Number of correct answers.
+ * @param totalCount Total number of questions answered.
+ * @returns Outcome object used by the story UI.
+ */
 export function computeStoryOutcomeFromCounts({
   correctCount = 0,
   totalCount = 0,
@@ -24,6 +35,11 @@ export function computeStoryOutcomeFromCounts({
   return { passed, stars, accuracy_pct: clampPct(Math.round(ratio * 100)) };
 }
 
+/**
+ * Format an integer-ish number as a Euro amount string.
+ * @param n Input value.
+ * @returns String like `€1,000`.
+ */
 export function formatMoney(n: number | string | null | undefined): string {
   const value = Math.max(0, Number(n) || 0);
   return `€${value.toLocaleString()}`;

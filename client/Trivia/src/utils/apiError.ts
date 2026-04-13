@@ -19,6 +19,11 @@ type ApiErrorLike = {
   };
 };
 
+/**
+ * Convert an API error object into a user-facing message string.
+ * @param err Axios-like error object (may include server `{ code, message, details }`).
+ * @returns A readable message with helpful validation/pool-conflict details when available.
+ */
 export function getApiErrorMessage(err: ApiErrorLike) {
   const status = Number(err?.response?.status);
   const code = String(err?.response?.data?.code || '').trim();
@@ -76,6 +81,11 @@ export function getApiErrorMessage(err: ApiErrorLike) {
   return message;
 }
 
+/**
+ * Check whether an API error represents an unauthenticated request.
+ * @param err Axios-like error object.
+ * @returns `true` when status is 401.
+ */
 export function isUnauthorized(err: ApiErrorLike) {
   return Number(err?.response?.status) === 401;
 }

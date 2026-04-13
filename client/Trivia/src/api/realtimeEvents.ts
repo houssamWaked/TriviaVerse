@@ -3,17 +3,26 @@ export type DuelChangedPayload = {
   duel: any;
 };
 
+/**
+ * Realtime payload for per-duel live state updates.
+ */
 export type DuelStatePayload = {
   duelId: string;
   state: any;
 };
 
+/**
+ * Realtime payload for session lifecycle updates.
+ */
 export type SessionChangedPayload = {
   type: 'answered' | 'lifeline_used' | 'finished';
   sessionId: string;
   finish?: any;
 };
 
+/**
+ * Realtime payload for friend-request and friendship changes.
+ */
 export type FriendsChangedPayload = {
   reason: 'request_sent' | 'request_accepted' | 'request_declined' | 'request_canceled';
   byUserId: string;
@@ -43,6 +52,12 @@ const listeners: {
   'friends:changed': new Set(),
 };
 
+/**
+ * Emit an app-local realtime event to all subscribed listeners.
+ * @param eventName Event name.
+ * @param payload Event payload (typed by event name).
+ * @returns Void.
+ */
 export function emitRealtimeEvent<T extends RealtimeEventName>(
   eventName: T,
   payload: RealtimeEventMap[T]
@@ -52,6 +67,12 @@ export function emitRealtimeEvent<T extends RealtimeEventName>(
   }
 }
 
+/**
+ * Subscribe to an app-local realtime event.
+ * @param eventName Event name.
+ * @param listener Listener callback.
+ * @returns Unsubscribe function.
+ */
 export function subscribeRealtimeEvent<T extends RealtimeEventName>(
   eventName: T,
   listener: RealtimeListener<T>

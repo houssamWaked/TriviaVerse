@@ -66,6 +66,21 @@ export class DuelService {
   private sessionAnswerRepository: any;
   private sessionStartService: any;
 
+  /**
+   * Construct the duel service.
+   * @param duelRepository Duel persistence and updates.
+   * @param duelAnswerRepository Live duel answer persistence.
+   * @param duelClaimRepository Claim/first-correct tracking.
+   * @param friendRepository Friendship checks for authorization.
+   * @param userRepository User lookups for display decoration.
+   * @param quizRepository Quiz lookups for custom duels.
+   * @param gameSessionRepository Session lookups for async/custom duel resolution.
+   * @param sessionQuestionRepository Snapshot questions used by blitz duels.
+   * @param sessionOptionRepository Snapshot options used by blitz duels.
+   * @param sessionAnswerRepository Session answers used for custom duel resolution.
+   * @param sessionStartService Session creation for duels.
+   * @returns A `DuelService` instance.
+   */
   constructor({
     duelRepository,
     duelAnswerRepository,
@@ -92,6 +107,16 @@ export class DuelService {
     this.sessionStartService = sessionStartService;
   }
 
+  /**
+   * Create a duel challenge for a friend (custom quiz or blitz duel).
+   * @param userId Challenger user id.
+   * @param friend_user_id Opponent user id.
+   * @param quiz_id Quiz id for custom duels.
+   * @param mode Duel mode (`custom` or `blitz`).
+   * @param difficulty Optional blitz difficulty label.
+   * @param category_id Optional blitz category selection.
+   * @returns Decorated duel entry for the challenger.
+   */
   async createChallenge(
     userId: string,
     {
@@ -194,6 +219,12 @@ export class DuelService {
     return await this._decorateForUser(userId, duel, { quiz, users: null });
   }
 
+  /**
+   * Accept a pending duel challenge.
+   * @param userId Opponent user id.
+   * @param duelId Duel id.
+   * @returns Decorated duel entry for the accepting user.
+   */
   async acceptChallenge(userId: string, duelId: string) {
     const duel = await this.duelRepository.findById(asId(duelId));
     if (!duel) throw new AppError('Duel not found', 404, 'NOT_FOUND');
@@ -238,6 +269,12 @@ export class DuelService {
     return await this._decorateForUser(userId, updated, { quiz, users: null });
   }
 
+  /**
+   * Decline a pending duel challenge.
+   * @param userId Opponent user id.
+   * @param duelId Duel id.
+   * @returns Decorated duel entry for the declining user.
+   */
   async declineChallenge(userId: string, duelId: string) {
     const duel = await this.duelRepository.findById(asId(duelId));
     if (!duel) throw new AppError('Duel not found', 404, 'NOT_FOUND');
@@ -252,6 +289,12 @@ export class DuelService {
     return await this._decorateForUser(userId, updated, { quiz: null, users: null });
   }
 
+  /**
+   * Cancel a pending duel challenge.
+   * @param userId Challenger user id.
+   * @param duelId Duel id.
+   * @returns Decorated duel entry for the cancelling user.
+   */
   async cancelChallenge(userId: string, duelId: string) {
     const duel = await this.duelRepository.findById(asId(duelId));
     if (!duel) throw new AppError('Duel not found', 404, 'NOT_FOUND');
@@ -266,6 +309,12 @@ export class DuelService {
     return await this._decorateForUser(userId, updated, { quiz: null, users: null });
   }
 
+  /**
+   * List the current user's duels, decorating each with quiz/user details.
+   * @param userId Current user id.
+   * @param limit Max rows to return.
+   * @returns Array of decorated duel entries.
+   */
   async listMyDuels(userId: string, limit = 50) {
     const rows = await this.duelRepository.listByUserId(userId, limit);
     const resolvedRows = [];
@@ -296,6 +345,14 @@ export class DuelService {
     );
   }
 
+  /**
+   * Decorate a duel record with user/quiz display metadata and "my role" fields.
+   * @param userId Current user id.
+   * @param duel Raw duel row.
+   * @param quiz Optional quiz row for custom duels.
+   * @param users Optional map of user id -> user row.
+   * @returns Decorated duel entry for the client.
+   */
   async _decorateForUser(
     userId: string,
     duel: any,
@@ -328,6 +385,12 @@ export class DuelService {
     };
   }
 
+  /**
+   * Compute the current live state for a blitz duel question.
+   * @param userId Current user id.
+   * @param duelId Duel id.
+   * @returns Live state payload (question, answers, timers, and claim info).
+   */
   async getLiveState(userId: string, duelId: string) {
     const duel = await this.duelRepository.findById(asId(duelId));
     if (!duel) throw new AppError('Duel not found', 404, 'NOT_FOUND');
@@ -410,6 +473,13 @@ export class DuelService {
     };
   }
 
+  /**
+   * Submit a live duel answer for the current question index.
+   * @param userId Current user id.
+   * @param duelId Duel id.
+   * @param session_option_id Snapshot option id chosen by the user.
+   * @returns Updated live state payload.
+   */
   async submitLiveAnswer(
     userId: string,
     duelId: string,
@@ -485,6 +555,12 @@ export class DuelService {
     return await this.getLiveState(userId, duel.id);
   }
 
+  /**
+   * Advance to the next question or complete the duel when both answered or time expired.
+   * @param duel Duel row.
+   * @param questions Snapshot session questions for the duel.
+   * @returns Updated duel row (or original).
+   */
   async _maybeAdvance(duel: any, questions: any[]) {
     if (!duel || duel.status !== 'active') return duel;
     if (!Array.isArray(questions) || questions.length === 0) return duel;
@@ -546,6 +622,11 @@ export class DuelService {
     );
   }
 
+  /**
+   * Compute performance summary for a session used in async custom duels.
+   * @param sessionId Game session id.
+   * @returns Summary including correct count and total time.
+   */
   async _computePerformance(sessionId: string) {
     const questions = await this.sessionQuestionRepository.listBySessionId(sessionId);
     const answers = await this.sessionAnswerRepository.listBySessionQuestionIds(
@@ -570,6 +651,11 @@ export class DuelService {
     };
   }
 
+  /**
+   * Resolve a duel that has both sessions completed (custom duels).
+   * @param duel Duel row.
+   * @returns Updated duel row when resolved; otherwise the original row.
+   */
   async _resolveIfReady(duel: any) {
     if (!duel) return duel;
     if (duel.status !== 'active') return duel;

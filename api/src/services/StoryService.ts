@@ -34,6 +34,12 @@ export class StoryService {
   storyLevelRepository: StoryLevelRepositoryLike;
   userStoryProgressRepository: UserStoryProgressRepositoryLike;
 
+  /**
+   * Construct the story service.
+   * @param storyLevelRepository Repository for story level definitions.
+   * @param userStoryProgressRepository Repository for per-user story progress rows.
+   * @returns A `StoryService` instance.
+   */
   constructor(
     storyLevelRepository: StoryLevelRepositoryLike,
     userStoryProgressRepository: UserStoryProgressRepositoryLike
@@ -42,10 +48,19 @@ export class StoryService {
     this.userStoryProgressRepository = userStoryProgressRepository;
   }
 
+  /**
+   * List all story levels.
+   * @returns Array of story levels.
+   */
   async listLevels(): Promise<StoryLevelLike[]> {
     return this.storyLevelRepository.listAll();
   }
 
+  /**
+   * Get a user's story progress (unlocks level 1 if missing).
+   * @param userId Current user id.
+   * @returns Progress summary including level list and completion counts.
+   */
   async getUserProgress(userId: string) {
     const [levels, progressRaw] = await Promise.all([
       this.storyLevelRepository.listAll(),
@@ -85,6 +100,12 @@ export class StoryService {
     };
   }
 
+  /**
+   * Ensure a user is allowed to play a level (unlocks level 1 when missing) and record an attempt.
+   * @param userId Current user id.
+   * @param level Level definition.
+   * @returns The user's progress row for this level.
+   */
   async assertLevelUnlocked(userId: string, level: StoryLevelLike): Promise<StoryProgressLike | null> {
     let progress = await this.userStoryProgressRepository.findByUserAndLevelId(userId, level.id);
     if (!progress && Number(level.level_number) === 1) {

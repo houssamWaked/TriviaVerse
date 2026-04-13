@@ -33,6 +33,11 @@ export const http = axios.create({
   withCredentials: true,
 });
 
+/**
+ * Attach the in-memory access token to every outgoing request.
+ * @param config Axios request config.
+ * @returns Updated config with `Authorization` header when a token is available.
+ */
 http.interceptors.request.use((config) => {
   const token = getAuthToken();
   if (token) {
@@ -54,6 +59,11 @@ const authHttp = axios.create({
 let refreshPromise: Promise<string | undefined> | null = null;
 let refreshBlockedUntilMs = 0;
 
+/**
+ * Extend the refresh "cooldown" window by a given duration.
+ * @param ms Duration to block refresh attempts.
+ * @returns Void.
+ */
 function blockRefresh(ms: number) {
   refreshBlockedUntilMs = Math.max(
     refreshBlockedUntilMs,
@@ -61,10 +71,18 @@ function blockRefresh(ms: number) {
   );
 }
 
+/**
+ * Get remaining time in the current refresh cooldown window.
+ * @returns Milliseconds remaining (0 when not blocked).
+ */
 function getRefreshBlockRemainingMs() {
   return Math.max(0, refreshBlockedUntilMs - Date.now());
 }
 
+/**
+ * Refresh the access token using the server-managed httpOnly refresh cookie.
+ * @returns The new access token (or undefined if missing in response).
+ */
 async function refreshAccessToken() {
   const remaining = getRefreshBlockRemainingMs();
   if (remaining > 0) {
@@ -105,6 +123,11 @@ function isAuthEndpoint(url?: string | null) {
 
 http.interceptors.response.use(
   (response) => response,
+  /**
+   * Retry 401s once after a refresh, with backoff windows to prevent refresh storms.
+   * @param error Axios error.
+   * @returns A retried request result, or a rejected promise.
+   */
   async (error: AxiosError) => {
     const status = error?.response?.status;
     const config = error?.config as RetryableRequestConfig | undefined;

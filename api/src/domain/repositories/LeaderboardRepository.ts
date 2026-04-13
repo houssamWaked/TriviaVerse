@@ -62,7 +62,17 @@ function toAppError(error: DatabaseErrorLike): AppError | null {
 
 const mapLeaderboardRow = (row: unknown): LeaderboardRow => row as unknown as LeaderboardRow;
 
+/**
+ * Repository for reading/updating `leaderboard_entries` rows.
+ */
 export class LeaderboardRepository {
+  /**
+   * List leaderboard entries for a period/mode.
+   * @param period Period (`all_time`/`weekly`).
+   * @param mode Mode name.
+   * @param limit Max rows to return.
+   * @returns Array of leaderboard rows.
+   */
   async list({ period, mode, limit = 50 }: ListLeaderboardInput): Promise<LeaderboardRow[]> {
     const { data, error } = await supabase
       .from('leaderboard_entries')
@@ -76,6 +86,13 @@ export class LeaderboardRepository {
     return (data || []).map(mapLeaderboardRow);
   }
 
+  /**
+   * Find a user's leaderboard row for a period/mode.
+   * @param user_id User id.
+   * @param period Period (`all_time`/`weekly`).
+   * @param mode Mode name.
+   * @returns Leaderboard row or `null`.
+   */
   async findByUserPeriodMode({
     user_id,
     period,
@@ -92,6 +109,13 @@ export class LeaderboardRepository {
     return data?.[0] ? mapLeaderboardRow(data[0]) : null;
   }
 
+  /**
+   * Upsert leaderboard best-score rows for a completed session (best-effort for weekly).
+   * @param user_id User id.
+   * @param mode Mode name.
+   * @param score_value Score value to record if it improves the best.
+   * @returns Updated all-time row (or `null` when ignored).
+   */
   async insertFromSession({
     user_id,
     mode,

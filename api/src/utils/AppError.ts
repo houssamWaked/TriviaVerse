@@ -9,6 +9,14 @@ export default class AppError extends Error {
   code: string;
   details?: unknown;
 
+  /**
+   * Create an application error with an HTTP status + stable error code.
+   * @param message Human-readable error message.
+   * @param statusCode HTTP status for the response.
+   * @param code Stable machine-readable error code.
+   * @param details Optional structured details for clients/logging.
+   * @returns A configured `AppError` instance.
+   */
   constructor(
     message: string,
     statusCode = 500,

@@ -28,7 +28,15 @@ const selectFields =
   'id, session_question_id, option_text_snapshot, is_correct_snapshot, order_index';
 const mapSessionOptionRow = (row: unknown): SessionOptionRow => row as unknown as SessionOptionRow;
 
+/**
+ * Repository for reading/writing `session_options` snapshot rows.
+ */
 export class SessionOptionRepository {
+  /**
+   * List snapshot options for a single session question.
+   * @param sessionQuestionId Session question id.
+   * @returns Array of option rows ordered by `order_index`.
+   */
   async listBySessionQuestionId(sessionQuestionId: string): Promise<SessionOptionRow[]> {
     const { data, error } = await supabase
       .from('session_options')
@@ -39,6 +47,11 @@ export class SessionOptionRepository {
     return (data || []).map(mapSessionOptionRow);
   }
 
+  /**
+   * List snapshot options for multiple session questions.
+   * @param sessionQuestionIds Session question ids.
+   * @returns Array of option rows ordered by question then option order.
+   */
   async listBySessionQuestionIds(sessionQuestionIds: string[] = []): Promise<SessionOptionRow[]> {
     const ids = Array.from(new Set(sessionQuestionIds.filter(Boolean)));
     if (ids.length === 0) return [];
@@ -53,6 +66,11 @@ export class SessionOptionRepository {
     return (data || []).map(mapSessionOptionRow);
   }
 
+  /**
+   * Bulk-create snapshot option rows.
+   * @param rows Insert rows.
+   * @returns Created option rows.
+   */
   async createMany(rows: CreateSessionOptionInput[]): Promise<SessionOptionRow[]> {
     const { data, error } = await supabase.from('session_options').insert(rows).select(selectFields);
     if (error) throw toAppError(error);

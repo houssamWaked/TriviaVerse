@@ -26,7 +26,14 @@ function toAppError(error: DatabaseErrorLike): AppError | null {
 
 const mapLadderRow = (row: unknown): MillionaireLadderRow => row as unknown as MillionaireLadderRow;
 
+/**
+ * Repository for millionaire ladder configuration rows (`millionaire_ladders`).
+ */
 export class MillionaireLadderRepository {
+  /**
+   * List all ladder configurations.
+   * @returns Array of ladder rows.
+   */
   async listAll(): Promise<MillionaireLadderRow[]> {
     const { data, error } = await supabase
       .from('millionaire_ladders')
@@ -35,6 +42,11 @@ export class MillionaireLadderRepository {
     return (data || []).map(mapLadderRow);
   }
 
+  /**
+   * Find a ladder configuration by id.
+   * @param id Ladder id.
+   * @returns Ladder row or `null`.
+   */
   async findById(id: string): Promise<MillionaireLadderRow | null> {
     const { data, error } = await supabase
       .from('millionaire_ladders')

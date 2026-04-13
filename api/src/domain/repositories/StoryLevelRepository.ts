@@ -34,7 +34,14 @@ const selectFields =
   'id, level_number, title, difficulty_min, difficulty_max, pass_score_min, xp_reward';
 const mapStoryLevelRow = (row: unknown): StoryLevelRow => row as unknown as StoryLevelRow;
 
+/**
+ * Repository for story level definitions (`story_levels`).
+ */
 export class StoryLevelRepository {
+  /**
+   * List all story levels ordered by level number.
+   * @returns Array of story level rows.
+   */
   async listAll(): Promise<StoryLevelRow[]> {
     const { data, error } = await supabase
       .from('story_levels')
@@ -44,6 +51,11 @@ export class StoryLevelRepository {
     return (data || []).map(mapStoryLevelRow);
   }
 
+  /**
+   * Find a story level by its level number.
+   * @param levelNumber Level number.
+   * @returns Story level row or `null`.
+   */
   async findByLevelNumber(levelNumber: number): Promise<StoryLevelRow | null> {
     const { data, error } = await supabase
       .from('story_levels')
@@ -54,12 +66,21 @@ export class StoryLevelRepository {
     return data?.[0] ? mapStoryLevelRow(data[0]) : null;
   }
 
+  /**
+   * Find a story level by id.
+   * @param id Level id.
+   * @returns Story level row or `null`.
+   */
   async findById(id: string): Promise<StoryLevelRow | null> {
     const { data, error } = await supabase.from('story_levels').select(selectFields).eq('id', id).limit(1);
     if (error) throw toAppError(error);
     return data?.[0] ? mapStoryLevelRow(data[0]) : null;
   }
 
+  /**
+   * Get the highest configured story level number.
+   * @returns Max level number or `null` if none.
+   */
   async getMaxLevelNumber(): Promise<number | null> {
     const { data, error } = await supabase
       .from('story_levels')
@@ -70,6 +91,11 @@ export class StoryLevelRepository {
     return (data?.[0] as { level_number?: number } | undefined)?.level_number ?? null;
   }
 
+  /**
+   * Create a story level definition row.
+   * @param payload Insert payload.
+   * @returns Created level row or `null`.
+   */
   async create(payload: CreateStoryLevelInput): Promise<StoryLevelRow | null> {
     const { data, error } = await supabase
       .from('story_levels')
@@ -80,6 +106,11 @@ export class StoryLevelRepository {
     return data?.[0] ? mapStoryLevelRow(data[0]) : null;
   }
 
+  /**
+   * Delete a story level by id.
+   * @param id Level id.
+   * @returns `true` if a row was deleted.
+   */
   async delete(id: string): Promise<boolean> {
     const { error, count } = await supabase.from('story_levels').delete({ count: 'exact' }).eq('id', id);
     if (error) throw toAppError(error);
