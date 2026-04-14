@@ -3,7 +3,7 @@ import { Box, Button, Container, Stack, Typography } from '@mui/material';
 import colors from '@/constants/colors';
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
-import StatCard from '@/Cards/HomeCards/StatCard';
+import StatCard from './StatCard';
 
 type HomeMetrics = {
   active_players: React.ReactNode;

@@ -3,7 +3,7 @@ import { Box, Container, Typography } from '@mui/material';
 import colors from '@/constants/colors';
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
-import FeatureCard from '@/Cards/HomeCards/FeatureCard';
+import FeatureCard from './FeatureCard';
 
 export default function FeaturesStrip() {
   const items: React.ComponentProps<typeof FeatureCard>[] = [

@@ -3,7 +3,7 @@ import { Box, Container, Stack, Typography } from '@mui/material';
 import colors from '@/constants/colors';
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
-import ModeCard from '@/Cards/HomeCards/ModeCard';
+import ModeCard from './ModeCard';
 
 type ModesProps = {
   onStory?: () => void;
