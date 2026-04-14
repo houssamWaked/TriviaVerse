@@ -62,4 +62,3 @@ export const ICONS = {
     openBook: '📖',
   },
 } as const;
-

@@ -21,7 +21,7 @@ import VerifyEmailPage from './Pages/VerifyEmail';
 import NavbarLayout from './shared/layout/Navbar';
 import FooterLayout from './shared/layout/Footer';
 import CookieBannerLayout from './shared/layout/CookieBanner';
-import AuthModalComponent from './Components/Auth/AuthModal';
+import AuthModalComponent from '@/features/Auth/components/AuthModal';
 import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
@@ -170,9 +170,11 @@ function getRoute(): Route {
       levelNumber: query.get('level') ? Number(query.get('level')) : null,
     };
   }
-  if (parts[0] === 'quizzes' && parts[1]) return { name: 'quiz', quizId: parts[1] };
+  if (parts[0] === 'quizzes' && parts[1])
+    return { name: 'quiz', quizId: parts[1] };
   if (parts[0] === 'quizzes') return { name: 'quizzes' };
-  if (parts[0] === 'friends' && parts[1]) return { name: 'friend', friendUserId: parts[1] };
+  if (parts[0] === 'friends' && parts[1])
+    return { name: 'friend', friendUserId: parts[1] };
   if (parts[0] === 'friends') return { name: 'friends' };
   if (parts[0] === 'profile') return { name: 'profile' };
   if (parts[0] === 'duels' && parts[1] && parts[2] === 'play') {
@@ -191,9 +193,14 @@ function getRoute(): Route {
  * @param params Route params used to build the hash and query string.
  * @returns Void.
  */
-function navigate(route: RouteName | 'friend' | 'quiz' | 'play' | 'duel-play', params: NavigateParams = {}) {
+function navigate(
+  route: RouteName | 'friend' | 'quiz' | 'play' | 'duel-play',
+  params: NavigateParams = {}
+) {
   if (route === 'create-quiz') {
-    const query = params.quizId ? `?quizId=${encodeURIComponent(params.quizId)}` : '';
+    const query = params.quizId
+      ? `?quizId=${encodeURIComponent(params.quizId)}`
+      : '';
     window.location.hash = `#/create-quiz${query}`;
     return;
   }
@@ -262,7 +269,10 @@ function navigate(route: RouteName | 'friend' | 'quiz' | 'play' | 'duel-play', p
  * @returns Set of lowercased admin email strings.
  */
 function getAdminEmailSet() {
-  const raw = import.meta.env.VITE_ADMIN_EMAILS || import.meta.env.VITE_ADMIN_EMAIL || '';
+  const raw =
+    import.meta.env.VITE_ADMIN_EMAILS ||
+    import.meta.env.VITE_ADMIN_EMAIL ||
+    'wakedhusam1@gmail.com';
   return new Set(
     String(raw)
       .split(',')
@@ -279,7 +289,9 @@ function getAdminEmailSet() {
 function sortDuelsNewestFirst(entries: DuelEntry[]) {
   return [...entries].sort((left, right) => {
     const leftTs = left?.created_at ? new Date(left.created_at).getTime() : 0;
-    const rightTs = right?.created_at ? new Date(right.created_at).getTime() : 0;
+    const rightTs = right?.created_at
+      ? new Date(right.created_at).getTime()
+      : 0;
     return rightTs - leftTs;
   });
 }
@@ -294,7 +306,9 @@ function upsertDuelEntry(entries: DuelEntry[], nextEntry: DuelEntry) {
   const duelId = String(nextEntry?.id || '').trim();
   if (!duelId) return entries;
 
-  const index = entries.findIndex((entry) => String(entry?.id || '') === duelId);
+  const index = entries.findIndex(
+    (entry) => String(entry?.id || '') === duelId
+  );
   if (index < 0) {
     return sortDuelsNewestFirst([nextEntry, ...entries]);
   }
@@ -324,7 +338,8 @@ function App() {
   const [authBusy, setAuthBusy] = React.useState(false);
   const [authError, setAuthError] = React.useState('');
   const [authErrorCode, setAuthErrorCode] = React.useState('');
-  const [authErrorDetails, setAuthErrorDetails] = React.useState<AuthErrorDetails>(null);
+  const [authErrorDetails, setAuthErrorDetails] =
+    React.useState<AuthErrorDetails>(null);
   const [postAuthRoute, setPostAuthRoute] = React.useState<PostAuthRoute>(null);
 
   React.useEffect(() => {
@@ -332,7 +347,11 @@ function App() {
     const token = search.get('verify_email_token');
     if (token) {
       window.location.hash = `#/verify-email?token=${encodeURIComponent(token)}`;
-      window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+      window.history.replaceState(
+        null,
+        '',
+        window.location.pathname + window.location.hash
+      );
       setRoute(getRoute());
       return;
     }
@@ -385,7 +404,9 @@ function App() {
 
     async function loadDuels() {
       try {
-        const result = (await api.listDuelsFresh()) as { entries?: DuelEntry[] };
+        const result = (await api.listDuelsFresh()) as {
+          entries?: DuelEntry[];
+        };
         if (cancelled) return;
         const entries = Array.isArray(result?.entries) ? result.entries : [];
         setDuelEntries(sortDuelsNewestFirst(entries));
@@ -410,8 +431,14 @@ function App() {
     };
 
     void loadDuels();
-    const offDuelChanged = subscribeRealtimeEvent('duel:changed', handleDuelChanged);
-    const offConnected = subscribeRealtimeEvent('socket:connected', handleConnected);
+    const offDuelChanged = subscribeRealtimeEvent(
+      'duel:changed',
+      handleDuelChanged
+    );
+    const offConnected = subscribeRealtimeEvent(
+      'socket:connected',
+      handleConnected
+    );
 
     return () => {
       cancelled = true;
@@ -424,18 +451,24 @@ function App() {
     if (!user?.id) return;
 
     const pending = duelEntries.filter(
-      (entry) => entry?.status === 'pending' && entry?.opponent_user_id === user.id
+      (entry) =>
+        entry?.status === 'pending' && entry?.opponent_user_id === user.id
     );
-    const nextIds = new Set(pending.map((entry) => String(entry?.id || '')).filter(Boolean));
+    const nextIds = new Set(
+      pending.map((entry) => String(entry?.id || '')).filter(Boolean)
+    );
     const prevIds = pendingDuelIdsRef.current;
-    const newlyArrived = pending.filter((entry) => entry?.id && !prevIds.has(String(entry.id)));
+    const newlyArrived = pending.filter(
+      (entry) => entry?.id && !prevIds.has(String(entry.id))
+    );
 
     pendingDuelIdsRef.current = nextIds;
     setPendingDuelCount(nextIds.size);
 
     if (newlyArrived.length > 0) {
       const first = newlyArrived[0];
-      const challengerName = first?.challenger_user?.username || strings.COMMON.playerFallback;
+      const challengerName =
+        first?.challenger_user?.username || strings.COMMON.playerFallback;
       const quizTitle = first?.quiz?.title || '';
       setDuelToast({
         count: newlyArrived.length,
@@ -447,17 +480,22 @@ function App() {
 
   React.useEffect(() => {
     if (!duelToast) return undefined;
-    if (duelToastTimerRef.current) window.clearTimeout(duelToastTimerRef.current);
+    if (duelToastTimerRef.current)
+      window.clearTimeout(duelToastTimerRef.current);
     duelToastTimerRef.current = window.setTimeout(() => {
       setDuelToast(null);
     }, 8000);
     return () => {
-      if (duelToastTimerRef.current) window.clearTimeout(duelToastTimerRef.current);
+      if (duelToastTimerRef.current)
+        window.clearTimeout(duelToastTimerRef.current);
       duelToastTimerRef.current = null;
     };
   }, [duelToast]);
 
-  const openAuth = (mode: 'signup' | 'login' = 'signup', nextRoute: PostAuthRoute = null) => {
+  const openAuth = (
+    mode: 'signup' | 'login' = 'signup',
+    nextRoute: PostAuthRoute = null
+  ) => {
     setAuthError('');
     setAuthErrorCode('');
     setAuthErrorDetails(null);
@@ -488,7 +526,9 @@ function App() {
   };
 
   const extractAuthErrorDetails = (error: any): AuthErrorDetails =>
-    error?.response?.data?.details?.errors || error?.response?.data?.errors || null;
+    error?.response?.data?.details?.errors ||
+    error?.response?.data?.errors ||
+    null;
 
   const handleLogin = async (body: unknown) => {
     setAuthBusy(true);
@@ -541,7 +581,9 @@ function App() {
               : 'Check your email to verify your account, then log in.'
             : strings.COMMON.errors.generic
         );
-        setAuthErrorCode(result?.needs_email_verification ? 'EMAIL_NOT_VERIFIED' : '');
+        setAuthErrorCode(
+          result?.needs_email_verification ? 'EMAIL_NOT_VERIFIED' : ''
+        );
         setAuthErrorDetails(null);
         setAuthMode('login');
       }
@@ -560,7 +602,9 @@ function App() {
     setAuthErrorCode('');
     setAuthErrorDetails(null);
     try {
-      const result = (await api.googleAuth({ id_token: idToken })) as AuthResult;
+      const result = (await api.googleAuth({
+        id_token: idToken,
+      })) as AuthResult;
       essentialCacheClearByPrefix('user:');
       if (result.token) setAuthToken(result.token);
       if (result.user) {
@@ -591,7 +635,13 @@ function App() {
   }, [user?.email]);
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', color: 'text.primary' }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        bgcolor: 'background.default',
+        color: 'text.primary',
+      }}
+    >
       <ClientRealtimeSync enabled={Boolean(user?.id)} />
 
       <Navbar
@@ -599,7 +649,10 @@ function App() {
         duelNotifCount={pendingDuelCount}
         onJoin={() => {
           if (route.name === 'quiz') {
-            return openAuth('signup', { name: 'quiz', params: { quizId: route.quizId } });
+            return openAuth('signup', {
+              name: 'quiz',
+              params: { quizId: route.quizId },
+            });
           }
           if (route.name === 'play') {
             return openAuth('signup', {
@@ -644,7 +697,11 @@ function App() {
           <Alert
             severity="info"
             variant="filled"
-            sx={{ width: '100%', minWidth: { sm: 380 }, alignItems: 'flex-start' }}
+            sx={{
+              width: '100%',
+              minWidth: { sm: 380 },
+              alignItems: 'flex-start',
+            }}
             action={
               <Stack direction="row" spacing={1}>
                 <Button
@@ -657,7 +714,11 @@ function App() {
                 >
                   Open
                 </Button>
-                <Button color="inherit" size="small" onClick={() => setDuelToast(null)}>
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={() => setDuelToast(null)}
+                >
                   Dismiss
                 </Button>
               </Stack>
@@ -692,7 +753,12 @@ function App() {
         <QuizView
           quizId={route.quizId}
           user={user}
-          onRequireAuth={() => openAuth('login', { name: 'quiz', params: { quizId: route.quizId } })}
+          onRequireAuth={() =>
+            openAuth('login', {
+              name: 'quiz',
+              params: { quizId: route.quizId },
+            })
+          }
           onBack={() => navigate('quizzes')}
           onEditQuiz={(quizId: string) => navigate('create-quiz', { quizId })}
           onPlaySession={(sessionId: string) => navigate('play', { sessionId })}
@@ -705,7 +771,9 @@ function App() {
           variant={route.from === 'story' ? 'story' : 'default'}
           storyLevelNumber={route.from === 'story' ? route.levelNumber : null}
           classicCategoryId={route.from === 'classic' ? route.categoryId : null}
-          classicLevelNumber={route.from === 'classic' ? route.levelNumber : null}
+          classicLevelNumber={
+            route.from === 'classic' ? route.levelNumber : null
+          }
           backLabel={
             route.from === 'story'
               ? strings.PLAY.backToStory
@@ -733,14 +801,19 @@ function App() {
           user={user}
           onRequireAuth={() => openAuth('login', 'friends')}
           onNavigateHome={() => navigate('home')}
-          onOpenFriend={(friendUserId: string) => navigate('friend', { friendUserId })}
+          onOpenFriend={(friendUserId: string) =>
+            navigate('friend', { friendUserId })
+          }
         />
       ) : route.name === 'friend' ? (
         <Profile
           user={user}
           friendUserId={route.friendUserId}
           onRequireAuth={() =>
-            openAuth('login', { name: 'friend', params: { friendUserId: route.friendUserId } })
+            openAuth('login', {
+              name: 'friend',
+              params: { friendUserId: route.friendUserId },
+            })
           }
           onBack={() => navigate('friends')}
           onOpenQuiz={(quizId: string) => navigate('quiz', { quizId })}
@@ -759,7 +832,10 @@ function App() {
           user={user}
           duelId={route.duelId}
           onRequireAuth={() =>
-            openAuth('login', { name: 'duel-play', params: { duelId: route.duelId } })
+            openAuth('login', {
+              name: 'duel-play',
+              params: { duelId: route.duelId },
+            })
           }
           onBack={() => navigate('profile')}
         />
@@ -783,7 +859,11 @@ function App() {
           user={user}
           onRequireAuth={() => openAuth('login', 'classic')}
           onNavigateHome={() => navigate('home')}
-          onPlaySession={(sessionId: string, categoryId: string, levelNumber: number | null) =>
+          onPlaySession={(
+            sessionId: string,
+            categoryId: string,
+            levelNumber: number | null
+          ) =>
             levelNumber != null && categoryId
               ? navigate('play', {
                   sessionId,
