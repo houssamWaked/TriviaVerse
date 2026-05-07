@@ -2,9 +2,11 @@ import {
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
+  BadRequestException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { AuthTokenService } from '../auth/auth-token.service';
 import { DatabaseService } from '../database/database.service';
 
 type QuizRow = {
@@ -21,7 +23,10 @@ type QuizRow = {
 
 @Injectable()
 export class QuizService {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly tokens: AuthTokenService,
+  ) {}
 
   async searchQuizzes(q: string, limit = 30) {
     const query = String(q || '').trim();
@@ -110,6 +115,31 @@ export class QuizService {
         };
       }),
     };
+  }
+
+  async rateQuiz(req: any, quizId: string, rating: number) {
+    const authUser = this.tokens.requireUserFromRequest(req);
+    const normalizedRating = Number(rating);
+    if (!Number.isInteger(normalizedRating) || normalizedRating < 1 || normalizedRating > 5) {
+      throw new BadRequestException('Rating must be between 1 and 5');
+    }
+
+    await this.findVisibleQuiz(quizId);
+    const { error } = await this.db.supabase
+      .from('quiz_ratings')
+      .upsert(
+        {
+          quiz_id: quizId,
+          user_id: authUser.id,
+          rating: normalizedRating,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'quiz_id,user_id' },
+      );
+
+    if (error) this.throwDbError(error.message);
+    const summary = await this.getRatings(quizId);
+    return { ...summary, my_rating: normalizedRating };
   }
 
   private get quizFields() {

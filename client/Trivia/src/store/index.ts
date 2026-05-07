@@ -3,6 +3,7 @@ import authReducer from './slices/authSlice';
 import discoverReducer from './slices/discoverSlice';
 import globalReducer from './slices/globalSlice';
 import leaderboardReducer from './slices/leaderboardSlice';
+import profileReducer from './slices/profileSlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     discover: discoverReducer,
     global: globalReducer,
     leaderboard: leaderboardReducer,
+    profile: profileReducer,
   },
 });
 

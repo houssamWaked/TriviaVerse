@@ -1,3 +1,5 @@
+import { getAuthToken } from './tokenStore';
+
 type GraphqlOptions = {
   variables?: Record<string, unknown>;
   dataPath?: string;
@@ -14,9 +16,13 @@ export async function requestGraphql<T = unknown>(
   query: string,
   options: GraphqlOptions = {}
 ): Promise<T> {
+  const token = getAuthToken();
   const response = await fetch(graphqlUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     credentials: 'include',
     body: JSON.stringify({
       query,

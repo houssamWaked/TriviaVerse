@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
 import { api } from '@/api';
 import { subscribeRealtimeEvent } from '@/api/realtimeEvents';
 import ProfileStyle from '@/Styles/ComponentStyles/ProfileStyle';
 import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
+import type { AppDispatch, RootState } from '@/store';
+import { loadMyProfile, setProfileError } from '@/store/slices/profileSlice';
 import type { DuelEntry, PlayedQuiz, ProfileData, ProfileProps } from '@/features/Profile/types';
 
 type DuelStatePayload = {
@@ -141,26 +144,37 @@ type UseProfileStateParams = Pick<
 
 export function useProfileState({ user, friendUserId, onRequireAuth, onOpenDuel }: UseProfileStateParams) {
   const isFriendView = !!friendUserId;
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [data, setData] = useState<ProfileData | null>(null);
+  const dispatch = useDispatch<AppDispatch>();
+  const profile = useSelector((state: RootState) => state.profile);
+  const [localBusy, setLocalBusy] = useState(false);
+  const [friendError, setFriendError] = useState('');
+  const [friendData, setFriendData] = useState<ProfileData | null>(null);
   const [plays, setPlays] = useState<PlayedQuiz[]>([]);
   const [playsFilter, setPlaysFilter] = useState('');
   const [duels, setDuels] = useState<DuelEntry[]>([]);
   const autoOpenedRef = useRef<Set<string>>(new Set());
 
   const loadProfile = async () => {
-    setBusy(true);
-    setError('');
+    setLocalBusy(true);
+    setFriendError('');
     try {
-      const res = isFriendView ? await api.getFriendProfile(friendUserId) : await api.getMyProfile();
-      setData(res);
+      if (isFriendView) {
+        const res = await api.getFriendProfile(friendUserId);
+        setFriendData(res);
+      } else {
+        await dispatch(loadMyProfile()).unwrap();
+      }
     } catch (err) {
       if (isUnauthorized(err)) return onRequireAuth?.();
-      setError(getApiErrorMessage(err));
-      setData(null);
+      const message = getApiErrorMessage(err);
+      if (isFriendView) {
+        setFriendError(message);
+        setFriendData(null);
+      } else {
+        dispatch(setProfileError(message));
+      }
     } finally {
-      setBusy(false);
+      setLocalBusy(false);
     }
   };
 
@@ -172,7 +186,8 @@ export function useProfileState({ user, friendUserId, onRequireAuth, onOpenDuel 
       setPlays(Array.isArray(res?.entries) ? res.entries : []);
     } catch (err) {
       if (isUnauthorized(err)) return onRequireAuth?.();
-      setError(getApiErrorMessage(err));
+      if (isFriendView) setFriendError(getApiErrorMessage(err));
+      else dispatch(setProfileError(getApiErrorMessage(err)));
       setPlays([]);
     }
   };
@@ -186,7 +201,8 @@ export function useProfileState({ user, friendUserId, onRequireAuth, onOpenDuel 
       setDuels(sortDuelsNewestFirst(list));
     } catch (err) {
       if (isUnauthorized(err)) return onRequireAuth?.();
-      setError(getApiErrorMessage(err));
+      if (isFriendView) setFriendError(getApiErrorMessage(err));
+      else dispatch(setProfileError(getApiErrorMessage(err)));
       setDuels([]);
     }
   };
@@ -247,6 +263,15 @@ export function useProfileState({ user, friendUserId, onRequireAuth, onOpenDuel 
     autoOpenedRef.current.add(toAutoOpen.id);
     onOpenDuel(toAutoOpen.id);
   }, [duels, isFriendView, onOpenDuel, user?.id]);
+
+  const busy = isFriendView ? localBusy : localBusy || profile.busy;
+  const error = isFriendView ? friendError : profile.error;
+  const data = isFriendView ? friendData : profile.data;
+  const setBusy = setLocalBusy;
+  const setError = (message: string) => {
+    if (isFriendView) setFriendError(message);
+    else dispatch(setProfileError(message));
+  };
 
   const name = useMemo(
     () => data?.user?.username || user?.username || STRINGS.COMMON.playerFallback,

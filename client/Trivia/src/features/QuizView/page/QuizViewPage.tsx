@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
-import { api } from '@/api';
+import { api, graphqlQuizApi } from '@/api';
 import QuizViewStyle from '@/Styles/ComponentStyles/QuizViewStyle';
 import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
 import QuizViewStatusCards from '@/features/QuizView/components/QuizViewStatusCards';
@@ -58,7 +58,9 @@ export default function QuizViewPage({
     setError('');
     setSuccess('');
     try {
-      const nextRatings = (await api.rateQuiz(quizId, { rating: value })) as RatingsResponse;
+      const nextRatings = (await graphqlQuizApi
+        .rateQuiz<RatingsResponse>(quizId, value)
+        .catch(() => api.rateQuiz(quizId, { rating: value }))) as RatingsResponse;
       setRatings(nextRatings);
     } catch (err) {
       if (isUnauthorized(err)) return onRequireAuth?.('quiz');

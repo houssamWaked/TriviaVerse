@@ -13,11 +13,13 @@ This backend uses Nest modules, resolvers, services, and GraphQL types, similar 
 Created modules:
 
 ```txt
+auth/
 database/
 health/
 category/
 public/
 quiz/
+users/
 ```
 
 Main files added:
@@ -27,6 +29,12 @@ api-nest/src/app.module.ts
 api-nest/src/main.ts
 api-nest/src/database/database.module.ts
 api-nest/src/database/database.service.ts
+
+api-nest/src/auth/auth.module.ts
+api-nest/src/auth/auth.resolver.ts
+api-nest/src/auth/auth.service.ts
+api-nest/src/auth/auth-token.service.ts
+api-nest/src/auth/auth.types.ts
 
 api-nest/src/health/health.module.ts
 api-nest/src/health/health.resolver.ts
@@ -45,12 +53,20 @@ api-nest/src/quiz/quiz.module.ts
 api-nest/src/quiz/quiz.resolver.ts
 api-nest/src/quiz/quiz.service.ts
 api-nest/src/quiz/quiz.types.ts
+
+api-nest/src/users/users.module.ts
+api-nest/src/users/users.resolver.ts
+api-nest/src/users/users.service.ts
+api-nest/src/users/users.types.ts
 ```
 
 Current GraphQL queries:
 
 ```txt
 health
+login
+me
+myProfile
 homeMetrics
 publicCategories
 categoryStats
@@ -60,6 +76,7 @@ searchQuizzes
 publicQuiz
 publicQuizRatings
 publicQuizLeaderboard
+rateQuiz
 ```
 
 This means the new backend is not only forwarding requests to the old Express API. It directly uses Supabase through Nest services.
@@ -76,6 +93,7 @@ client/Trivia/src/store/slices/authSlice.ts
 client/Trivia/src/store/slices/globalSlice.ts
 client/Trivia/src/store/slices/discoverSlice.ts
 client/Trivia/src/store/slices/leaderboardSlice.ts
+client/Trivia/src/store/slices/profileSlice.ts
 ```
 
 Redux is connected in:
@@ -90,6 +108,7 @@ Redux currently manages:
 authSlice        logged-in user state
 discoverSlice    discover quiz search/results/loading/error
 leaderboardSlice leaderboard filters/results/loading/error
+profileSlice     profile data/loading/error
 globalSlice      shared UI placeholder
 ```
 

@@ -61,10 +61,12 @@ TriviaVerse is a full-stack trivia game platform with multiple play modes (Story
 - **Database**
   - `api-nest/src/database/*`: creates the Supabase client for GraphQL services.
 - **Feature modules**
+  - `auth/`: `login` mutation and `me` query.
   - `health/`: `health` query.
   - `category/`: `publicCategories` and `categoryStats`.
   - `public/`: `homeMetrics` and `leaderboard`.
-  - `quiz/`: discover/search, public quiz details, ratings, and quiz leaderboard.
+  - `quiz/`: discover/search, public quiz details, ratings, quiz leaderboard, and `rateQuiz`.
+  - `users/`: current-user profile query.
 
 ### Frontend (`client/Trivia/`)
 - **Entrypoint**
@@ -78,7 +80,7 @@ TriviaVerse is a full-stack trivia game platform with multiple play modes (Story
 - **API client**
   - `src/api/*`: Axios and GraphQL client wrappers, token/current-user stores, endpoint definitions, and Socket.IO client wiring.
 - **Redux store**
-  - `src/store/*`: Redux Toolkit store plus `auth`, `global`, `discover`, and `leaderboard` slices.
+  - `src/store/*`: Redux Toolkit store plus `auth`, `global`, `discover`, `leaderboard`, and `profile` slices.
 - **Styling**
   - `src/Styles/*` + MUI theme in `src/theme.ts`.
 - **Utilities**
