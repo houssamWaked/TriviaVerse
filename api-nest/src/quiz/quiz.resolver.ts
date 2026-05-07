@@ -1,4 +1,4 @@
-import { Args, Int, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { QuizService } from './quiz.service';
 import {
   QuizDetailsPayload,
@@ -41,5 +41,14 @@ export class QuizResolver {
     @Args('limit', { type: () => Int, nullable: true }) limit = 20,
   ) {
     return this.quizService.getQuizLeaderboard(quizId, limit);
+  }
+
+  @Mutation(() => QuizRatingsPayload)
+  rateQuiz(
+    @Context() context: any,
+    @Args('quizId', { type: () => String }) quizId: string,
+    @Args('rating', { type: () => Int }) rating: number,
+  ) {
+    return this.quizService.rateQuiz(context.req, quizId, rating);
   }
 }

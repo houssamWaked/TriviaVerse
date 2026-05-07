@@ -6,6 +6,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "npm run build && node dist/main.js",
     "start:prod": "node dist/main.js",
+    "test": "npm run build && node --test \"dist/**/*.spec.js\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -17,12 +18,15 @@
     "@nestjs/graphql": "^13.2.0",
     "@nestjs/platform-express": "^11.0.1",
     "@supabase/supabase-js": "^2.105.3",
+    "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
     "graphql": "^16.11.0",
+    "jsonwebtoken": "^9.0.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.0.0",
     "typescript": "^6.0.2"
   }

@@ -41,11 +41,13 @@ TriviaVerse/
     src/
       app.module.ts            # GraphQL setup + module imports
       main.ts                  # Nest entrypoint
+      auth/                    # GraphQL login/current-user auth helpers
       database/                # Supabase connection module
       category/                # category GraphQL queries/services/types
       health/                  # health GraphQL query
       public/                  # homepage/leaderboard GraphQL queries
       quiz/                    # quiz discovery/detail GraphQL queries
+      users/                   # current-user profile GraphQL query
 
   client/Trivia/               # React (Vite) frontend
     index.html
@@ -129,7 +131,7 @@ npm start
 
 The GraphQL endpoint is `http://localhost:3000/graphql`.
 
-Current GraphQL queries include `health`, `homeMetrics`, `publicCategories`, `leaderboard`, `topQuizzes`, `searchQuizzes`, `publicQuiz`, `publicQuizRatings`, `publicQuizLeaderboard`, and `categoryStats`.
+Current GraphQL operations include `health`, `login`, `me`, `myProfile`, `homeMetrics`, `publicCategories`, `leaderboard`, `topQuizzes`, `searchQuizzes`, `publicQuiz`, `publicQuizRatings`, `publicQuizLeaderboard`, `rateQuiz`, and `categoryStats`.
 
 ## Usage
 - Open the Vite dev URL shown in the terminal (typically `http://localhost:5173`).
@@ -137,7 +139,7 @@ Current GraphQL queries include `health`, `homeMetrics`, `publicCategories`, `le
 - Play modes from the home screen, browse quizzes, and check the leaderboard.
 
 ## Notes
-Public read-only frontend data uses GraphQL first with REST fallback. Gameplay, auth network calls, admin actions, and realtime features remain on the existing Express API for stability.
+Public read-only frontend data, profile loading, and quiz rating use GraphQL first with REST fallback. Register, refresh-token cookies, gameplay, admin actions, and realtime features remain on the existing Express API for stability.
 
 - **Same-origin recommended in prod**: If hosting client + API separately, consider a reverse proxy/rewrite so `/api/*` stays same-origin for reliable refresh-cookie behavior.
 - **Realtime**: Socket.IO authenticates connections using the access token and delivers user-scoped events (session/duel/friends changes).

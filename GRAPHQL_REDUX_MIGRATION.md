@@ -11,10 +11,12 @@ The migration is intentionally partial. Public read-only features use GraphQL fi
 The new backend is organized with Nest modules:
 
 - `DatabaseModule`: creates the Supabase client.
+- `AuthModule`: exposes GraphQL login and current-user lookup.
 - `HealthModule`: exposes the `health` GraphQL query.
 - `CategoryModule`: exposes categories and category stats.
 - `PublicModule`: exposes public read-only GraphQL queries.
 - `QuizModule`: exposes public quiz discovery/details/rating/leaderboard GraphQL queries.
+- `UsersModule`: exposes the current user's profile.
 
 The public GraphQL flow is:
 
@@ -29,6 +31,9 @@ GraphQL request
 Current GraphQL queries:
 
 - `health`
+- `login`
+- `me`
+- `myProfile`
 - `homeMetrics`
 - `publicCategories`
 - `topQuizzes`
@@ -37,6 +42,7 @@ Current GraphQL queries:
 - `publicQuiz`
 - `publicQuizRatings`
 - `publicQuizLeaderboard`
+- `rateQuiz`
 - `categoryStats`
 
 ## Frontend GraphQL
@@ -52,6 +58,8 @@ Migrated frontend reads:
 - Quiz details
 - Quiz rating summary
 - Quiz-specific leaderboard
+- Quiz rating mutation
+- Current user's profile
 - Category stats fallback counts
 - Leaderboard entries
 
@@ -67,6 +75,7 @@ Current slices:
 - `globalSlice`: shared global UI state placeholder
 - `leaderboardSlice`: leaderboard filters, entries, loading, and error state
 - `discoverSlice`: discover page query, results, loading, and error state
+- `profileSlice`: current profile payload, loading, and error state
 
 The app is wrapped with Redux `Provider` in `src/main.tsx`.
 
@@ -76,7 +85,8 @@ The app is wrapped with Redux `Provider` in `src/main.tsx`.
 
 These features stay on the old REST API for stability:
 
-- Login/register network calls
+- Register network calls
+- Refresh-token cookie flow
 - Gameplay sessions
 - Answer submission
 - Lifelines

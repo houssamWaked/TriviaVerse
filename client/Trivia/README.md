@@ -17,6 +17,9 @@ Public read-only data uses GraphQL first through:
 
 - `src/api/graphqlClient.ts`
 - `src/api/graphqlPublicApi.ts`
+- `src/api/graphqlProfileApi.ts`
+- `src/api/graphqlQuizApi.ts`
+- `src/api/graphqlAuthApi.ts`
 
 Migrated reads have REST fallback so the site stays operational if the GraphQL backend is not running.
 
@@ -28,4 +31,5 @@ Redux Toolkit lives in `src/store`.
 - `globalSlice` is reserved for shared global UI state.
 - `discoverSlice` stores discover page query/results/loading/error state.
 - `leaderboardSlice` stores leaderboard filters/results/loading/error state.
+- `profileSlice` stores current profile data/loading/error state.
 - `useAuth()` is the main hook for reading/updating auth state.
