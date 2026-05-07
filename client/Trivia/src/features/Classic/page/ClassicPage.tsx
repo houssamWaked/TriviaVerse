@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
-import { api } from '@/api';
+import { api, graphqlPublicApi } from '@/api';
 import ClassicStyle from '@/Styles/ComponentStyles/ClassicStyle';
 import { getApiErrorMessage } from '@/utils/apiError';
 import {
@@ -91,8 +91,16 @@ export default function ClassicPage({ user, onNavigateHome, onPlaySession }: Cla
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([api.listCategories(), api.getHomeMetrics()])
-      .then(([cats, m]) => {
+    async function loadPublicData() {
+      const [cats, m] = await Promise.all([
+        graphqlPublicApi.listCategories<Category[]>().catch(() => api.listCategories()),
+        graphqlPublicApi.getHomeMetrics<HomeMetrics>().catch(() => api.getHomeMetrics()),
+      ]);
+      return { cats, m };
+    }
+
+    loadPublicData()
+      .then(({ cats, m }) => {
         if (cancelled) return;
         const rows = Array.isArray(cats) ? cats : [];
         setCategories(rows);

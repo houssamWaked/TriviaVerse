@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { api } from '@/api';
+import { api, graphqlPublicApi } from '@/api';
 import { STRINGS } from '@/constants/strings';
 
 type HomeMetricsResponse = {
@@ -29,8 +29,16 @@ export function useHomeMetrics() {
 
   useEffect(() => {
     let cancelled = false;
-    api
-      .getHomeMetrics()
+
+    async function loadMetrics() {
+      try {
+        return await graphqlPublicApi.getHomeMetrics<HomeMetricsResponse>();
+      } catch {
+        return api.getHomeMetrics();
+      }
+    }
+
+    loadMetrics()
       .then((data) => {
         if (cancelled) return;
         setMetricsRaw((data ?? null) as HomeMetricsResponse | null);

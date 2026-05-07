@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api } from '@/api';
+import { api, graphqlPublicApi } from '@/api';
 import { STRINGS } from '@/constants/strings';
 import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
 import type {
@@ -43,10 +43,23 @@ export function useQuizViewData({ quizId, user }: UseQuizViewDataArgs) {
     setNeedsLogin(false);
 
     try {
+      const getDetails = () =>
+        graphqlPublicApi
+          .getPublicQuiz<QuizDetailsResponse>(quizId)
+          .catch(() => api.getPublicQuiz(quizId) as Promise<QuizDetailsResponse>);
+      const getRatings = () =>
+        graphqlPublicApi
+          .getPublicQuizRatings<RatingsResponse>(quizId)
+          .catch(() => api.getPublicQuizRatings(quizId) as Promise<RatingsResponse>);
+      const getLeaderboard = () =>
+        graphqlPublicApi
+          .getPublicQuizLeaderboard<LeaderboardResponse>(quizId, 10)
+          .catch(() => api.getPublicQuizLeaderboard(quizId, 10) as Promise<LeaderboardResponse>);
+
       const [details, summary, nextLeaderboard] = (await Promise.all([
-        api.getPublicQuiz(quizId),
-        api.getPublicQuizRatings(quizId),
-        api.getPublicQuizLeaderboard(quizId, 10),
+        getDetails(),
+        getRatings(),
+        getLeaderboard(),
       ])) as [QuizDetailsResponse, RatingsResponse, LeaderboardResponse];
 
       setData(details);

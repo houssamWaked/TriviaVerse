@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api } from '@/api';
+import { api, graphqlPublicApi } from '@/api';
 
 type Category = {
   id: string;
@@ -33,7 +33,9 @@ export function useClassicCategoryCounts(categories: Category[]) {
         }
 
         try {
-          const s = (await api.getCategoryStats(c.id)) as {
+          const s = (await graphqlPublicApi.getCategoryStats(c.id).catch(() =>
+            api.getCategoryStats(c.id)
+          )) as {
             questions_available?: number | null;
           };
           return [c.id, Number(s?.questions_available)] as const;
