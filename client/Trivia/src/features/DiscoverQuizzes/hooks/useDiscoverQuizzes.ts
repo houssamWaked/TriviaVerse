@@ -1,9 +1,14 @@
 /* eslint-disable no-unused-vars */
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
-import { api } from '@/api';
+import { useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { STRINGS } from '@/constants/strings';
-import { getApiErrorMessage } from '@/utils/apiError';
 import type { AppUser, DiscoverQuiz } from '@/features/DiscoverQuizzes/types';
+import type { AppDispatch, RootState } from '@/store';
+import {
+  loadTopQuizzes,
+  searchQuizzes,
+  setQuery,
+} from '@/store/slices/discoverSlice';
 
 type UseDiscoverQuizzesResult = {
   q: string;
@@ -23,20 +28,8 @@ type SearchQuizzesHandler = {
  * Encapsulates discovery page loading and search behavior.
  */
 export function useDiscoverQuizzes(user?: AppUser): UseDiscoverQuizzesResult {
-  const [q, setQ] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [results, setResults] = useState<DiscoverQuiz[]>([]);
-
-  const reqSeqRef = useRef(0);
-  const mountedRef = useRef(true);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  const dispatch = useDispatch<AppDispatch>();
+  const { q, busy, error, results } = useSelector((state: RootState) => state.discover);
 
   const canSeePrivate = !!user;
 
@@ -49,24 +42,8 @@ export function useDiscoverQuizzes(user?: AppUser): UseDiscoverQuizzesResult {
   );
 
   const loadTop = useCallback(async () => {
-    const seq = (reqSeqRef.current += 1);
-    if (mountedRef.current) {
-      setBusy(true);
-      setError('');
-    }
-    try {
-      const data = (await api.getTopQuizzes(20)) as { results?: DiscoverQuiz[] };
-      if (!mountedRef.current || reqSeqRef.current !== seq) return;
-      setResults(Array.isArray(data?.results) ? data.results : []);
-    } catch (err) {
-      if (!mountedRef.current || reqSeqRef.current !== seq) return;
-      setError(getApiErrorMessage(err));
-    } finally {
-      if (mountedRef.current && reqSeqRef.current === seq) {
-        setBusy(false);
-      }
-    }
-  }, []);
+    await dispatch(loadTopQuizzes());
+  }, [dispatch]);
 
   const doSearch = useCallback(
     async (query: string) => {
@@ -76,25 +53,9 @@ export function useDiscoverQuizzes(user?: AppUser): UseDiscoverQuizzesResult {
         return;
       }
 
-      const seq = (reqSeqRef.current += 1);
-      if (mountedRef.current) {
-        setBusy(true);
-        setError('');
-      }
-      try {
-        const data = (await api.searchQuizzes(term, 30)) as { results?: DiscoverQuiz[] };
-        if (!mountedRef.current || reqSeqRef.current !== seq) return;
-        setResults(Array.isArray(data?.results) ? data.results : []);
-      } catch (err) {
-        if (!mountedRef.current || reqSeqRef.current !== seq) return;
-        setError(getApiErrorMessage(err));
-      } finally {
-        if (mountedRef.current && reqSeqRef.current === seq) {
-          setBusy(false);
-        }
-      }
+      await dispatch(searchQuizzes(term));
     },
-    [loadTop]
+    [dispatch, loadTop]
   );
 
   useEffect(() => {
@@ -114,7 +75,10 @@ export function useDiscoverQuizzes(user?: AppUser): UseDiscoverQuizzesResult {
 
   return {
     q,
-    setQ,
+    setQ: ((next) => {
+      const value = typeof next === 'function' ? next(q) : next;
+      dispatch(setQuery(value));
+    }) as Dispatch<SetStateAction<string>>,
     busy,
     error,
     results,

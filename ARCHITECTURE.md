@@ -1,7 +1,7 @@
 # TriviaVerse Architecture
 
 ## 1) Project summary
-TriviaVerse is a full-stack trivia game platform with multiple play modes (Story, Classic, Blitz, Millionaire, Custom Quizzes) plus social features (friends, duels) and an admin dashboard. It consists of a TypeScript/Express API backed by Supabase (Postgres) and a React (Vite) client that talks to the API over HTTP and receives realtime updates via Socket.IO.
+TriviaVerse is a full-stack trivia game platform with multiple play modes (Story, Classic, Blitz, Millionaire, Custom Quizzes) plus social features (friends, duels) and an admin dashboard. It consists of a TypeScript/Express API backed by Supabase (Postgres), a NestJS GraphQL backend for migrated public reads, and a React (Vite) client that talks to the APIs over HTTP and receives realtime updates via Socket.IO.
 
 ## 2) Tech stack
 - **Languages**
@@ -20,6 +20,7 @@ TriviaVerse is a full-stack trivia game platform with multiple play modes (Story
   - Vite
   - MUI v7 (`@mui/material`, `@mui/icons-material`)
   - Emotion (`@emotion/react`, `@emotion/styled`)
+  - Redux Toolkit + React Redux
   - HTTP: Axios
   - Socket.IO client (`socket.io-client`)
   - Linting: ESLint + TypeScript ESLint
@@ -52,6 +53,19 @@ TriviaVerse is a full-stack trivia game platform with multiple play modes (Story
 - **Database migrations**
   - `api/sql/*.sql`: schema and feature migrations (leaderboards, pools, duels, reports/bans, etc.).
 
+### GraphQL Backend (`api-nest/`)
+- **Entrypoint**
+  - `api-nest/src/main.ts`: starts the Nest app on `API_NEST_PORT` and exposes `/graphql`.
+- **App module**
+  - `api-nest/src/app.module.ts`: configures Apollo GraphQL and imports feature modules.
+- **Database**
+  - `api-nest/src/database/*`: creates the Supabase client for GraphQL services.
+- **Feature modules**
+  - `health/`: `health` query.
+  - `category/`: `publicCategories` and `categoryStats`.
+  - `public/`: `homeMetrics` and `leaderboard`.
+  - `quiz/`: discover/search, public quiz details, ratings, and quiz leaderboard.
+
 ### Frontend (`client/Trivia/`)
 - **Entrypoint**
   - `src/main.tsx`: mounts React app with MUI theme.
@@ -62,7 +76,9 @@ TriviaVerse is a full-stack trivia game platform with multiple play modes (Story
 - **Components**
   - `src/Components/*` and `src/Cards/*`: reusable UI pieces, admin dashboards, session rendering, etc.
 - **API client**
-  - `src/api/*`: Axios client wrappers, token/current-user stores, endpoint definitions, and Socket.IO client wiring.
+  - `src/api/*`: Axios and GraphQL client wrappers, token/current-user stores, endpoint definitions, and Socket.IO client wiring.
+- **Redux store**
+  - `src/store/*`: Redux Toolkit store plus `auth`, `global`, `discover`, and `leaderboard` slices.
 - **Styling**
   - `src/Styles/*` + MUI theme in `src/theme.ts`.
 - **Utilities**
@@ -74,22 +90,25 @@ TriviaVerse is a full-stack trivia game platform with multiple play modes (Story
                    +-----------------------------+
                    |      React Client (Vite)    |
                    |  - Pages / Components / MUI |
-                   |  - Axios API client         |
+                   |  - Axios + GraphQL clients  |
+                   |  - Redux Toolkit store      |
                    |  - socket.io-client         |
                    +--------------+--------------+
                                   |
                      HTTP (JSON)  |   WebSocket (Socket.IO)
                                   |
-                   +--------------v--------------+
-                   |     Express API (Node)      |
-                   |  - Routes -> Controllers    |
-                   |  - Middlewares (auth, etc.) |
-                   |  - Services (business)      |
-                   +--------------+--------------+
-                                  |
-                                  | Supabase JS
-                                  |
-                   +--------------v--------------+
+        +-------------------------+-------------------------+
+        |                                                   |
+        v                                                   v
+ +------+-----------------------+            +--------------+--------------+
+ | NestJS GraphQL (`api-nest`)  |            |     Express API (Node)      |
+ | - Resolvers -> Services      |            |  - Routes -> Controllers    |
+ | - Public migrated reads      |            |  - Gameplay/Auth/Realtime   |
+ +--------------+---------------+            +--------------+--------------+
+                | Supabase JS                                 | Supabase JS
+                +--------------------------+------------------+
+                                           |
+                   +-----------------------v-----+
                    |      Supabase (Postgres)    |
                    |  - tables + SQL migrations  |
                    +-----------------------------+
@@ -123,4 +142,6 @@ TriviaVerse is a full-stack trivia game platform with multiple play modes (Story
 - **Hybrid session state**: an in-memory `SessionCache` accelerates gameplay (especially guest flows) while still supporting persisted sessions for logged-in users.
 - **Realtime user rooms**: Socket.IO joins users into `user:<id>` rooms after JWT verification to enable targeted updates (duels, sessions, friends).
 - **Prod-safe auth cookies**: refresh tokens are stored as httpOnly cookies with configurable `sameSite/secure/domain` to support same-origin or proxied deployments.
+- **Incremental GraphQL migration**: public read-only views use Nest GraphQL first, with REST fallback in the frontend so gameplay and auth stay stable during the migration.
+- **Redux by feature**: shared state is kept in small slices where it helps explain and reuse state, without moving every local component state into Redux.
 

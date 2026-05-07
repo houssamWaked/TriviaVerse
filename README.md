@@ -2,7 +2,7 @@
 > Full-stack trivia platform with multiple play modes, duels, friends, and an admin dashboard.
 
 ## Overview
-TriviaVerse is a TypeScript monorepo containing an Express + Supabase backend and a React (Vite) frontend. Players can browse quizzes, play sessions in different modes (including Story/Classic/Blitz/Millionaire), track progress, and receive realtime updates via Socket.IO.
+TriviaVerse is a TypeScript monorepo containing an Express + Supabase backend, a NestJS GraphQL backend, and a React (Vite) frontend. Players can browse quizzes, play sessions in different modes (including Story/Classic/Blitz/Millionaire), track progress, and receive realtime updates via Socket.IO.
 
 ## Features
 - Multiple gameplay modes: **Story**, **Classic**, **Blitz**, **Millionaire**, and **Custom** quizzes
@@ -13,8 +13,8 @@ TriviaVerse is a TypeScript monorepo containing an Express + Supabase backend an
 - Admin tooling for managing pools/questions/content
 
 ## Tech Stack
-- **Backend**: Node.js, TypeScript, Express 5, Socket.IO, Supabase JS, JWT, bcrypt, Helmet, CORS, express-validator
-- **Frontend**: React 19, Vite, MUI, Emotion, Axios, Socket.IO client
+- **Backend**: Node.js, TypeScript, Express 5, NestJS GraphQL, Socket.IO, Supabase JS, JWT, bcrypt, Helmet, CORS, express-validator
+- **Frontend**: React 19, Vite, MUI, Emotion, Axios, Redux Toolkit, Socket.IO client
 - **DB**: Postgres via Supabase, SQL migrations in `api/sql/`
 - **Tooling**: ESLint (client), Prettier (api), TypeScript, TSX, Node test runner + Supertest (api)
 
@@ -37,6 +37,16 @@ TriviaVerse/
       socket.ts                # Socket.IO server + emit helpers
     sql/                       # Database migrations / schema helpers
 
+  api-nest/                    # NestJS GraphQL backend
+    src/
+      app.module.ts            # GraphQL setup + module imports
+      main.ts                  # Nest entrypoint
+      database/                # Supabase connection module
+      category/                # category GraphQL queries/services/types
+      health/                  # health GraphQL query
+      public/                  # homepage/leaderboard GraphQL queries
+      quiz/                    # quiz discovery/detail GraphQL queries
+
   client/Trivia/               # React (Vite) frontend
     index.html
     vite.config.ts
@@ -45,7 +55,8 @@ TriviaVerse/
       App.tsx                  # App shell + hash routing + auth + realtime
       Pages/                   # Feature pages
       Components/              # Reusable components (incl. Admin & sessions)
-      api/                     # API + token/user stores + sockets
+      api/                     # REST/GraphQL API helpers + token/user stores + sockets
+      store/                   # Redux Toolkit store and slices
       Styles/                  # UI styling (MUI sx/style modules)
       utils/                   # Cache/cookies/errors/guest progress helpers
 
@@ -98,12 +109,36 @@ npm install
 npm run dev
 ```
 
+### GraphQL Backend (`api-nest/`)
+1. Install dependencies:
+
+```bash
+cd api-nest
+npm install
+```
+
+2. Configure environment:
+   - Copy `api-nest/.env.example` to `api-nest/.env`, or reuse the same Supabase values from `api/.env`.
+   - `API_NEST_PORT` defaults to `3000`.
+
+3. Start the GraphQL backend:
+
+```bash
+npm start
+```
+
+The GraphQL endpoint is `http://localhost:3000/graphql`.
+
+Current GraphQL queries include `health`, `homeMetrics`, `publicCategories`, `leaderboard`, `topQuizzes`, `searchQuizzes`, `publicQuiz`, `publicQuizRatings`, `publicQuizLeaderboard`, and `categoryStats`.
+
 ## Usage
 - Open the Vite dev URL shown in the terminal (typically `http://localhost:5173`).
 - Create an account (and verify email if enabled) or use guest flows where available.
 - Play modes from the home screen, browse quizzes, and check the leaderboard.
 
 ## Notes
+Public read-only frontend data uses GraphQL first with REST fallback. Gameplay, auth network calls, admin actions, and realtime features remain on the existing Express API for stability.
+
 - **Same-origin recommended in prod**: If hosting client + API separately, consider a reverse proxy/rewrite so `/api/*` stays same-origin for reliable refresh-cookie behavior.
 - **Realtime**: Socket.IO authenticates connections using the access token and delivers user-scoped events (session/duel/friends changes).
 - **Schema features**: Some repositories include schema-compat logic; if a feature appears “missing,” check that the corresponding SQL migration from `api/sql/` has been applied.

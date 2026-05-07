@@ -1,55 +1,40 @@
-import { useCallback, useEffect, useState } from 'react';
-import { api } from '@/api';
-import { STRINGS } from '@/constants/strings';
-import { getApiErrorMessage } from '@/utils/apiError';
+import { useCallback, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import type { AppDispatch, RootState } from '@/store';
+import {
+  fetchLeaderboard,
+  setMode,
+  setPeriod,
+} from '@/store/slices/leaderboardSlice';
+import type { LeaderboardEntry } from '@/store/slices/leaderboardSlice';
 
-export type LeaderboardEntry = {
-  user_id: string;
-  rank_position: number;
-  username?: string | null;
-  level?: number | null;
-  score_value: number | string;
-};
-
-type LeaderboardResponse = {
-  entries?: LeaderboardEntry[];
-};
+export type { LeaderboardEntry };
 
 /**
  * Manage leaderboard filters and data loading state.
  * @returns Filters, entries, status, and actions for the leaderboard page.
  */
 export function useLeaderboardData() {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [period, setPeriod] = useState<string>(STRINGS.LEADERBOARD.periods.allTime);
-  const [mode, setMode] = useState<string>(STRINGS.LEADERBOARD.modes.global);
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const dispatch = useDispatch<AppDispatch>();
+  const { busy, error, period, mode, entries } = useSelector(
+    (state: RootState) => state.leaderboard
+  );
 
   const load = useCallback(async () => {
-    setBusy(true);
-    setError('');
-    try {
-      const res = (await api.getLeaderboard({ period, mode })) as LeaderboardResponse | null;
-      setEntries(Array.isArray(res?.entries) ? res.entries : []);
-    } catch (err) {
-      setError(getApiErrorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  }, [mode, period]);
+    await dispatch(fetchLeaderboard());
+  }, [dispatch]);
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, mode, period]);
 
   return {
     busy,
     error,
     period,
-    setPeriod,
+    setPeriod: (nextPeriod: string) => dispatch(setPeriod(nextPeriod)),
     mode,
-    setMode,
+    setMode: (nextMode: string) => dispatch(setMode(nextMode)),
     entries,
     load,
   };

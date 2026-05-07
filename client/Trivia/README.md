@@ -1,16 +1,31 @@
-# React + Vite
+# TriviaVerse Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite frontend for TriviaVerse.
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
+## API Usage
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The app still uses the Express REST API for gameplay, auth network calls, admin actions, and realtime features.
 
-## Expanding the ESLint configuration
+Public read-only data uses GraphQL first through:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- `src/api/graphqlClient.ts`
+- `src/api/graphqlPublicApi.ts`
+
+Migrated reads have REST fallback so the site stays operational if the GraphQL backend is not running.
+
+## Redux
+
+Redux Toolkit lives in `src/store`.
+
+- `authSlice` stores the current user.
+- `globalSlice` is reserved for shared global UI state.
+- `discoverSlice` stores discover page query/results/loading/error state.
+- `leaderboardSlice` stores leaderboard filters/results/loading/error state.
+- `useAuth()` is the main hook for reading/updating auth state.

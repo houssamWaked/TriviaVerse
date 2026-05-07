@@ -26,14 +26,13 @@ import { getApiErrorMessage, isUnauthorized } from '@/utils/apiError';
 import { ICONS } from '@/constants/icons';
 import { STRINGS } from '@/constants/strings';
 import { essentialCacheClearByPrefix } from '@/utils/webCache';
+import { useAuth } from '@/store/hooks/useAuth';
 import {
   api,
   clearAuthToken,
-  clearCurrentUser,
   getCurrentUser,
   getAuthToken,
   setAuthToken,
-  setCurrentUser,
 } from './api';
 import type { StoredUser } from './api/userStore';
 
@@ -326,8 +325,14 @@ function upsertDuelEntry(entries: DuelEntry[], nextEntry: DuelEntry) {
  * @returns App layout and the current page.
  */
 function App() {
+  const { user, signIn } = useAuth();
+  const setUser = React.useCallback(
+    (nextUser: StoredUser) => {
+      signIn(nextUser);
+    },
+    [signIn]
+  );
   const [route, setRoute] = React.useState<Route>(getRoute);
-  const [user, setUser] = React.useState<StoredUser>(() => getCurrentUser());
   const [duelEntries, setDuelEntries] = React.useState<DuelEntry[]>([]);
   const [pendingDuelCount, setPendingDuelCount] = React.useState(0);
   const [duelToast, setDuelToast] = React.useState<DuelToast>(null);
@@ -379,7 +384,6 @@ function App() {
 
         if (result?.token) setAuthToken(result.token);
         if (result?.user) {
-          setCurrentUser(result.user);
           setUser(result.user);
         }
       } catch {
@@ -414,7 +418,6 @@ function App() {
         if (cancelled) return;
         if (isUnauthorized(error)) {
           clearAuthToken();
-          clearCurrentUser();
           setUser(null);
         }
       }
@@ -512,7 +515,6 @@ function App() {
     }
     essentialCacheClearByPrefix('user:');
     clearAuthToken();
-    clearCurrentUser();
     setUser(null);
   };
 
@@ -540,7 +542,6 @@ function App() {
       essentialCacheClearByPrefix('user:');
       if (result.token) setAuthToken(result.token);
       if (result.user) {
-        setCurrentUser(result.user);
         setUser(result.user);
       }
       setAuthOpen(false);
@@ -566,7 +567,6 @@ function App() {
         essentialCacheClearByPrefix('user:');
         setAuthToken(result.token);
         if (result.user) {
-          setCurrentUser(result.user);
           setUser(result.user);
         }
         setAuthOpen(false);
@@ -608,7 +608,6 @@ function App() {
       essentialCacheClearByPrefix('user:');
       if (result.token) setAuthToken(result.token);
       if (result.user) {
-        setCurrentUser(result.user);
         setUser(result.user);
       }
       setAuthOpen(false);
